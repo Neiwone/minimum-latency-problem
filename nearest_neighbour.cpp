@@ -84,7 +84,7 @@ vector<int> nearest_neighbour(const Graph& graph, int depot = 0) {
 }
 
 double compute_cost(const Graph& graph, const vector<int>& route, int depot = 0) {
-    int n = graph.size();
+    int n = route.size();
 
     double walked = 0.0;
     double cost = 0.0;
@@ -92,7 +92,7 @@ double compute_cost(const Graph& graph, const vector<int>& route, int depot = 0)
     int u, v;
     double w;
 
-    for (int i = 0; i <= n; i++) {
+    for (int i = 0; i + 1 < n; i++) {
         u = route[i];
         v = route[i + 1];
         w = graph[u][v];
@@ -107,7 +107,7 @@ double compute_cost(const Graph& graph, const vector<int>& route, int depot = 0)
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        cerr << "Usage: ./greedy <instance.tsp>\n";
+        cerr << "Usage: ./nearest_neighbour <instance.tsp>\n";
         return 1;
     }
 
@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
     cout << "TIME_MS " << fixed << setprecision(3) << runtime_ms << "\n";
     cout << "ROUTE ";
     for (int i = 0; i < n; i++) {
-        cout << route[i] << ",\n"[i + 1 == n];
+        cout << route[i] << ",\n"[i == n-1];
     }
 
     return 0;
