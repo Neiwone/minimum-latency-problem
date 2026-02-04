@@ -1,0 +1,13 @@
+NAME : oropt_example
+TYPE : TSP
+DIMENSION : 7
+EDGE_WEIGHT_TYPE : EUC_2D
+NODE_COORD_SECTION
+1 0 0
+2 1 0
+3 6 0
+4 6 1
+5 4 -1
+6 5 -1
+7 6 -1
+EOF

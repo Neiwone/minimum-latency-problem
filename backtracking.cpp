@@ -89,7 +89,9 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    Graph graph = load_instance(argv[1]);
+    string filename = argv[1];
+
+    Graph graph = load_instance(filename);
     int n = graph.size();
 
     vector<bool> visited(n, false);
@@ -107,13 +109,13 @@ int main(int argc, char** argv) {
 
     double runtime_ms = chrono::duration<double, milli>(t1 - t0).count();
 
-    cout << "INSTANCE " << argv[1] << "\n";
+    cout << "INSTANCE " << filename << "\n";
     cout << "NODES " << n << "\n";
     cout << "COST " << fixed << setprecision(2) << best_cost << "\n";
     cout << "TIME_MS " << fixed << setprecision(3) << runtime_ms << "\n";
     cout << "ROUTE ";
     for (int i = 0; i < n; i++) {
-      cout << best_route[i] << ",\n"[i == n-1];
+        cout << best_route[i] << ",\n"[i == n-1];
     }
 
     return 0;

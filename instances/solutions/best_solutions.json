@@ -1,0 +1,38 @@
+{
+  "eil51": {
+    "cost": 10036.0,
+    "solver": "nn",
+    "timestamp": "2026-01-31T18:37:46.931883",
+    "tour_file": "eil51.tour"
+  },
+  "berlin52": {
+    "cost": 145231.0,
+    "solver": "nn",
+    "timestamp": "2026-01-31T18:37:48.597289",
+    "tour_file": "berlin52.tour"
+  },
+  "pr76": {
+    "cost": 3543415.0,
+    "solver": "nn",
+    "timestamp": "2026-01-31T18:37:49.498951",
+    "tour_file": "pr76.tour"
+  },
+  "rat99": {
+    "cost": 62780.0,
+    "solver": "nn",
+    "timestamp": "2026-01-31T18:37:50.115928",
+    "tour_file": "rat99.tour"
+  },
+  "kroA100": {
+    "cost": 1178173.0,
+    "solver": "nn",
+    "timestamp": "2026-01-31T18:37:50.814470",
+    "tour_file": "kroA100.tour"
+  },
+  "eil101": {
+    "cost": 32231.0,
+    "solver": "nn",
+    "timestamp": "2026-01-31T18:37:51.388269",
+    "tour_file": "eil101.tour"
+  }
+}

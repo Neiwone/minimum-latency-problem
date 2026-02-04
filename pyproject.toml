@@ -7,5 +7,6 @@ requires-python = ">=3.10"
 dependencies = [
     "argparse>=1.4.0",
     "matplotlib>=3.10.8",
+    "pygame>=2.6.1",
     "tsplib95>=0.7.1",
 ]
