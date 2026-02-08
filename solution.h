@@ -20,6 +20,11 @@ public:
     double* x;                  /* x[i] = x-coordinate of i */
     double* y;                  /* y[i] = y-coordinate of i */ 
     int** fDist;                /* fDist[i][j] = distance between i and j */
+
+    vector<vector<int>> * T;         /* Duration T(σ) to perform the visits sequence σ. (duration of σ) */
+    vector<vector<int>> * C;         /* Cost C(σ) to perform the sequence, when starting at time 0. (latency cost of σ) */
+    vector<vector<int>> * W;         /* Delay cost W(σ), related to a one time unit delay in the starting time. (number of customers of σ) */
+
 };
 
 #endif

@@ -128,10 +128,6 @@ void local_search(Solution& sol, Evaluator& eval) {
     Solution s = sol;
     int termination_criterion = 1;
 
-    vector<vector<int>> T(sol.fN, vector<int>(sol.fN));         /* Duration T(σ) to perform the visits sequence σ. (duration of σ) */
-    vector<vector<int>> C(sol.fN, vector<int>(sol.fN));         /* Cost C(σ) to perform the sequence, when starting at time 0. (latency cost of σ) */
-    vector<vector<int>> W(sol.fN, vector<int>(sol.fN));         /* Delay cost W(σ), related to a one time unit delay in the starting time. (number of customers of σ) */
-
     for (int i = 0; i < sol.fN; i++)
     {
         int vi = sol.fTour[i];
