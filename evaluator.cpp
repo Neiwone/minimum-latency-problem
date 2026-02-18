@@ -39,7 +39,7 @@ void Evaluator::SetInstance(char filename[]) {
 
         if (strcmp(word, "DIMENSION") == 0 || strcmp(word, "DIMENSION:") == 0) {
             if (word[strlen(word)-1] != ':')
-                fscanf(fp, "%s", word); // skip ":"
+                fscanf(fp, "%s", word);
             fscanf(fp, "%d", &Ncity);
         }
 
@@ -122,8 +122,8 @@ void Evaluator::SetInstance(char filename[]) {
 
 void Evaluator::DoIt(Solution& sol) {
 
-    double walked = 0.0;
-    double cost = 0.0;
+    int walked = 0;
+    int cost = 0;
 
     for (int i = 0; i < sol.fN - 1; ++i) {
         int u = sol.fTour[i];
@@ -134,20 +134,4 @@ void Evaluator::DoIt(Solution& sol) {
     }
 
     sol.fEvaluationValue = cost;
-}
-
-
-int Evaluator::evaluateSwap(const Solution& sol, int i, int j) {
-    // Create a copy of the solution to evaluate the swap
-    Solution neighbor;
-    neighbor.Define(sol.fN);
-    neighbor = sol;
-
-    // Swap cities at positions i and j
-    swap(neighbor.fTour[i], neighbor.fTour[j]);
-
-    // Evaluate the new solution
-    DoIt(neighbor);
-
-    return neighbor.fEvaluationValue;
 }

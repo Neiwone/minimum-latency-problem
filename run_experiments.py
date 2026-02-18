@@ -7,11 +7,6 @@ from datetime import datetime
 from typing import Dict, Optional
 
 INSTANCES = [
-    "rand1.tsp",
-    "rand2.tsp",
-    "rand3.tsp",
-    "rand4.tsp",
-    "rand5.tsp",
     # TSPLIB instances
     # "eil51.tsp",
     # "berlin52.tsp",
@@ -19,6 +14,16 @@ INSTANCES = [
     # "rat99.tsp",
     # "kroA100.tsp",
     # "eil101.tsp",
+
+    "st70.tsp",
+    "rat99.tsp",
+    "kroD100.tsp",
+    "lin105.tsp",
+    "pr107.tsp",
+    "rat195.tsp",
+    "pr226.tsp",
+    "lin318.tsp",
+    "pr439.tsp",
 ]
 
 INST_DIR = "instances"
@@ -27,9 +32,11 @@ BEST_SOLUTIONS_FILE = SOLUTIONS_DIR / "best_solutions.json"
 
 # Solvers
 SOLVERS = {
-    "nn": "./nearest_neighbour",
-    "backtracking": "./backtracking",
-    "local_search": "./local_search",
+    "nn": "./bin/nearest_neighbour",
+    "backtracking": "./bin/backtracking",
+    "local_search": "./bin/local_search",
+    "construction": "./bin/construction",
+    "gils_rvnd": "./bin/gils_rvnd",
 }
 
 VISUALIZER = "uv run instance_visualizer.py"
@@ -197,26 +204,34 @@ Examples:
 def run_solver(solver_path: str, instance_path: str, route: Optional[str] = None) -> Dict:
     """
     Run a solver and parse its output.
-    
-    Returns:
-        Dictionary with nodes, cost, time, and route
     """
+
+    # ---------- Warm start for Local Search ----------
+    if "local_search" in solver_path and route is None:
+        construction_path = SOLVERS["construction"]
+
+        construction_solution = run_solver(construction_path, instance_path)
+
+        route = construction_solution["route"]
+
+    # ---------- Run solver ----------
     cmd = [solver_path, instance_path]
+
     if route is not None:
         cmd += ["--route", route]
-    
+
     proc = subprocess.run(cmd, capture_output=True, text=True)
-    
+
     if proc.returncode != 0:
         raise RuntimeError(f"Solver failed: {proc.stderr}")
-    
+
     data = {}
     for line in proc.stdout.strip().splitlines():
         parts = line.split(maxsplit=1)
         if len(parts) == 2:
             key, value = parts
             data[key] = value
-    
+
     return {
         "nodes": int(data.get("NODES", 0)),
         "cost": float(data.get("COST", 0)),
@@ -290,7 +305,7 @@ def run_compare_best_mode(args, tracker: SolutionTracker):
     print(f"{'='*80}")
     print(
         f"{'Instance':<12} {'N':>5} "
-        f"{'Cost':>12} {'Best':>12} {'Gap%':>8} {'Time(ms)':>10} {'New?':>5}"
+        f"{'Cost':>12} {'Best':>12} {'Gap%':>8} {'Time(s)':>10} {'New?':>5}"
     )
     print("-" * 80)
     
@@ -302,7 +317,7 @@ def run_compare_best_mode(args, tracker: SolutionTracker):
         print(
             f"{r['instance']:<12} {r['nodes']:>5} "
             f"{r['cost']:>12.2f} {best_str:>12} {gap_str:>8} "
-            f"{r['time']:>10.3f} {new_str:>5}"
+            f"{r['time']/60:>10.3f} {new_str:>5}"
         )
     
     print("=" * 80)

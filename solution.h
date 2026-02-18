@@ -1,7 +1,6 @@
 #ifndef __SOLUTION__
 #define __SOLUTION__
 
-
 #include <bits/stdc++.h>
 using namespace std;
 
@@ -9,22 +8,37 @@ class Solution {
 public:
     Solution();
     ~Solution();
-    void Define( int N );
-    Solution(const Solution& src);                  /* Copy constructor */
-    Solution& operator = ( const Solution& src );   /* Copy */
-    bool operator == (  const Solution& other );    /* Return true if two tours are the same, false otherwise */
+    void Define(int N);
+    Solution(const Solution& src);
+    Solution& operator = (const Solution& src);
+    bool operator == (const Solution& other);
 
-    int fN;                     /* Number of cities */
-    int* fTour;                 /* Route permutation */
-    int fEvaluationValue;       /* Tour evaluation value */
-    double* x;                  /* x[i] = x-coordinate of i */
-    double* y;                  /* y[i] = y-coordinate of i */ 
-    int** fDist;                /* fDist[i][j] = distance between i and j */
+    void calculateStructures();
 
-    vector<vector<int>> * T;         /* Duration T(σ) to perform the visits sequence σ. (duration of σ) */
-    vector<vector<int>> * C;         /* Cost C(σ) to perform the sequence, when starting at time 0. (latency cost of σ) */
-    vector<vector<int>> * W;         /* Delay cost W(σ), related to a one time unit delay in the starting time. (number of customers of σ) */
+    /* W(i,j) = number of customers in subsequence [i..j].
+       Depot is always at position 0 */
+    inline int getW(int i, int j) const {
+        return (i == 0) ? j : (j - i + 1);
+    }
 
+    void printAllSubsequences();
+
+    bool evaluateSwap(int i, int j);
+    bool evaluate2Opt(int i, int j);
+    bool evaluateReinsertion(int i, int j);
+    bool evaluateOrOpt(int i, int j, int k);
+    
+    int fN;
+    int* fTour;
+    int fEvaluationValue;
+
+    double* x;
+    double* y; 
+    int** fDist;
+
+    int** T;    /* Duration */
+    int** C;    /* Latency cost */
+    int** Cr;   /* Reversed cost */
 };
 
 #endif
