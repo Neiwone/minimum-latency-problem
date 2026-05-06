@@ -1,5 +1,5 @@
 NAME : berlin52.tour
-COMMENT : MLP solution (cost=134760.00, solver=gils_rvnd)
+COMMENT : MLP solution (cost=134395.00, solver=gils_rvnd)
 TYPE : TOUR
 DIMENSION : 52
 TOUR_SECTION

@@ -36,7 +36,7 @@ Graph load_instance(const string& filename) {
         for (int j = 0; j < n; j++) {
             double dx = coords[i].first - coords[j].first;
             double dy = coords[i].second - coords[j].second;
-            g[i][j] = sqrt(dx*dx + dy*dy);
+            g[i][j] = (int)(sqrt(dx*dx + dy*dy));  // floor (matches paper)
         }
 
     return g;

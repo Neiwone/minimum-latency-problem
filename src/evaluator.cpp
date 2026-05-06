@@ -2,6 +2,14 @@
 #include "evaluator.h"
 #endif
 
+#include <cmath>
+#include <climits>
+#include <vector>
+#include <algorithm>
+#include <cstring>
+#include <cstdio>
+#include <cstdlib>
+
 Evaluator::Evaluator() {
     fEdgeDis = NULL;
     fNearCity = NULL;
@@ -75,18 +83,35 @@ void Evaluator::SetInstance(char filename[]) {
     for (int i = 0; i < Ncity; ++i)
         fEdgeDis[i] = new int[Ncity];
 
-    if (strcmp(type, "EUC_2D") != 0) {
+    if (strcmp(type, "EUC_2D") == 0) {
+        for (int i = 0; i < Ncity; ++i) {
+            for (int j = 0; j < Ncity; ++j) {
+                double dx = x[i] - x[j];
+                double dy = y[i] - y[j];
+                double d = sqrt(dx*dx + dy*dy);
+                fEdgeDis[i][j] = (int)(d);
+            }
+        }
+    } 
+    else if (strcmp(type, "ATT") == 0) {
+        for (int i = 0; i < Ncity; ++i) {
+            for (int j = 0; j < Ncity; ++j) {
+                double dx = x[i] - x[j];
+                double dy = y[i] - y[j];
+                double rij = sqrt((dx * dx + dy * dy) / 10.0);
+                int tij = (int)(rij);
+                
+                if (tij < rij) {
+                    fEdgeDis[i][j] = tij + 1;
+                } else {
+                    fEdgeDis[i][j] = tij;
+                }
+            }
+        }
+    } 
+    else {
         printf("Unsupported EDGE_WEIGHT_TYPE: %s\n", type);
         exit(1);
-    }
-
-    for (int i = 0; i < Ncity; ++i) {
-        for (int j = 0; j < Ncity; ++j) {
-            double dx = x[i] - x[j];
-            double dy = y[i] - y[j];
-            double d = sqrt(dx*dx + dy*dy);
-            fEdgeDis[i][j] = (int)(d + 0.5);   // ✅ TSPLIB rounding
-        }
     }
 
     // ---------- NEAREST LIST ----------

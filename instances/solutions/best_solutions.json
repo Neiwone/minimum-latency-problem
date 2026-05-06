@@ -6,9 +6,9 @@
     "tour_file": "eil51.tour"
   },
   "berlin52": {
-    "cost": 134760.0,
+    "cost": 134395.0,
     "solver": "gils_rvnd",
-    "timestamp": "2026-02-17T16:39:12.877428",
+    "timestamp": "2026-03-10T10:35:19.429441",
     "tour_file": "berlin52.tour"
   },
   "pr76": {
@@ -18,7 +18,7 @@
     "tour_file": "pr76.tour"
   },
   "rat99": {
-    "cost": 56573.0,
+    "cost": 54984.0,
     "solver": "gils_rvnd",
     "timestamp": "2026-02-17T12:07:28.671210",
     "tour_file": "rat99.tour"
@@ -36,51 +36,57 @@
     "tour_file": "eil101.tour"
   },
   "st70": {
-    "cost": 19710.0,
+    "cost": 19215.0,
     "solver": "gils_rvnd",
     "timestamp": "2026-02-17T12:07:26.313402",
     "tour_file": "st70.tour"
   },
   "kroD100": {
-    "cost": 951609.0,
+    "cost": 949594.0,
     "solver": "gils_rvnd",
     "timestamp": "2026-02-17T12:07:30.541690",
     "tour_file": "kroD100.tour"
   },
   "lin105": {
-    "cost": 586751.0,
+    "cost": 585823.0,
     "solver": "gils_rvnd",
     "timestamp": "2026-02-17T12:07:32.755203",
     "tour_file": "lin105.tour"
   },
   "pr107": {
-    "cost": 1981991.0,
+    "cost": 1980767.0,
     "solver": "gils_rvnd",
     "timestamp": "2026-02-17T12:07:37.706500",
     "tour_file": "pr107.tour"
   },
   "rat195": {
-    "cost": 216239.0,
+    "cost": 210191.0,
     "solver": "gils_rvnd",
-    "timestamp": "2026-02-18T16:49:20.661813",
+    "timestamp": "2026-02-19T09:55:05.498961",
     "tour_file": "rat195.tour"
   },
   "pr226": {
-    "cost": 7101223.0,
+    "cost": 7100308.0,
     "solver": "gils_rvnd",
     "timestamp": "2026-02-17T12:09:10.113249",
     "tour_file": "pr226.tour"
   },
   "lin318": {
-    "cost": 5569520.0,
+    "cost": 5560679.0,
     "solver": "gils_rvnd",
     "timestamp": "2026-02-18T16:52:06.336793",
     "tour_file": "lin318.tour"
   },
   "pr439": {
-    "cost": 17719126.0,
+    "cost": 17688561.0,
     "solver": "gils_rvnd",
     "timestamp": "2026-02-17T16:43:42.812128",
     "tour_file": "pr439.tour"
+  },
+  "att532": {
+    "cost": 5652312.0,
+    "solver": "grasp_am",
+    "timestamp": "2026-05-04T15:06:41.890579",
+    "tour_file": "att532.tour"
   }
 }

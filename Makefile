@@ -2,17 +2,22 @@ CXX = g++
 CXXFLAGS = -O2 -std=c++17 -Wall
 
 # ---- folders ----
+SRC_DIR = src
+INC_DIR = include
 BIN_DIR = bin
 OBJ_DIR = obj
 
+CXXFLAGS += -I$(INC_DIR)
+
 # ---- executables ----
-TARGETS = nearest_neighbour local_search backtracking construction gils_rvnd
+TARGETS = nearest_neighbour local_search backtracking construction gils_rvnd grasp grasp_rvnd grasp_am tabu_search gils_rvnd_tabu
 
 # ---- shared objects ----
 COMMON_OBJ = $(OBJ_DIR)/solution.o $(OBJ_DIR)/evaluator.o
 NEIGHBORHOOD_OBJ = $(OBJ_DIR)/neighborhoods.o
 RVND_OBJ = $(OBJ_DIR)/rvnd.o $(NEIGHBORHOOD_OBJ)
 CONSTRUCTION_OBJ = $(OBJ_DIR)/construction_impl.o
+BIASED_CONSTRUCTION_OBJ = $(OBJ_DIR)/construction_biased.o
 
 # ---- default target ----
 all: directories $(TARGETS)
@@ -35,11 +40,26 @@ backtracking: $(OBJ_DIR)/backtracking.o $(COMMON_OBJ)
 construction: $(OBJ_DIR)/construction.o $(COMMON_OBJ) $(CONSTRUCTION_OBJ)
 	$(CXX) $(CXXFLAGS) $^ -o $(BIN_DIR)/$@
 
-gils_rvnd: $(OBJ_DIR)/gils_rvnd.o $(COMMON_OBJ) $(RVND_OBJ) $(CONSTRUCTION_OBJ)
+gils_rvnd: $(OBJ_DIR)/gils_rvnd.o $(COMMON_OBJ) $(RVND_OBJ) $(CONSTRUCTION_OBJ) $(BIASED_CONSTRUCTION_OBJ)
+	$(CXX) $(CXXFLAGS) $^ -o $(BIN_DIR)/$@
+
+grasp: $(OBJ_DIR)/grasp.o $(COMMON_OBJ) $(RVND_OBJ) $(CONSTRUCTION_OBJ)
+	$(CXX) $(CXXFLAGS) $^ -o $(BIN_DIR)/$@
+
+grasp_rvnd: $(OBJ_DIR)/grasp_rvnd.o $(COMMON_OBJ) $(RVND_OBJ) $(CONSTRUCTION_OBJ) $(BIASED_CONSTRUCTION_OBJ)
+	$(CXX) $(CXXFLAGS) $^ -o $(BIN_DIR)/$@
+
+grasp_am: $(OBJ_DIR)/grasp_am.o $(COMMON_OBJ) $(RVND_OBJ)
+	$(CXX) $(CXXFLAGS) $^ -o $(BIN_DIR)/$@
+
+tabu_search: $(OBJ_DIR)/tabu_search.o $(COMMON_OBJ) $(CONSTRUCTION_OBJ)
+	$(CXX) $(CXXFLAGS) $^ -o $(BIN_DIR)/$@
+
+gils_rvnd_tabu: $(OBJ_DIR)/gils_rvnd_tabu.o $(COMMON_OBJ) $(RVND_OBJ) $(CONSTRUCTION_OBJ)
 	$(CXX) $(CXXFLAGS) $^ -o $(BIN_DIR)/$@
 
 # ---- generic object rule ----
-$(OBJ_DIR)/%.o: %.cpp
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | directories
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # ---- cleanup ----
