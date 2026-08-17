@@ -84,9 +84,9 @@
     "tour_file": "pr439.tour"
   },
   "att532": {
-    "cost": 5652312.0,
-    "solver": "grasp_am",
-    "timestamp": "2026-05-04T15:06:41.890579",
+    "cost": 5589568.0,
+    "solver": "gils_rvnd_extended_oropt",
+    "timestamp": "2026-08-15T11:37:08.030742",
     "tour_file": "att532.tour"
   }
 }

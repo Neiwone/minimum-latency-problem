@@ -8,7 +8,7 @@ import threading
 import time
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 INSTANCES = [
     # TSPLIB instances
@@ -35,18 +35,39 @@ INST_DIR = "instances"
 SOLUTIONS_DIR = Path(INST_DIR) / "solutions"
 BEST_SOLUTIONS_FILE = SOLUTIONS_DIR / "best_solutions.json"
 
-# Solvers
-SOLVERS = {
+# Solvers. Value is either a bare binary path, or (path, extra_args) when the
+# solver needs fixed flags appended after "<binary> <instance>" -- e.g. the
+# grasp_am parent-mode variants (see src/grasp_am.cpp --parent-mode).
+SOLVERS_RAW = {
     "nn": "./bin/nearest_neighbour",
     "backtracking": "./bin/backtracking",
     "local_search": "./bin/local_search",
     "construction": "./bin/construction",
     "grasp": "./bin/grasp",
-    "grasp_rvnd": "./bin/grasp_rvnd",
     "grasp_am": "./bin/grasp_am",
+    "grasp_am_pool": ("./bin/grasp_am", ["--parent-mode", "pool"]),
+    "grasp_am_pair": ("./bin/grasp_am", ["--parent-mode", "pair"]),
+    "gils_am_rvnd_pool": ("./bin/gils_am_rvnd", ["--parent-mode", "pool"]),
+    "gils_am_rvnd_pair": ("./bin/gils_am_rvnd", ["--parent-mode", "pair"]),
     "gils_rvnd": "./bin/gils_rvnd",
+    "gils_rvnd_extended_oropt": ("./bin/gils_rvnd", ["--rvnd-mode", "extended-oropt"]),
+    "gils_rvnd_extended_oropt_wide": ("./bin/gils_rvnd", ["--rvnd-mode", "extended-oropt-wide"]),
     "tabu_search": "./bin/tabu_search",
     "gils_rvnd_tabu": "./bin/gils_rvnd_tabu",
+}
+
+SolverCmd = Tuple[str, List[str]]
+
+
+def _normalize_solver(entry) -> SolverCmd:
+    if isinstance(entry, tuple):
+        path, extra_args = entry
+        return (path, list(extra_args))
+    return (entry, [])
+
+
+SOLVERS: Dict[str, SolverCmd] = {
+    name: _normalize_solver(entry) for name, entry in SOLVERS_RAW.items()
 }
 
 VISUALIZER = "uv run scripts/instance_visualizer.py"
@@ -253,17 +274,18 @@ Examples:
     return parser.parse_args()
 
 
-def run_solver(solver_path: str, instance_path: str, route: Optional[str] = None,
+def run_solver(solver: SolverCmd, instance_path: str, route: Optional[str] = None,
                verbose: bool = False) -> Dict:
     """
     Run a solver and parse its output.
     """
+    solver_path, extra_args = solver
 
     # ---------- Warm start for Local Search ----------
     if "local_search" in solver_path and route is None:
-        construction_path = SOLVERS["construction"]
+        construction_solver = SOLVERS["construction"]
 
-        construction_solution = run_solver(construction_path, instance_path)
+        construction_solution = run_solver(construction_solver, instance_path)
 
         route = construction_solution["route"]
 
@@ -282,6 +304,8 @@ def run_solver(solver_path: str, instance_path: str, route: Optional[str] = None
 
     if route is not None:
         cmd += ["--route", route]
+
+    cmd += extra_args
 
     proc = subprocess.run(cmd, capture_output=True, text=True)
 
@@ -337,7 +361,7 @@ def run_solver(solver_path: str, instance_path: str, route: Optional[str] = None
     }
 
 
-def run_solver_n_times(solver_path: str, instance_path: str, n_runs: int,
+def run_solver_n_times(solver: SolverCmd, instance_path: str, n_runs: int,
                        verbose: bool = False,
                        display_label: Optional[str] = None) -> Dict:
     """
@@ -366,7 +390,7 @@ def run_solver_n_times(solver_path: str, instance_path: str, n_runs: int,
 
     try:
         for run_i in range(n_runs):
-            sol = run_solver(solver_path, instance_path, verbose=verbose)
+            sol = run_solver(solver, instance_path, verbose=verbose)
 
             costs.append(sol["cost"])
             times.append(sol["time"])
@@ -442,25 +466,25 @@ def run_compare_best_mode(args, tracker: SolutionTracker):
         print("Error: --solver is required for compare-best mode")
         return
     
-    solver_path = SOLVERS[args.solver]
+    solver = SOLVERS[args.solver]
     n_runs = args.runs
     verbose = args.vb
     results = []
-    
+
     print(f"\n{'='*100}")
     print(f"Comparing {args.solver.upper()} with Best Known Solutions ({n_runs} runs per instance)")
     print(f"{'='*100}\n")
-    
+
     for inst in INSTANCES:
         path = os.path.join(INST_DIR, inst)
         name = inst.replace(".tsp", "")
-        
+
         if verbose:
             print(f"Running {args.solver} on {name} ({n_runs} runs)...")
-        
+
         try:
             agg = run_solver_n_times(
-                solver_path,
+                solver,
                 path,
                 n_runs,
                 verbose=verbose,
@@ -525,24 +549,19 @@ def run_compare_best_mode(args, tracker: SolutionTracker):
     print(f"Results Summary ({n_runs} runs per instance)")
     print(f"{'='*w}")
     print(
-        f"{'Instance':<12} {'Best Known':>12} {'Best':>12} {'Avg. Sol':>12} {'Std':>10} "
-        f"{'Avg. Gap':>10} {'Hit BK%':>9} {'Hit Run%':>9} {'TTFB(s)':>9} {'Avg. Time(s)':>12} {'New':>5}"
+        f"{'Instance':<12} {'Best Known':>12} {'Best Found':>12} {'Avg. Sol':>12} "
+        f"{'Avg. Gap':>10} {'Avg. Time(s)':>12}"
     )
     print("-" * w)
 
     for r in results:
         known_str = f"{r['best_known']:.0f}" if r['best_known'] is not None else "-"
         agap_str = f"{r['avg_gap']:.2f}%" if r['avg_gap'] is not None else "-"
-        hit_bk_str = f"{r['best_known_hit_rate']:.1f}%" if r['best_known_hit_rate'] is not None else "-"
-        hit_run_str = f"{r['best_hit_rate']:.1f}%"
-        ttfb_str = f"{(r['avg_time_to_best_ms'] / 1000):.3f}s" if r['avg_time_to_best_ms'] is not None else "-"
-        new_str = "*" if r['is_new_best'] else ""
 
         print(
             f"{r['instance']:<12} {known_str:>12} "
-            f"{r['best_cost']:>12.0f} {r['avg_cost']:>12.2f} {r['std_cost']:>10.2f} "
-            f"{agap_str:>10} {hit_bk_str:>9} {hit_run_str:>9} "
-            f"{ttfb_str:>9} {r['avg_time']/1000:>9.3f}s {new_str:>5}"
+            f"{r['best_cost']:>12.0f} {r['avg_cost']:>12.2f} "
+            f"{agap_str:>10} {r['avg_time']/1000:>12.3f}s"
         )
 
     print("=" * w)
@@ -554,26 +573,26 @@ def run_exact_mode(args, tracker: SolutionTracker):
         print("Error: --solver is required for exact mode")
         return
     
-    solver_path = SOLVERS[args.solver]
+    solver = SOLVERS[args.solver]
     bt_solver = SOLVERS["backtracking"]
     n_runs = args.runs
     verbose = args.vb
     results = []
-    
+
     print(f"\n{'='*110}")
     print(f"Comparing {args.solver.upper()} ({n_runs} runs) with Exact Solver (Backtracking)")
     print(f"{'='*110}\n")
-    
+
     for inst in INSTANCES:
         path = os.path.join(INST_DIR, inst)
         name = inst.replace(".tsp", "")
-        
+
         if verbose:
             print(f"Running on {name}...")
-        
+
         try:
             agg = run_solver_n_times(
-                solver_path,
+                solver,
                 path,
                 n_runs,
                 verbose=verbose,
@@ -656,12 +675,12 @@ def run_compare_solvers_mode(args, tracker: SolutionTracker):
         inst_result = {"instance": name, "solvers": {}}
         
         for solver_name in (solver_a, solver_b):
-            solver_path = SOLVERS[solver_name]
+            solver = SOLVERS[solver_name]
             try:
                 if verbose:
                     print(f"  {solver_name}:")
                 agg = run_solver_n_times(
-                    solver_path,
+                    solver,
                     path,
                     n_runs,
                     verbose=verbose,

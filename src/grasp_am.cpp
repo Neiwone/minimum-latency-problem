@@ -55,13 +55,66 @@ struct EliteSet {
     }
 };
 
-static double normalized_edge_frequency(const EliteSet& memory, int u, int v) {
-    if (memory.sols.empty())
-        return 0.0;
-    return (double)memory.freq[u][v] / (double)memory.sols.size();
+enum class ParentMode { Pool, Pair };
+
+/* Sparse edge "vote" counts, normalized by however many solutions
+   contributed them (the whole elite pool for ParentMode::Pool, or exactly
+   two chosen parents for ParentMode::Pair -- the greedy-crossover framing:
+   importance(u,v) = how many of the "parents" agree on that edge). */
+struct EdgeFreq {
+    unordered_map<long long, int> counts;
+    int normalizer = 0;
+
+    static long long key(int u, int v) { return (long long)u * 100000LL + v; }
+
+    void add_tour(const int* tour, int n) {
+        for (int i = 0; i + 1 < n; i++)
+            counts[key(tour[i], tour[i + 1])]++;
+    }
+
+    double normalized(int u, int v) const {
+        if (normalizer == 0) return 0.0;
+        auto it = counts.find(key(u, v));
+        return it == counts.end() ? 0.0 : (double)it->second / normalizer;
+    }
+};
+
+EdgeFreq pool_frequency(const EliteSet& memory) {
+    EdgeFreq ef;
+    ef.normalizer = (int)memory.sols.size();
+    for (const auto& s : memory.sols)
+        ef.add_tour(s.fTour, s.fN);
+    return ef;
 }
 
-void construction_am(Solution& sol, Evaluator& eval, double alpha, EliteSet& memory, double lambda, mt19937& gen) {
+/* Picks two distinct elite solutions at random each call ("parents") and
+   builds importance purely from their edges -- classic greedy/heuristic
+   crossover (Grefenstette et al., 1985) instead of Prais & Ribeiro-style
+   pool-wide frequency: importance comes from two specific good solutions
+   agreeing on an edge, not from how common it is across the whole pool. */
+EdgeFreq two_parent_frequency(const EliteSet& memory, mt19937& gen) {
+    EdgeFreq ef;
+    int k = (int)memory.sols.size();
+    if (k == 0) return ef;
+
+    if (k == 1) {
+        ef.normalizer = 1;
+        ef.add_tour(memory.sols[0].fTour, memory.sols[0].fN);
+        return ef;
+    }
+
+    uniform_int_distribution<int> d(0, k - 1);
+    int a = d(gen);
+    int b = d(gen);
+    while (b == a) b = d(gen);
+
+    ef.normalizer = 2;
+    ef.add_tour(memory.sols[a].fTour, memory.sols[a].fN);
+    ef.add_tour(memory.sols[b].fTour, memory.sols[b].fN);
+    return ef;
+}
+
+void construction_am(Solution& sol, Evaluator& eval, double alpha, const EdgeFreq& freq, double lambda, mt19937& gen) {
     int n = eval.Ncity;
 
     double alphaClamped = max(0.0, min(alpha, 1.0));
@@ -92,7 +145,7 @@ void construction_am(Solution& sol, Evaluator& eval, double alpha, EliteSet& mem
         for (int node : CL) {
             // Adaptive Memory cost adjustment
             double origDist = eval.fEdgeDis[current][node];
-            double freqNorm = normalized_edge_frequency(memory, current, node);
+            double freqNorm = freq.normalized(current, node);
             double bonus = lambdaClamped * freqNorm * avgDist;
             double pseudoCost = origDist - bonus;
 
@@ -132,6 +185,21 @@ void construction_am(Solution& sol, Evaluator& eval, double alpha, EliteSet& mem
     sol.calculateStructures();
 }
 
+/* H12a follow-up: which RVND variant runs after each memory-biased
+   construction. grasp_am does exactly ONE convergence per iteration (no
+   ILS escape loop) -- its established weakness is lack of intensification
+   depth, not the adaptive-memory bias itself (see docs/experiments/
+   grasp-am-large-scale.md). A stronger single convergence (extended-oropt,
+   H12a) could close part of that gap without the full ILS restructuring
+   that GILS-AM-RVND needed. Single is the original, untouched behavior. */
+enum class RvndMode { Single, ExtendedOrOpt, ExtendedOrOptWide };
+
+void run_rvnd(RvndMode mode, Solution& sol, mt19937& gen) {
+    if (mode == RvndMode::ExtendedOrOpt) RVND_ExtendedOrOpt(sol, gen);
+    else if (mode == RvndMode::ExtendedOrOptWide) RVND_ExtendedOrOptWide(sol, gen);
+    else RVND(sol, gen);
+}
+
 void grasp_am(
     Solution& bestSol,
     Evaluator& eval,
@@ -139,11 +207,12 @@ void grasp_am(
     optional<double> fixedAlpha,
     int poolSize,
     double lambda,
+    ParentMode parentMode,
+    RvndMode rvndMode,
     bool verbose,
-    StepTimings* timings
+    StepTimings* timings,
+    mt19937& gen
 ) {
-    random_device rd;
-    mt19937 gen(rd());
     using Clock = chrono::high_resolution_clock;
 
     vector<double> R;
@@ -167,15 +236,19 @@ void grasp_am(
             alpha = R[rDist(gen)];
         }
 
+        EdgeFreq freq = (parentMode == ParentMode::Pair)
+            ? two_parent_frequency(memory, gen)
+            : pool_frequency(memory);
+
         auto tc0 = Clock::now();
         Solution s;
-        construction_am(s, eval, alpha, memory, lambda, gen);
+        construction_am(s, eval, alpha, freq, lambda, gen);
         auto tc1 = Clock::now();
         double constructionMs = chrono::duration<double, milli>(tc1 - tc0).count();
         totalConstructionMs += constructionMs;
 
         auto tr0 = Clock::now();
-        RVND(s, gen);
+        run_rvnd(rvndMode, s, gen);
         auto tr1 = Clock::now();
         double rvndMs = chrono::duration<double, milli>(tr1 - tr0).count();
         totalRvndMs += rvndMs;
@@ -210,7 +283,9 @@ void grasp_am(
 int main(int argc, char** argv) {
     if (argc < 2) {
         cerr << "Usage:\n";
-        cerr << "  ./grasp_am <instance.tsp> [--iter 800] [--alpha 0.15] [--pool 20] [--lambda 0.50] [-v]\n";
+        cerr << "  ./grasp_am <instance.tsp> [--iter 800] [--alpha 0.15] [--pool 20] [--lambda 0.50]\n";
+        cerr << "    [--parent-mode pool|pair] [--rvnd-mode single|extended-oropt|extended-oropt-wide]\n";
+        cerr << "    [--seed N] [-v]\n";
         return 1;
     }
 
@@ -219,7 +294,10 @@ int main(int argc, char** argv) {
     optional<double> alpha;
     int poolSize = 20;
     double lambda = 0.50; // Multiplier for normalized adaptive-memory bonus
+    ParentMode parentMode = ParentMode::Pool;
+    RvndMode rvndMode = RvndMode::Single;
     bool verbose = false;
+    long seed = -1;
 
     for (int i = 2; i < argc; i++) {
         string a = argv[i];
@@ -231,6 +309,19 @@ int main(int argc, char** argv) {
             poolSize = stoi(argv[++i]);
         } else if (a == "--lambda" && i + 1 < argc) {
             lambda = stod(argv[++i]);
+        } else if (a == "--parent-mode" && i + 1 < argc) {
+            string m = argv[++i];
+            if (m == "pool") parentMode = ParentMode::Pool;
+            else if (m == "pair") parentMode = ParentMode::Pair;
+            else { cerr << "Unknown --parent-mode: " << m << "\n"; return 1; }
+        } else if (a == "--rvnd-mode" && i + 1 < argc) {
+            string m = argv[++i];
+            if (m == "single") rvndMode = RvndMode::Single;
+            else if (m == "extended-oropt") rvndMode = RvndMode::ExtendedOrOpt;
+            else if (m == "extended-oropt-wide") rvndMode = RvndMode::ExtendedOrOptWide;
+            else { cerr << "Unknown --rvnd-mode: " << m << "\n"; return 1; }
+        } else if (a == "--seed" && i + 1 < argc) {
+            seed = stol(argv[++i]);
         } else if (a == "--verbose" || a == "-v") {
             verbose = true;
         }
@@ -248,11 +339,12 @@ int main(int argc, char** argv) {
 
     Solution bestSol;
     StepTimings timings;
+    mt19937 gen(seed >= 0 ? (unsigned long)seed : random_device{}());
 
     using Clock = chrono::high_resolution_clock;
     auto t0 = Clock::now();
 
-    grasp_am(bestSol, eval, maxIter, alpha, poolSize, lambda, verbose, &timings);
+    grasp_am(bestSol, eval, maxIter, alpha, poolSize, lambda, parentMode, rvndMode, verbose, &timings, gen);
 
     auto t1 = Clock::now();
     double runtimeMs = chrono::duration<double, milli>(t1 - t0).count();
@@ -264,6 +356,9 @@ int main(int argc, char** argv) {
     cout << "ITER " << maxIter << "\n";
     cout << "POOL " << poolSize << "\n";
     cout << "LAMBDA " << fixed << setprecision(2) << lambda << "\n";
+    cout << "PARENT_MODE " << (parentMode == ParentMode::Pool ? "pool" : "pair") << "\n";
+    cout << "RVND_MODE " << (rvndMode == RvndMode::ExtendedOrOpt ? "extended-oropt"
+                              : rvndMode == RvndMode::ExtendedOrOptWide ? "extended-oropt-wide" : "single") << "\n";
     if (alpha.has_value())
         cout << "ALPHA " << fixed << setprecision(2) << alpha.value() << "\n";
     else

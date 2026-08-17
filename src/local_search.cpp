@@ -45,11 +45,20 @@ int main(int argc, char** argv) {
 
     string instanceFile = argv[1];
     string routeArg = "";
+    string rvndMode = "single";
 
     for (int i = 2; i < argc; i++) {
         string a = argv[i];
         if (a == "--route" && i + 1 < argc) {
             routeArg = argv[++i];
+        }
+        else if (a == "--rvnd-mode" && i + 1 < argc) {
+            rvndMode = argv[++i];
+            if (rvndMode != "single" && rvndMode != "multi" && rvndMode != "extended-oropt"
+                && rvndMode != "extended-oropt-wide") {
+                cerr << "Unknown --rvnd-mode: " << rvndMode << "\n";
+                return 1;
+            }
         }
     }
 
@@ -84,7 +93,10 @@ int main(int argc, char** argv) {
 
     auto t0 = Clock::now();
 
-    RVND(sol, gen);
+    if (rvndMode == "multi") RVND_Multi(sol, gen);
+    else if (rvndMode == "extended-oropt") RVND_ExtendedOrOpt(sol, gen);
+    else if (rvndMode == "extended-oropt-wide") RVND_ExtendedOrOptWide(sol, gen);
+    else RVND(sol, gen);
 
     auto t1 = Clock::now();
 

@@ -12,11 +12,26 @@ int main(int argc, char** argv) {
 
     string instanceFile = argv[1];
     double alpha = 0.3;
+    bool lookahead = false;
+    int lookaheadK = 3;
+    long seed = -1;
 
     for (int i = 2; i < argc; i++) {
         string a = argv[i];
         if (a == "--alpha" && i + 1 < argc) {
             alpha = stod(argv[++i]);
+        }
+        else if (a == "--construction-mode" && i + 1 < argc) {
+            string m = argv[++i];
+            if (m == "lookahead") lookahead = true;
+            else if (m == "greedy") lookahead = false;
+            else { cerr << "Unknown --construction-mode: " << m << "\n"; return 1; }
+        }
+        else if (a == "--lookahead-k" && i + 1 < argc) {
+            lookaheadK = stoi(argv[++i]);
+        }
+        else if (a == "--seed" && i + 1 < argc) {
+            seed = stol(argv[++i]);
         }
     }
 
@@ -30,14 +45,16 @@ int main(int argc, char** argv) {
 
     Solution sol;
 
-    random_device rd;
-    mt19937 gen(rd());
+    mt19937 gen(seed >= 0 ? (unsigned long)seed : random_device{}());
 
     using Clock = chrono::high_resolution_clock;
 
     auto t0 = Clock::now();
 
-    construction(sol, eval, alpha, gen);
+    if (lookahead)
+        construction_lookahead(sol, eval, alpha, lookaheadK, gen);
+    else
+        construction(sol, eval, alpha, gen);
 
     auto t1 = Clock::now();
 

@@ -146,19 +146,19 @@ Examples:
 
 Compare hybrid solver with best-known solutions:
 
-	python3 run_experiments.py --mode compare-best --solver gils_rvnd_tabu --runs 10 --vb
+	uv run run_experiments.py --mode compare-best --solver gils_rvnd_tabu --runs 10 --vb
 
 Compare GILS-RVND vs hybrid:
 
-	python3 run_experiments.py --mode compare-solvers --solvers gils_rvnd gils_rvnd_tabu --runs 10 --vb
+	uv run run_experiments.py --mode compare-solvers --solvers gils_rvnd gils_rvnd_tabu --runs 10 --vb
 
 Compare tabu_search to exact baseline:
 
-	python3 run_experiments.py --mode exact --solver tabu_search --runs 5
+	uv run run_experiments.py --mode exact --solver tabu_search --runs 5
 
 Auto-save improved solutions without prompt:
 
-	python3 run_experiments.py --mode compare-best --solver gils_rvnd_tabu --runs 10 --auto-save
+	uv run run_experiments.py --mode compare-best --solver gils_rvnd_tabu --runs 10 --auto-save
 
 ## Python Scripts
 
@@ -168,7 +168,7 @@ You can run scripts with uv (recommended):
 
 or with Python directly:
 
-	python3 scripts/<script>.py ...
+	uv run scripts/<script>.py ...
 
 ### 1) Instance Generator
 
@@ -230,7 +230,7 @@ Notes:
 
 4) Compare in batch:
 
-	python3 run_experiments.py --mode compare-solvers --solvers gils_rvnd gils_rvnd_tabu --runs 10
+	uv run run_experiments.py --mode compare-solvers --solvers gils_rvnd gils_rvnd_tabu --runs 10
 
 ## Output Format (Most Solvers)
 
