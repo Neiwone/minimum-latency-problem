@@ -140,12 +140,13 @@ Solution path_relink(const Solution& start, const vector<int>& guideTour) {
    untouched first-improvement RVND; Multi batches non-conflicting
    improving moves per scan (see neighborhoods.cpp / rvnd.cpp). Both are
    available side by side; Single remains the default. */
-enum class RvndMode { Single, Multi, ExtendedOrOpt, ExtendedOrOptWide };
+enum class RvndMode { Single, Multi, ExtendedOrOpt, ExtendedOrOptWide, ExtendedOrOpt3Opt };
 
 void run_rvnd(RvndMode mode, Solution& sol, mt19937& gen) {
     if (mode == RvndMode::Multi) RVND_Multi(sol, gen);
     else if (mode == RvndMode::ExtendedOrOpt) RVND_ExtendedOrOpt(sol, gen);
     else if (mode == RvndMode::ExtendedOrOptWide) RVND_ExtendedOrOptWide(sol, gen);
+    else if (mode == RvndMode::ExtendedOrOpt3Opt) RVND_ExtendedOrOpt3Opt(sol, gen);
     else RVND(sol, gen);
 }
 
@@ -247,7 +248,8 @@ int main(int argc, char** argv) {
         cerr << "  ./gils_rvnd <instance.tsp> [--imax 10] [--iils 50]\n";
         cerr << "    [--pert-mode fixed|stagnation|distance] [--stagnation-step 5]\n";
         cerr << "    [--max-strength 5] [--target-min-pct 0.05] [--target-max-pct 0.15]\n";
-        cerr << "    [--path-relinking] [--elite-size 5] [--rvnd-mode single|multi|extended-oropt|extended-oropt-wide]\n";
+        cerr << "    [--path-relinking] [--elite-size 5]\n";
+        cerr << "    [--rvnd-mode single|multi|extended-oropt|extended-oropt-wide|extended-oropt-3opt]\n";
         cerr << "    [--construction-mode greedy|lookahead] [--lookahead-k 3]\n";
         cerr << "    [--seed N] [-v]\n";
         return 1;
@@ -308,6 +310,7 @@ int main(int argc, char** argv) {
             else if (m == "multi") rvndMode = RvndMode::Multi;
             else if (m == "extended-oropt") rvndMode = RvndMode::ExtendedOrOpt;
             else if (m == "extended-oropt-wide") rvndMode = RvndMode::ExtendedOrOptWide;
+            else if (m == "extended-oropt-3opt") rvndMode = RvndMode::ExtendedOrOpt3Opt;
             else { cerr << "Unknown --rvnd-mode: " << m << "\n"; return 1; }
         }
         else if (a == "--construction-mode" && i + 1 < argc) {
@@ -367,7 +370,8 @@ int main(int argc, char** argv) {
     cout << "PATH_RELINKING " << (pathRelinking ? "on" : "off") << "\n";
     cout << "RVND_MODE " << (rvndMode == RvndMode::Multi ? "multi"
                               : rvndMode == RvndMode::ExtendedOrOpt ? "extended-oropt"
-                              : rvndMode == RvndMode::ExtendedOrOptWide ? "extended-oropt-wide" : "single") << "\n";
+                              : rvndMode == RvndMode::ExtendedOrOptWide ? "extended-oropt-wide"
+                              : rvndMode == RvndMode::ExtendedOrOpt3Opt ? "extended-oropt-3opt" : "single") << "\n";
     cout << "CONSTRUCTION_MODE " << (constructionMode == ConstructionMode::Lookahead ? "lookahead" : "greedy") << "\n";
     cout << "TIME_MS " << fixed << setprecision(3) << runtime_ms << "\n";
     cout << "ROUTE ";

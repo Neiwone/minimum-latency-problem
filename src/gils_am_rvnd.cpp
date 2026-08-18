@@ -49,6 +49,23 @@ void perturb(Solution& sol, mt19937& gen) {
     sol.calculateStructures();
 }
 
+/* H12a follow-up: GILS-AM-RVND already ties gils_rvnd's quality while
+   being 20-26% faster (grasp-am-large-scale.md) -- unlike grasp_am (no
+   ILS loop), it has the same double-bridge+RVND depth as the baseline, so
+   it doesn't share the mechanism that made extended-oropt wash out to
+   noise there (h12-extended-oropt.md section 11). Testing whether
+   extended-oropt's real quality gain (H12a) survives on top of the
+   memory-biased construction + speed advantage this binary already has --
+   i.e. whether the two independent wins (speed here, quality there)
+   compose into something both faster and better than plain gils_rvnd. */
+enum class RvndMode { Single, ExtendedOrOpt, ExtendedOrOptWide };
+
+void run_rvnd(RvndMode mode, Solution& sol, mt19937& gen) {
+    if (mode == RvndMode::ExtendedOrOpt) RVND_ExtendedOrOpt(sol, gen);
+    else if (mode == RvndMode::ExtendedOrOptWide) RVND_ExtendedOrOptWide(sol, gen);
+    else RVND(sol, gen);
+}
+
 enum class ParentMode { Pool, Pair };
 
 struct EliteSet {
@@ -188,7 +205,7 @@ void construction_am(Solution& sol, Evaluator& eval, double alpha, const EdgeFre
 
 void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
                    const vector<double>& R, int poolSize, double lambda,
-                   ParentMode parentMode, mt19937& gen) {
+                   ParentMode parentMode, RvndMode rvndMode, mt19937& gen) {
     int fStar = INT_MAX;
     EliteSet memory(poolSize);
 
@@ -207,7 +224,7 @@ void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
 
         int iterILS = 0;
         while (iterILS < I_ILS) {
-            RVND(s, gen);
+            run_rvnd(rvndMode, s, gen);
 
             if (s.fEvaluationValue < sPrime.fEvaluationValue) {
                 sPrime = s;
@@ -232,7 +249,8 @@ int main(int argc, char** argv) {
     if (argc < 2) {
         cerr << "Usage:\n";
         cerr << "  ./gils_am_rvnd <instance.tsp> [--imax 10] [--iils 100] [--pool 20]\n";
-        cerr << "    [--lambda 0.50] [--parent-mode pool|pair] [--seed N]\n";
+        cerr << "    [--lambda 0.50] [--parent-mode pool|pair]\n";
+        cerr << "    [--rvnd-mode single|extended-oropt|extended-oropt-wide] [--seed N]\n";
         return 1;
     }
 
@@ -242,6 +260,7 @@ int main(int argc, char** argv) {
     int poolSize = 20;
     double lambda = 0.50;
     ParentMode parentMode = ParentMode::Pool;
+    RvndMode rvndMode = RvndMode::Single;
     long seed = -1;
 
     for (int i = 2; i < argc; i++) {
@@ -259,6 +278,12 @@ int main(int argc, char** argv) {
             if (m == "pool") parentMode = ParentMode::Pool;
             else if (m == "pair") parentMode = ParentMode::Pair;
             else { cerr << "Unknown --parent-mode: " << m << "\n"; return 1; }
+        } else if (a == "--rvnd-mode" && i + 1 < argc) {
+            string m = argv[++i];
+            if (m == "single") rvndMode = RvndMode::Single;
+            else if (m == "extended-oropt") rvndMode = RvndMode::ExtendedOrOpt;
+            else if (m == "extended-oropt-wide") rvndMode = RvndMode::ExtendedOrOptWide;
+            else { cerr << "Unknown --rvnd-mode: " << m << "\n"; return 1; }
         } else if (a == "--seed" && i + 1 < argc) {
             seed = stol(argv[++i]);
         }
@@ -283,7 +308,7 @@ int main(int argc, char** argv) {
     using Clock = chrono::high_resolution_clock;
     auto t0 = Clock::now();
 
-    gils_am_rvnd(bestSol, eval, I_max, I_ILS, R, poolSize, lambda, parentMode, gen);
+    gils_am_rvnd(bestSol, eval, I_max, I_ILS, R, poolSize, lambda, parentMode, rvndMode, gen);
 
     auto t1 = Clock::now();
     double runtime_ms = chrono::duration<double, milli>(t1 - t0).count();
@@ -296,6 +321,8 @@ int main(int argc, char** argv) {
     cout << "POOL " << poolSize << "\n";
     cout << "LAMBDA " << fixed << setprecision(2) << lambda << "\n";
     cout << "PARENT_MODE " << (parentMode == ParentMode::Pool ? "pool" : "pair") << "\n";
+    cout << "RVND_MODE " << (rvndMode == RvndMode::ExtendedOrOpt ? "extended-oropt"
+                              : rvndMode == RvndMode::ExtendedOrOptWide ? "extended-oropt-wide" : "single") << "\n";
     cout << "TIME_MS " << fixed << setprecision(3) << runtime_ms << "\n";
     cout << "ROUTE ";
     for (int i = 0; i < bestSol.fN; i++)

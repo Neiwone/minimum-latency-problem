@@ -10,7 +10,7 @@ OBJ_DIR = obj
 CXXFLAGS += -I$(INC_DIR)
 
 # ---- executables ----
-TARGETS = nearest_neighbour local_search backtracking construction gils_rvnd grasp grasp_am gils_am_rvnd dbmea tabu_search gils_rvnd_tabu
+TARGETS = nearest_neighbour local_search backtracking construction gils_rvnd grasp grasp_am gils_am_rvnd mdm_gils_rvnd dbmea tabu_search gils_rvnd_tabu
 
 # ---- shared objects ----
 COMMON_OBJ = $(OBJ_DIR)/solution.o $(OBJ_DIR)/evaluator.o
@@ -49,6 +49,9 @@ grasp_am: $(OBJ_DIR)/grasp_am.o $(COMMON_OBJ) $(RVND_OBJ)
 	$(CXX) $(CXXFLAGS) $^ -o $(BIN_DIR)/$@
 
 gils_am_rvnd: $(OBJ_DIR)/gils_am_rvnd.o $(COMMON_OBJ) $(RVND_OBJ)
+	$(CXX) $(CXXFLAGS) $^ -o $(BIN_DIR)/$@
+
+mdm_gils_rvnd: $(OBJ_DIR)/mdm_gils_rvnd.o $(COMMON_OBJ) $(RVND_OBJ) $(CONSTRUCTION_OBJ)
 	$(CXX) $(CXXFLAGS) $^ -o $(BIN_DIR)/$@
 
 dbmea: $(OBJ_DIR)/dbmea.o $(COMMON_OBJ) $(RVND_OBJ) $(CONSTRUCTION_OBJ)

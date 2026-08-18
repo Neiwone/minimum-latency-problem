@@ -297,6 +297,47 @@ bool Solution::evaluateReinsertion(int i, int j) {
     return c < fEvaluationValue;
 }
 
+bool Solution::evaluateThreeOptDoubleReversal(int i, int j, int k) {
+    int t = 0, c = 0;
+    bool first = true;
+    int last = -1;
+
+    auto append = [&](int u, int v) {
+        if (u > v) return;
+        int Tu = T[u][v];
+        int Cu = C[u][v];
+        int Wu = getW(u, v);
+        int firstNode = fTour[u];
+        int lastNode  = fTour[v];
+        if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
+        int e = fDist[last][firstNode];
+        c += Wu * (t + e) + Cu;
+        t += e + Tu;
+        last = lastNode;
+    };
+
+    auto appendReversed = [&](int u, int v) {
+        if (u > v) return;
+        int Tu = T[u][v];
+        int Cu = Cr[u][v];
+        int Wu = getW(u, v);
+        int firstNode = fTour[v];
+        int lastNode  = fTour[u];
+        if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
+        int e = fDist[last][firstNode];
+        c += Wu * (t + e) + Cu;
+        t += e + Tu;
+        last = lastNode;
+    };
+
+    append(0, i);
+    appendReversed(i + 1, j);
+    appendReversed(j + 1, k);
+    append(k + 1, fN - 1);
+
+    return c < fEvaluationValue;
+}
+
 bool Solution::evaluateOrOpt(int i, int j, int k) {
     if (i > j) swap(i, j);
     if (k >= i && k <= j) return false;

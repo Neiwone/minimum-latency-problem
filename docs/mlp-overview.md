@@ -307,7 +307,47 @@ backtracking exato, ou uns contra os outros — o mesmo tipo de validação
 
 ---
 
-## 4. Referências rápidas
+## 4. Pesquisa de melhorias (sessões posteriores)
+
+Depois da leitura inicial do artigo (seções 1-3 acima), o projeto passou
+por uma rodada extensa de pesquisa testando hipóteses de melhoria sobre
+o GILS-RVND — 13 linhas de investigação (H1-H13), documentadas
+individualmente em `docs/experiments/*.md`. Resumo:
+
+- **A esmagadora maioria (H1-H11, H12b, H13) deu nula em qualidade**
+  (perturbação adaptativa, path relinking, vizinhança de prefixo,
+  multi-improvement, perturbação por regret, dynasearch, guided local
+  search, LNS/ruin-and-recreate em 3 variantes, 3-opt genuíno, mineração
+  de padrões via FPMax*) — em quase todos os casos o RVND absorve
+  qualquer vantagem de ponto de entrada ou mecanismo de escape testado.
+  Duas exceções renderam só **velocidade**, não qualidade:
+  `grasp_am`/`gils_am_rvnd` (construção enviesada por memória, 20-26%
+  mais rápido) e `dbmea` (populacional, mais rápido em `n` grande).
+- **H12a é a exceção real — or-opt estendido a segmentos maiores (4, 5,
+  6)** (`neighborhood_oropt4/5/6`, `RVND_ExtendedOrOpt`,
+  `--rvnd-mode extended-oropt` em `gils_rvnd`/`gils_am_rvnd`): as 5
+  vizinhanças do artigo original só realocam segmentos de tamanho 1-3;
+  estendendo pra 4-6 abre uma vizinhança genuinamente mais forte, que o
+  RVND original nunca alcançaria por mais que reinicie. O efeito **cresce
+  fortemente com `n`**: nulo em `lin318` (n=318), modesto mas
+  significativo em `pr439`/`att532` (n=439/532, +0,3-0,4%), e **forte e
+  estatisticamente perfeito a partir de n=1000** (10 vitórias em 10 seeds,
+  p=0,002, +1,1-1,2% em `rand1000` e `rand2000`). Combinado com
+  `gils_am_rvnd` em `n≳1000`, a vantagem deixa de ser trade-off — fica
+  **melhor em qualidade E mais rápido** que o baseline ao mesmo tempo.
+  Ver `docs/experiments/h12-extended-oropt.md` para a história completa.
+
+Novos binários desta fase: `gils_am_rvnd`, `dbmea`, `mdm_gils_rvnd`
+(mineração de padrões, H13 — nulo, mas implementação e infra ficam no
+projeto). Novos modos de `--rvnd-mode` em `gils_rvnd`/`gils_am_rvnd`:
+`multi` (H4), `extended-oropt`/`extended-oropt-wide`/`extended-oropt-3opt`
+(H12a/H12b) — `single` continua o default em todos os binários.
+
+**Recomendação prática**: para instâncias com `n≳1000` onde qualidade
+importa mais que reproduzir exatamente o artigo original, usar
+`gils_am_rvnd --rvnd-mode extended-oropt` em vez do `gils_rvnd` puro.
+
+## 5. Referências rápidas
 
 - Artigo: Silva, M.M., Subramanian, A., Vidal, T., Ochi, L.S. (2012). *A simple
   and effective metaheuristic for the Minimum Latency Problem*. European

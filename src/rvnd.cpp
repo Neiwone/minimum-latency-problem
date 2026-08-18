@@ -148,6 +148,42 @@ void RVND_ExtendedOrOptWide(Solution& sol, mt19937& gen) {
     }
 }
 
+void RVND_ExtendedOrOpt3Opt(Solution& sol, mt19937& gen) {
+    using NeighborhoodFn = void (*)(Solution&);
+    vector<NeighborhoodFn> allNeighborhoods = {
+        neighborhood_swap,
+        neighborhood_2opt,
+        neighborhood_reinsertion,
+        neighborhood_oropt2,
+        neighborhood_oropt3,
+        neighborhood_oropt4,
+        neighborhood_oropt5,
+        neighborhood_oropt6,
+        neighborhood_3opt_double_reversal,
+    };
+
+    vector<int> NL;
+    for (int i = 0; i < (int)allNeighborhoods.size(); i++)
+        NL.push_back(i);
+
+    while (!NL.empty()) {
+        uniform_int_distribution<int> dist(0, (int)NL.size() - 1);
+        int idx = dist(gen);
+        int eta = NL[idx];
+
+        int oldCost = sol.fEvaluationValue;
+        allNeighborhoods[eta](sol);
+
+        if (sol.fEvaluationValue < oldCost) {
+            NL.clear();
+            for (int i = 0; i < (int)allNeighborhoods.size(); i++)
+                NL.push_back(i);
+        } else {
+            NL.erase(NL.begin() + idx);
+        }
+    }
+}
+
 void RVND_Tabu(Solution& sol, mt19937& gen, int tenure) {
     // RVND_Tabu is currently not optimized and we just fix it to compile
     using NeighborhoodFn = void (*)(Solution&);

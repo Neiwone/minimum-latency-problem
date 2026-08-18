@@ -21,4 +21,8 @@ void RVND_ExtendedOrOpt(Solution& sol, std::mt19937& gen);
    segments, or plateaus/stops paying for its extra time cost. */
 void RVND_ExtendedOrOptWide(Solution& sol, std::mt19937& gen);
 
+/* H12b: ExtendedOrOpt's 8 neighborhoods plus genuine 3-opt (double
+   independent reversal, not reachable by any single existing move). */
+void RVND_ExtendedOrOpt3Opt(Solution& sol, std::mt19937& gen);
+
 #endif

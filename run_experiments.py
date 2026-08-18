@@ -52,6 +52,7 @@ SOLVERS_RAW = {
     "gils_rvnd": "./bin/gils_rvnd",
     "gils_rvnd_extended_oropt": ("./bin/gils_rvnd", ["--rvnd-mode", "extended-oropt"]),
     "gils_rvnd_extended_oropt_wide": ("./bin/gils_rvnd", ["--rvnd-mode", "extended-oropt-wide"]),
+    "mdm_gils_rvnd": "./bin/mdm_gils_rvnd",
     "tabu_search": "./bin/tabu_search",
     "gils_rvnd_tabu": "./bin/gils_rvnd_tabu",
 }

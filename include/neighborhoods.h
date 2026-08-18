@@ -22,6 +22,10 @@ void neighborhood_oropt6(Solution& sol);
 void neighborhood_oropt8(Solution& sol);
 void neighborhood_oropt10(Solution& sol);
 
+/* H12b: genuine 3-opt (reverse two disjoint segments independently,
+   keeping their order -- see Solution::evaluateThreeOptDoubleReversal). */
+void neighborhood_3opt_double_reversal(Solution& sol);
+
 /* Multi-improvement variants (H4): same evaluate*() calls and same final
    local-optimum semantics as the functions above, but instead of applying
    the first improving move found and recomputing T/C/Cr immediately, scan

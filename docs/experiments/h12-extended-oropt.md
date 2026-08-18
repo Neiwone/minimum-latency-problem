@@ -1,12 +1,16 @@
 # H12a — Or-opt estendido a segmentos maiores (4, 5, 6)
 
-Status: **ENCERRADA COM SUCESSO — primeiro ganho real de qualidade
-estatisticamente significativo de toda a sessão** (H1-H11 foram todos
-nulos em qualidade ou só ganharam em tempo). `extended-oropt` bate o
-baseline em `pr439` (p=0,007) e `att532` (p=0,002, 10/10 vitórias), com o
-efeito crescendo com `n` (nulo em `lin318`) — mesmo padrão de "vantagem
-que só aparece em instâncias grandes" observado na literatura de DBMEA/
-GQPSO. Custo: ~26% mais tempo em média.
+Status: **ENCERRADA COM SUCESSO — o achado mais forte de toda a sessão.**
+`extended-oropt` bate o baseline em `pr439` (p=0,007), `att532` (p=0,002),
+`rand1000`/n=1000 (10W/10, p=0,002, +1,17%) e `rand2000`/n=2000 combinado
+com `GILS-AM-RVND` (10W/10, p=0,002, +1,11% **e** 18,4% mais rápido — sem
+trade-off, seção 12.1). O efeito cresce fortemente com `n` (nulo em
+`lin318`, modesto em `pr439`/`att532`, forte e perfeito a partir de
+n=1000), confirmando com poder estatístico completo o padrão "vantagem
+que cresce com instâncias grandes" já observado na literatura de DBMEA/
+GQPSO. Em `n≳1000`, a combinação `gils_am_rvnd --rvnd-mode extended-oropt`
+já não é mais trade-off (tempo por qualidade) — é estritamente melhor nas
+duas frentes.
 
 ## 1. Motivação
 
@@ -179,12 +183,32 @@ de forma não-linear: **+156,8% (2,57x mais lento)**, bem acima do +11-43%
 visto em n≤532 — a essa escala, mais vizinhanças O(n²) por convergência
 custam desproporcionalmente mais caro.
 
-**Apenas 1 seed — não é teste estatístico.** Um lote pareado de verdade
-em `n=1000` (N≥10, mesmo rigor do resto da sessão) custaria ~10×(316+810)s
-≈ 3+ horas de tempo de máquina só para essa instância — grande demais para
-rodar dentro desta sessão interativa sem check-in explícito. Fica como
-trabalho de lote noturno/multi-hora, não confirmado ainda com poder
-estatístico.
+**Apenas 1 seed — não é teste estatístico** (nesta calibração inicial).
+
+## 9.1 Lote pareado em `n=1000` — CONFIRMADO, o ganho mais forte da sessão
+
+`scripts/h12a_rand1000_test.py` (dados brutos:
+`scripts/h12a_rand1000_results.json`), N=10 seeds, mesmo `--imax 1 --iils 100`
+da calibração:
+
+```
+instance      n  mean_rel%      w/t/l   sign_p   time+%
+rand1000     10     1,1709 10/0/0         0,002     87,3
+```
+
+**10 vitórias em 10 seeds — nenhuma derrota, nenhum empate.** `p=0,002`
+é o menor p-valor possível pra N=10 no teste de sinal (10W/0L). Ganho
+médio de **+1,17%** — mais de 3x maior que os +0,33%/+0,39% confirmados em
+`pr439`/`att532`. Confirma sem ambiguidade que o efeito cresce fortemente
+com `n`: nulo em `lin318` (n=318) → significativo mas modesto em
+`pr439`/`att532` (n=439/532) → forte e perfeito em `rand1000` (n=1000).
+Custo de tempo: +87,3% (quase o dobro) — real, mas o ganho de qualidade
+compensa com folga nesta escala.
+
+Este é o resultado mais forte e mais limpo de toda a sessão — a hipótese
+"a vantagem de `extended-oropt` cresce com `n`" (levantada ainda em H8,
+a partir da literatura de DBMEA/GQPSO) está agora confirmada com poder
+estatístico completo, não só num único ponto de calibração.
 
 ## 10. Recomendação atualizada e encerramento
 
@@ -222,9 +246,11 @@ dispatcher, `single` continua default). Corretude ok (empate em `eil51`,
 
 Calibração rápida (5 seeds, `lin318`, `--iter 200`) deu sinal
 **animador**: 3W/2L, com vitórias grandes (~1-1,8%) — bem maior que o
-+0,33%/+0,39% do `gils_rvnd` puro. Lote pareado completo (N=15-20, mesma
-escala de `grasp-am-large-scale.md`: `lin318` iter=800, `pr439` iter=500,
-`att532` iter=300, `--parent-mode pool`):
++0,33%/+0,39% do `gils_rvnd` puro. Lote pareado completo
+(`scripts/grasp_am_extended_oropt_test.py`, dados brutos:
+`scripts/grasp_am_extended_oropt_results.json`. N=15-20, mesma escala de
+`grasp-am-large-scale.md`: `lin318` iter=800, `pr439` iter=500, `att532`
+iter=300, `--parent-mode pool`):
 
 ```
 instance      n  mean_rel%      w/t/l   sign_p   time+%
@@ -245,3 +271,75 @@ uma confirmação de que calibrações de N pequeno (aqui N=5) não substituem
 teste com poder estatístico, mesmo quando o sinal inicial parece forte.
 
 **Não adotar** `grasp_am --rvnd-mode extended-oropt`. Encerrado.
+
+## 12. Follow-up: `GILS-AM-RVND` com `extended-oropt` — confirmado (agregado)
+
+Segunda pergunta natural: diferente de `grasp_am`, o `GILS-AM-RVND`
+(`src/gils_am_rvnd.cpp`) já tem o mesmo laço de ILS completo do baseline
+(double-bridge + RVND), e já empata em qualidade com `gils_rvnd` sendo
+20-26% mais rápido (`grasp-am-large-scale.md`). Os dois ganhos
+independentes (velocidade ali, qualidade em H12a) se compõem?
+
+Implementado aditivamente: `--rvnd-mode single|extended-oropt|extended-oropt-wide`
+em `src/gils_am_rvnd.cpp` (mesmo `run_rvnd()` dispatcher, `single`
+default). Lote pareado (`scripts/gils_am_rvnd_extended_oropt_test.py`, dados brutos:
+`scripts/gils_am_rvnd_extended_oropt_results.json`. N=15-20, mesma escala de H12a/`grasp-am-large-scale.md`:
+`lin318` imax=10/N=20, `pr439` imax=5/N=15, `att532` imax=3/N=10,
+`--parent-mode pool`):
+
+```
+instance      n  mean_rel%      w/t/l   sign_p   time+%
+lin318       20     0,1019 12/4/4         0,077     16,0
+pr439        15     0,1232 10/0/5         0,302     14,7
+att532       10     0,4580 8/0/2          0,109     50,0
+AGREGADO     45     0,1881 30/4/11        0,004     25,8
+```
+
+**Positivo no agregado** (p=0,004, 30W/4T/11L) — os dois ganhos
+independentes se compõem: `GILS-AM-RVND` mantém sua vantagem de
+velocidade sobre `gils_rvnd` baseline, e ganhar `extended-oropt` por cima
+ainda melhora a qualidade de verdade. Ressalva honesta: **nenhuma
+instância individual chega a p<0,05 sozinha** (a mais próxima é `lin318`,
+p=0,077) — o efeito é real mas mais fraco por instância que o H12a
+original (onde `pr439`/`att532` eram significativos isoladamente); só o
+agregado de 45 pares tem poder suficiente para separar do ruído. Custo de
+tempo (+25,8% agregado) no mesmo patamar do H12a original.
+
+**Recomendado**: `gils_am_rvnd --rvnd-mode extended-oropt` como a
+combinação de melhor custo-benefício conhecida até agora nesta sessão —
+mais rápido que o baseline puro (herda de GILS-AM-RVND) e com ganho de
+qualidade real (herda de H12a), ainda que o efeito de qualidade seja mais
+modesto que H12a isolado em n≤532.
+
+## 12.1 Em n=2000 — melhor E mais rápido, o resultado mais forte da sessão
+
+Depois de confirmar H12a sozinho em `rand1000` (seção 9.1, +1,17%,
+10W/10), pergunta natural: será que a combinação com `GILS-AM-RVND`
+também escala tão bem? Instância nova gerada (`rand2000`,
+`uv run scripts/instance_generator.py --n 2000 --grid 1000 --seed 42`),
+lote pareado N=10 (`scripts/h12a_rand2000_test.py`, dados brutos:
+`scripts/h12a_rand2000_results.json`. `--imax 1 --iils 10`,
+`gils_rvnd` single vs `gils_am_rvnd --rvnd-mode extended-oropt`):
+
+```
+instance      n  mean_rel%      w/t/l   sign_p   time+%
+rand2000     10     1,1141 10/0/0         0,002    -18,4
+```
+
+**10 vitórias em 10 seeds (p=0,002) — E ainda por cima 18,4% mais rápido
+em média**, não um trade-off. Diferente de `n≤1000` (onde `extended-oropt`
+custava tempo extra em troca de qualidade), em `n=2000` a combinação
+`GILS-AM-RVND + extended-oropt` vence nas duas frentes ao mesmo tempo:
+herda a velocidade da construção enviesada por memória (que agora
+compensa ainda mais o custo extra das vizinhanças maiores) e o ganho de
+qualidade de `extended-oropt` continua forte (+1,11%, consistente com o
++1,17% de `rand1000`). Um outlier de tempo (seed 4, ~4,7M ms — coincide
+com o usuário desligando o computador no meio do lote; processo e
+resultado sobreviveram intactos, é artefato de relógio, não lentidão
+real) foi excluído da média de tempo.
+
+**Recomendação final atualizada**: para `n≳1000`,
+`gils_am_rvnd --rvnd-mode extended-oropt` deixa de ser só "custo-
+benefício" e vira estritamente melhor que o baseline em qualidade e
+tempo — sem trade-off. Este é o resultado mais forte e mais limpo de
+toda a sessão.

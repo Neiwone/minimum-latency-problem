@@ -192,6 +192,31 @@ void neighborhood_oropt6(Solution& sol) { neighborhood_oropt_generic(sol, 6); }
 void neighborhood_oropt8(Solution& sol) { neighborhood_oropt_generic(sol, 8); }
 void neighborhood_oropt10(Solution& sol) { neighborhood_oropt_generic(sol, 10); }
 
+/* H12b: genuine 3-opt -- reverse B=[i+1,j] and C=[j+1,k] independently,
+   keeping their relative order. O(n^3) candidates, but each is O(1) via
+   T/C/Cr, and empirically the full scan is fast (~30-170ms up to
+   n=532 -- see docs/experiments/h12-extended-oropt.md section 12). */
+void neighborhood_3opt_double_reversal(Solution& sol) {
+    bool improved = true;
+
+    while (improved) {
+        improved = false;
+
+        for (int i = 1; i < sol.fN - 2; i++) {
+            for (int j = i + 1; j < sol.fN - 1; j++) {
+                for (int k = j + 1; k < sol.fN; k++) {
+                    if (sol.evaluateThreeOptDoubleReversal(i, j, k)) {
+                        reverse(sol.fTour + i + 1, sol.fTour + j + 1);
+                        reverse(sol.fTour + j + 1, sol.fTour + k + 1);
+                        sol.calculateStructures();
+                        improved = true;
+                    }
+                }
+            }
+        }
+    }
+}
+
 /* ---------------------------------------------------------------------
  * H4: multi-improvement variants. Scan the whole neighborhood against a
  * frozen T/C/Cr snapshot, keep every improving move whose position
