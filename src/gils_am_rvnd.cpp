@@ -2,6 +2,7 @@
 #include "solution.h"
 #include "evaluator.h"
 #include "rvnd.h"
+#include "rvnd_lk.h"
 
 using namespace std;
 
@@ -58,11 +59,12 @@ void perturb(Solution& sol, mt19937& gen) {
    memory-biased construction + speed advantage this binary already has --
    i.e. whether the two independent wins (speed here, quality there)
    compose into something both faster and better than plain gils_rvnd. */
-enum class RvndMode { Single, ExtendedOrOpt, ExtendedOrOptWide };
+enum class RvndMode { Single, ExtendedOrOpt, ExtendedOrOptWide, LKEscape };
 
-void run_rvnd(RvndMode mode, Solution& sol, mt19937& gen) {
+void run_rvnd(RvndMode mode, Solution& sol, Evaluator& eval, mt19937& gen) {
     if (mode == RvndMode::ExtendedOrOpt) RVND_ExtendedOrOpt(sol, gen);
     else if (mode == RvndMode::ExtendedOrOptWide) RVND_ExtendedOrOptWide(sol, gen);
+    else if (mode == RvndMode::LKEscape) RVND_LKEscape(sol, eval, gen);
     else RVND(sol, gen);
 }
 
@@ -224,7 +226,7 @@ void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
 
         int iterILS = 0;
         while (iterILS < I_ILS) {
-            run_rvnd(rvndMode, s, gen);
+            run_rvnd(rvndMode, s, eval, gen);
 
             if (s.fEvaluationValue < sPrime.fEvaluationValue) {
                 sPrime = s;
@@ -250,7 +252,7 @@ int main(int argc, char** argv) {
         cerr << "Usage:\n";
         cerr << "  ./gils_am_rvnd <instance.tsp> [--imax 10] [--iils 100] [--pool 20]\n";
         cerr << "    [--lambda 0.50] [--parent-mode pool|pair]\n";
-        cerr << "    [--rvnd-mode single|extended-oropt|extended-oropt-wide] [--seed N]\n";
+        cerr << "    [--rvnd-mode single|extended-oropt|extended-oropt-wide|lk-escape] [--seed N]\n";
         return 1;
     }
 
@@ -283,6 +285,7 @@ int main(int argc, char** argv) {
             if (m == "single") rvndMode = RvndMode::Single;
             else if (m == "extended-oropt") rvndMode = RvndMode::ExtendedOrOpt;
             else if (m == "extended-oropt-wide") rvndMode = RvndMode::ExtendedOrOptWide;
+            else if (m == "lk-escape") rvndMode = RvndMode::LKEscape;
             else { cerr << "Unknown --rvnd-mode: " << m << "\n"; return 1; }
         } else if (a == "--seed" && i + 1 < argc) {
             seed = stol(argv[++i]);
@@ -322,7 +325,8 @@ int main(int argc, char** argv) {
     cout << "LAMBDA " << fixed << setprecision(2) << lambda << "\n";
     cout << "PARENT_MODE " << (parentMode == ParentMode::Pool ? "pool" : "pair") << "\n";
     cout << "RVND_MODE " << (rvndMode == RvndMode::ExtendedOrOpt ? "extended-oropt"
-                              : rvndMode == RvndMode::ExtendedOrOptWide ? "extended-oropt-wide" : "single") << "\n";
+                              : rvndMode == RvndMode::ExtendedOrOptWide ? "extended-oropt-wide"
+                              : rvndMode == RvndMode::LKEscape ? "lk-escape" : "single") << "\n";
     cout << "TIME_MS " << fixed << setprecision(3) << runtime_ms << "\n";
     cout << "ROUTE ";
     for (int i = 0; i < bestSol.fN; i++)

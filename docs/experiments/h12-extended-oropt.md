@@ -341,5 +341,38 @@ real) foi excluído da média de tempo.
 **Recomendação final atualizada**: para `n≳1000`,
 `gils_am_rvnd --rvnd-mode extended-oropt` deixa de ser só "custo-
 benefício" e vira estritamente melhor que o baseline em qualidade e
-tempo — sem trade-off. Este é o resultado mais forte e mais limpo de
-toda a sessão.
+tempo — sem trade-off.
+
+## 12.2 Confirmação final no benchmark oficial da literatura (não instâncias nossas)
+
+`rand1000`/`rand2000` são instâncias geradas por nós. Pro TCC, a
+comparação que importa de verdade é no benchmark oficial (as 140
+instâncias reproduzindo o protocolo de Salehipour et al. 2011,
+`instances/salehipour/` — ver `docs/experiments/h-salehipour-grasp-vnd.md`
+seção 2). Rodado via `run_experiments.py --mode salehipour-benchmark`
+(com checkpoint/resume, seção 8.2 do doc do GRASP+VND — esse lote foi
+interrompido uma vez por reinício de sessão e retomado sem perder
+trabalho):
+
+```
+     n  instances  mean_rel%      w/t/l   sign_p  time_b_vs_a%
+    10-200  100     ~0,00              1,000     (nulo, esperado — n pequeno)
+   500       20     0,4124     12/0/8    0,503         +32,8
+  1000       20     0,9852    17/0/3     0,003         +40,7
+------------------------------------------------------------------------------------------
+   ALL(500+1000) 40  0,6988   29/0/11    0,006
+```
+
+(`gils_rvnd_imax1` vs `gils_am_rvnd_extended_oropt_imax1` — `--imax 1`
+necessário pra ser tratável nessa escala, mesmo orçamento já usado em
+`rand1000`/`rand2000`.) **`n=1000` isolado já é altamente significativo
+(p=0,003, 17W/3L, +0,99%)**, e o agregado das 40 instâncias de 500/1000
+é p=0,006. Isso é a **terceira confirmação independente** do mesmo
+efeito nesta sessão: (1) `rand1000`/`rand2000` (instâncias nossas,
+10W/10 perfeito), (2) `grasp_vnd` no benchmark oficial (140 instâncias,
+p<0,001 agregado, ver seção 8.1 do doc de GRASP+VND), e (3) esta —
+`gils_rvnd`/`gils_am_rvnd` no benchmark oficial. Três combinações
+diferentes de (algoritmo, conjunto de instâncias) apontando pro mesmo
+efeito real e crescente com `n`.
+
+Esse é o achado que sustenta o capítulo de resultados do TCC.

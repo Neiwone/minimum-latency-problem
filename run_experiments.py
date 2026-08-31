@@ -2,6 +2,8 @@ import subprocess
 import os
 import argparse
 import json
+import math
+import re
 import statistics
 import sys
 import threading
@@ -35,6 +37,36 @@ INST_DIR = "instances"
 SOLUTIONS_DIR = Path(INST_DIR) / "solutions"
 BEST_SOLUTIONS_FILE = SOLUTIONS_DIR / "best_solutions.json"
 
+# Benchmark set reproducing the protocol documented in Salehipour et al.
+# (2011) -- used by the GILS-RVND base paper (Silva et al. 2012) and by
+# DBMEA/GQPSO/MDM-GILS-RVND to evaluate at large n: 7 sizes, 20 random
+# uniform instances each. Generated via
+# scripts/generate_salehipour_benchmark.py into instances/salehipour/
+# (original authors' instance files are not publicly available; this
+# reproduces their documented protocol instead).
+SALEHIPOUR_DIR = Path(INST_DIR) / "salehipour"
+SALEHIPOUR_SIZES = [10, 20, 50, 100, 200, 500, 1000]
+SALEHIPOUR_INSTANCES_PER_SIZE = 20
+
+
+def salehipour_instances(size: int) -> List[str]:
+    """Paths (relative to project root) of the 20 instances for one size."""
+    return [
+        str(SALEHIPOUR_DIR / f"salehipour_n{size:04d}_i{i:02d}.tsp")
+        for i in range(1, SALEHIPOUR_INSTANCES_PER_SIZE + 1)
+    ]
+
+
+def sign_test_p(wins: int, losses: int) -> float:
+    """Two-sided exact sign test p-value (same convention used throughout
+    this project's night_batch-style scripts)."""
+    n = wins + losses
+    if n == 0:
+        return 1.0
+    k = min(wins, losses)
+    p_le_k = sum(math.comb(n, i) for i in range(k + 1)) / (2 ** n)
+    return min(1.0, 2 * p_le_k)
+
 # Solvers. Value is either a bare binary path, or (path, extra_args) when the
 # solver needs fixed flags appended after "<binary> <instance>" -- e.g. the
 # grasp_am parent-mode variants (see src/grasp_am.cpp --parent-mode).
@@ -49,10 +81,24 @@ SOLVERS_RAW = {
     "grasp_am_pair": ("./bin/grasp_am", ["--parent-mode", "pair"]),
     "gils_am_rvnd_pool": ("./bin/gils_am_rvnd", ["--parent-mode", "pool"]),
     "gils_am_rvnd_pair": ("./bin/gils_am_rvnd", ["--parent-mode", "pair"]),
+    "gils_am_rvnd_extended_oropt": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt"]),
+    "gils_am_rvnd_extended_oropt_wide": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt-wide"]),
     "gils_rvnd": "./bin/gils_rvnd",
     "gils_rvnd_extended_oropt": ("./bin/gils_rvnd", ["--rvnd-mode", "extended-oropt"]),
     "gils_rvnd_extended_oropt_wide": ("./bin/gils_rvnd", ["--rvnd-mode", "extended-oropt-wide"]),
+    # --imax 1 variants: the binaries' own default (--imax 10) is
+    # intractable at n=500/1000 (hours per instance, see
+    # docs/experiments/h12-extended-oropt.md section 9) -- --imax 1
+    # matches the budget already validated at this scale earlier this
+    # session (rand1000/rand2000 tests), used only for the large sizes
+    # of the salehipour-benchmark.
+    "gils_rvnd_imax1": ("./bin/gils_rvnd", ["--imax", "1"]),
+    "gils_am_rvnd_extended_oropt_imax1": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt", "--imax", "1"]),
     "mdm_gils_rvnd": "./bin/mdm_gils_rvnd",
+    "grasp_vnd": ("./bin/grasp_vnd", ["--local-search", "vnd"]),
+    "grasp_vns": ("./bin/grasp_vnd", ["--local-search", "vns"]),
+    "grasp_vnd_extended_oropt": ("./bin/grasp_vnd", ["--local-search", "vnd", "--or-opt-max-len", "6"]),
+    "grasp_vns_extended_oropt": ("./bin/grasp_vnd", ["--local-search", "vns", "--or-opt-max-len", "6"]),
     "tabu_search": "./bin/tabu_search",
     "gils_rvnd_tabu": "./bin/gils_rvnd_tabu",
 }
@@ -220,17 +266,35 @@ Examples:
   
   # Compare multiple solvers
   python run_experiments.py --mode compare-solvers --solvers nn local_search
+
+  # Salehipour-protocol benchmark (140 instances, n=10..1000), paired comparison
+  python run_experiments.py --mode salehipour-benchmark --solvers gils_rvnd gils_am_rvnd_extended_oropt
         """
     )
-    
+
     parser.add_argument(
         "--mode",
-        choices=["compare-best", "exact", "compare-solvers"],
+        choices=["compare-best", "exact", "compare-solvers", "salehipour-benchmark"],
         required=True,
         help=(
             "compare-best: Compare solver with tracked best solutions | "
             "exact: Compare solver with exact backtracking solver | "
-            "compare-solvers: Compare multiple solvers"
+            "compare-solvers: Compare multiple solvers | "
+            "salehipour-benchmark: run --solver or --solvers over the "
+            "140-instance Salehipour-protocol set (instances/salehipour/), "
+            "aggregated per size"
+        )
+    )
+
+    parser.add_argument(
+        "--sizes",
+        type=int,
+        nargs="+",
+        choices=SALEHIPOUR_SIZES,
+        default=SALEHIPOUR_SIZES,
+        help=(
+            "Which instance sizes to use in salehipour-benchmark mode "
+            f"(default: all of {SALEHIPOUR_SIZES})"
         )
     )
     
@@ -271,7 +335,20 @@ Examples:
         action="store_true",
         help="Verbose: show step-level timing (construction, rvnd, tabu) when available"
     )
-    
+
+    parser.add_argument(
+        "--checkpoint",
+        type=str,
+        default=None,
+        help=(
+            "salehipour-benchmark (--solvers) only: JSON file to save per-instance "
+            "results incrementally (flushed after every instance) and resume from "
+            "if it already exists. Default: scripts/salehipour_<a>_vs_<b>.json. "
+            "Long runs (n=500/1000) should always use this -- an interrupted run "
+            "resumes instead of losing hours of work."
+        )
+    )
+
     return parser.parse_args()
 
 
@@ -750,6 +827,139 @@ def run_compare_solvers_mode(args, tracker: SolutionTracker):
     print("=" * w)
 
 
+def run_salehipour_benchmark_mode(args):
+    """
+    Run --solver or --solvers over the Salehipour-protocol benchmark
+    (instances/salehipour/, generated by
+    scripts/generate_salehipour_benchmark.py), aggregated per instance
+    size. This is the literature-comparable benchmark used by the
+    GILS-RVND base paper and by DBMEA/GQPSO/MDM-GILS-RVND to report
+    results at large n (see docs/experiments/h12-extended-oropt.md).
+
+    With --solvers (exactly 2): pairs each solver on the SAME instance
+    and reports win/tie/loss + exact sign test p-value per size, and
+    aggregated across all requested sizes -- same rigor (paired
+    comparison, sign test) used throughout this project's
+    docs/experiments/ hypothesis testing. Results are saved
+    incrementally to --checkpoint (flushed after every instance) and
+    resumed from it if it already exists -- n=500/1000 runs take hours,
+    and an interrupted run (session restart, killed process) should
+    resume instead of losing that work (this happened once already, see
+    docs/experiments/h-salehipour-grasp-vnd.md).
+
+    With --solver (one): reports mean cost/time per size, no comparison,
+    no checkpoint.
+    """
+    verbose = args.vb
+
+    if not SALEHIPOUR_DIR.exists():
+        print(f"Error: {SALEHIPOUR_DIR} does not exist. Run "
+              f"'uv run scripts/generate_salehipour_benchmark.py' first.")
+        return
+
+    if args.solvers and len(args.solvers) == 2:
+        solver_a_name, solver_b_name = args.solvers
+        solver_a = SOLVERS[solver_a_name]
+        solver_b = SOLVERS[solver_b_name]
+
+        checkpoint_path = Path(args.checkpoint) if args.checkpoint else \
+            Path("scripts") / f"salehipour_{solver_a_name}_vs_{solver_b_name}.json"
+
+        all_rows = []
+        done = set()
+        if checkpoint_path.exists():
+            all_rows = json.loads(checkpoint_path.read_text())
+            done = {r["instance"] for r in all_rows}
+            print(f"Resuming from {checkpoint_path} ({len(all_rows)} instances already done)")
+
+        print(f"\n{'='*90}")
+        print(f"Salehipour benchmark: {solver_a_name.upper()} vs {solver_b_name.upper()}")
+        print(f"Checkpoint: {checkpoint_path}")
+        print(f"{'='*90}\n")
+        print(f"{'n':>6} {'instances':>10} {'mean_rel%':>10} {'w/t/l':>10} {'sign_p':>8} {'time_b_vs_a%':>13}", flush=True)
+
+        for size in args.sizes:
+            for inst_path in salehipour_instances(size):
+                if inst_path in done:
+                    continue
+                if not Path(inst_path).exists():
+                    print(f"  missing: {inst_path}", flush=True)
+                    continue
+                if verbose:
+                    print(f"  {inst_path}...", flush=True)
+                try:
+                    sol_a = run_solver(solver_a, inst_path, verbose=verbose)
+                    sol_b = run_solver(solver_b, inst_path, verbose=verbose)
+                except RuntimeError as e:
+                    print(f"  failed on {inst_path}: {e}", flush=True)
+                    continue
+                row = {
+                    "size": size, "instance": inst_path,
+                    "cost_a": sol_a["cost"], "time_a": sol_a["time"],
+                    "cost_b": sol_b["cost"], "time_b": sol_b["time"],
+                }
+                all_rows.append(row)
+                done.add(inst_path)
+                checkpoint_path.write_text(json.dumps(all_rows, indent=2))
+
+            rows = [r for r in all_rows if r["size"] == size]
+            if not rows:
+                continue
+
+            diffs = [r["cost_a"] - r["cost_b"] for r in rows]
+            rel = [d / r["cost_a"] * 100 if r["cost_a"] else 0.0 for d, r in zip(diffs, rows)]
+            wins = sum(1 for d in diffs if d > 0)
+            losses = sum(1 for d in diffs if d < 0)
+            ties = len(rows) - wins - losses
+            p = sign_test_p(wins, losses)
+            time_a = statistics.mean(r["time_a"] for r in rows)
+            time_b = statistics.mean(r["time_b"] for r in rows)
+            time_pct = (time_b - time_a) / time_a * 100 if time_a else 0.0
+
+            print(f"{size:>6} {len(rows):>10} {statistics.mean(rel):>10.4f} "
+                  f"{f'{wins}/{ties}/{losses}':>10} {p:>8.3f} {time_pct:>+13.1f}", flush=True)
+
+        if all_rows:
+            diffs = [r["cost_a"] - r["cost_b"] for r in all_rows]
+            rel = [d / r["cost_a"] * 100 if r["cost_a"] else 0.0 for d, r in zip(diffs, all_rows)]
+            wins = sum(1 for d in diffs if d > 0)
+            losses = sum(1 for d in diffs if d < 0)
+            ties = len(all_rows) - wins - losses
+            p = sign_test_p(wins, losses)
+            print("-" * 90)
+            print(f"{'ALL':>6} {len(all_rows):>10} {statistics.mean(rel):>10.4f} "
+                  f"{f'{wins}/{ties}/{losses}':>10} {p:>8.3f}", flush=True)
+
+    elif args.solver:
+        solver = SOLVERS[args.solver]
+        print(f"\n{'='*70}")
+        print(f"Salehipour benchmark: {args.solver.upper()}")
+        print(f"{'='*70}\n")
+        print(f"{'n':>6} {'instances':>10} {'mean_cost':>16} {'mean_time(s)':>13}")
+
+        for size in args.sizes:
+            costs, times = [], []
+            for inst_path in salehipour_instances(size):
+                if not Path(inst_path).exists():
+                    print(f"  missing: {inst_path}")
+                    continue
+                try:
+                    sol = run_solver(solver, inst_path, verbose=verbose)
+                except RuntimeError as e:
+                    print(f"  failed on {inst_path}: {e}")
+                    continue
+                costs.append(sol["cost"])
+                times.append(sol["time"])
+
+            if not costs:
+                continue
+            print(f"{size:>6} {len(costs):>10} {statistics.mean(costs):>16.2f} "
+                  f"{statistics.mean(times) / 1000:>13.3f}")
+
+    else:
+        print("Error: --solver, or --solvers with exactly 2 names, is required for salehipour-benchmark mode")
+
+
 def main():
     """Main entry point."""
     args = parse_args()
@@ -764,6 +974,8 @@ def main():
         run_exact_mode(args, tracker)
     elif args.mode == "compare-solvers":
         run_compare_solvers_mode(args, tracker)
+    elif args.mode == "salehipour-benchmark":
+        run_salehipour_benchmark_mode(args)
 
 
 if __name__ == "__main__":

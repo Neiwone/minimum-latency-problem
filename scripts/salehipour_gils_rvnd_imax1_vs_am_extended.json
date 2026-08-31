@@ -1,0 +1,322 @@
+[
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i01.tsp",
+    "cost_a": 1837215.0,
+    "time_a": 70779.752,
+    "cost_b": 1843377.0,
+    "time_b": 60604.443
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i02.tsp",
+    "cost_a": 1775085.0,
+    "time_a": 71250.98,
+    "cost_b": 1783438.0,
+    "time_b": 31993.662
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i03.tsp",
+    "cost_a": 1808894.0,
+    "time_a": 42857.015,
+    "cost_b": 1782971.0,
+    "time_b": 105637.15
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i04.tsp",
+    "cost_a": 1853758.0,
+    "time_a": 38368.916,
+    "cost_b": 1807368.0,
+    "time_b": 134299.911
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i05.tsp",
+    "cost_a": 1829907.0,
+    "time_a": 34114.89,
+    "cost_b": 1813016.0,
+    "time_b": 66799.905
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i06.tsp",
+    "cost_a": 1826086.0,
+    "time_a": 46852.132,
+    "cost_b": 1814539.0,
+    "time_b": 82250.336
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i07.tsp",
+    "cost_a": 1846785.0,
+    "time_a": 56910.927,
+    "cost_b": 1849790.0,
+    "time_b": 53022.219
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i08.tsp",
+    "cost_a": 1816099.0,
+    "time_a": 41336.386,
+    "cost_b": 1798796.0,
+    "time_b": 29668.61
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i09.tsp",
+    "cost_a": 1855049.0,
+    "time_a": 52174.339,
+    "cost_b": 1839632.0,
+    "time_b": 121975.591
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i10.tsp",
+    "cost_a": 1881885.0,
+    "time_a": 75506.48,
+    "cost_b": 1849219.0,
+    "time_b": 84878.85
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i11.tsp",
+    "cost_a": 1837673.0,
+    "time_a": 52273.822,
+    "cost_b": 1818439.0,
+    "time_b": 83224.427
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i12.tsp",
+    "cost_a": 1811231.0,
+    "time_a": 92844.792,
+    "cost_b": 1819426.0,
+    "time_b": 53663.528
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i13.tsp",
+    "cost_a": 1821928.0,
+    "time_a": 40203.247,
+    "cost_b": 1810441.0,
+    "time_b": 111351.717
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i14.tsp",
+    "cost_a": 1869244.0,
+    "time_a": 70803.059,
+    "cost_b": 1857264.0,
+    "time_b": 78008.932
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i15.tsp",
+    "cost_a": 1855330.0,
+    "time_a": 24197.599,
+    "cost_b": 1870551.0,
+    "time_b": 29572.805
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i16.tsp",
+    "cost_a": 1832954.0,
+    "time_a": 54501.407,
+    "cost_b": 1836710.0,
+    "time_b": 40259.355
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i17.tsp",
+    "cost_a": 1820162.0,
+    "time_a": 65472.914,
+    "cost_b": 1867206.0,
+    "time_b": 23837.392
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i18.tsp",
+    "cost_a": 1848643.0,
+    "time_a": 46236.043,
+    "cost_b": 1824044.0,
+    "time_b": 57771.203
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i19.tsp",
+    "cost_a": 1857141.0,
+    "time_a": 54599.689,
+    "cost_b": 1839729.0,
+    "time_b": 53252.84
+  },
+  {
+    "size": 500,
+    "instance": "instances/salehipour/salehipour_n0500_i20.tsp",
+    "cost_a": 1814784.0,
+    "time_a": 33084.706,
+    "cost_b": 1820544.0,
+    "time_b": 111391.025
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i01.tsp",
+    "cost_a": 5221656.0,
+    "time_a": 529118.502,
+    "cost_b": 5125257.0,
+    "time_b": 997529.375
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i02.tsp",
+    "cost_a": 5261245.0,
+    "time_a": 505077.251,
+    "cost_b": 5175252.0,
+    "time_b": 875823.865
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i03.tsp",
+    "cost_a": 5350645.0,
+    "time_a": 452363.328,
+    "cost_b": 5212696.0,
+    "time_b": 462683.328
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i04.tsp",
+    "cost_a": 5240716.0,
+    "time_a": 409138.937,
+    "cost_b": 5173244.0,
+    "time_b": 617185.34
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i05.tsp",
+    "cost_a": 5107292.0,
+    "time_a": 763443.283,
+    "cost_b": 5101068.0,
+    "time_b": 555786.609
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i06.tsp",
+    "cost_a": 5212039.0,
+    "time_a": 463592.38,
+    "cost_b": 5143794.0,
+    "time_b": 767668.804
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i07.tsp",
+    "cost_a": 5186933.0,
+    "time_a": 953167.107,
+    "cost_b": 5115644.0,
+    "time_b": 1297715.877
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i08.tsp",
+    "cost_a": 5295121.0,
+    "time_a": 565828.754,
+    "cost_b": 5252787.0,
+    "time_b": 1257021.551
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i09.tsp",
+    "cost_a": 5181101.0,
+    "time_a": 694997.347,
+    "cost_b": 5121915.0,
+    "time_b": 364658.485
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i10.tsp",
+    "cost_a": 5236051.0,
+    "time_a": 149890.131,
+    "cost_b": 5154367.0,
+    "time_b": 657462.39
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i11.tsp",
+    "cost_a": 5298367.0,
+    "time_a": 475405.67,
+    "cost_b": 5251845.0,
+    "time_b": 628315.752
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i12.tsp",
+    "cost_a": 5129992.0,
+    "time_a": 421156.699,
+    "cost_b": 5114798.0,
+    "time_b": 403384.721
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i13.tsp",
+    "cost_a": 5253198.0,
+    "time_a": 555653.468,
+    "cost_b": 5158885.0,
+    "time_b": 702967.839
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i14.tsp",
+    "cost_a": 5138886.0,
+    "time_a": 483969.931,
+    "cost_b": 5155082.0,
+    "time_b": 590985.62
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i15.tsp",
+    "cost_a": 5219940.0,
+    "time_a": 376666.956,
+    "cost_b": 5141947.0,
+    "time_b": 473088.247
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i16.tsp",
+    "cost_a": 5186016.0,
+    "time_a": 389055.919,
+    "cost_b": 5144103.0,
+    "time_b": 371096.752
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i17.tsp",
+    "cost_a": 5179958.0,
+    "time_a": 477797.883,
+    "cost_b": 5154221.0,
+    "time_b": 751455.328
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i18.tsp",
+    "cost_a": 5232748.0,
+    "time_a": 295502.747,
+    "cost_b": 5243735.0,
+    "time_b": 508355.907
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i19.tsp",
+    "cost_a": 5091733.0,
+    "time_a": 522790.888,
+    "cost_b": 5131734.0,
+    "time_b": 697411.443
+  },
+  {
+    "size": 1000,
+    "instance": "instances/salehipour/salehipour_n1000_i20.tsp",
+    "cost_a": 5216225.0,
+    "time_a": 231570.732,
+    "cost_b": 5133148.0,
+    "time_b": 693498.2
+  }
+]
