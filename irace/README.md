@@ -34,6 +34,19 @@ Rodar na outra máquina, a partir da raiz do projeto clonado.
 Rscript -e 'install.packages("irace", repos="https://cloud.r-project.org")'
 ```
 
+Se der `'lib' is not writable` / `unable to install packages` (comum sem
+`sudo`, tenta instalar no diretório de sistema `/usr/local/lib/R/site-library`):
+instale numa biblioteca pessoal em vez disso —
+
+```bash
+mkdir -p ~/R/library
+echo 'R_LIBS_USER=~/R/library' >> ~/.Renviron
+Rscript -e 'install.packages("irace", repos="https://cloud.r-project.org", lib=Sys.getenv("R_LIBS_USER"))'
+```
+
+(o `.Renviron` garante que sessões futuras do R já enxergam essa biblioteca
+sem precisar do `lib=` explícito de novo.)
+
 Opcional — colocar o wrapper de linha de comando `irace` no PATH (senão usa
 `Rscript -e 'irace::irace()'` no lugar de `irace` nos comandos abaixo):
 
