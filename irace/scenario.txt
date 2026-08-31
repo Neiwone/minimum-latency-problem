@@ -1,0 +1,38 @@
+# irace scenario for tuning bin/gils_am_rvnd's parameters.
+# Run from inside this directory (after `make gils_am_rvnd` at the project
+# root) with:
+#   Rscript -e 'irace::irace()'
+# or, if the irace command-line wrapper is on PATH:
+#   irace
+# See README.md in this directory for the full setup.
+
+## Training instances: a held-out set (NOT the 10 TSPLIB instances or the
+## Salehipour benchmark used to report final results in docs/experiments/),
+## so the tuned parameters are not overfit to the instances we later publish
+## numbers on. See instances-train.txt and README.md.
+trainInstancesDir  = "../instances"
+trainInstancesFile = "./instances-train.txt"
+
+## Script that runs one configuration on one instance/seed and prints the
+## cost (to minimize) to stdout. Must be executable (chmod +x target-runner).
+targetRunner = "./target-runner"
+
+## Parameter space (pool, lambda, parent-mode, rvnd-mode).
+parameterFile = "./parameters.txt"
+
+## Total number of target-runner calls irace may make. Rule of thumb: at
+## least ~200 x number of parameters (4 parameters here -> >=800). Each call
+## runs gils_am_rvnd once with its defaults (--imax 10 --iils 100) on an
+## instance with n<=280, which is fast (well under a couple of seconds each
+## going by this project's own TSPLIB timing data) -- 2000 should be
+## feasible in well under an hour even single-threaded. Raise it if the
+## tuning machine has time to spare.
+maxExperiments = 2000
+
+## Number of target-runner calls to run concurrently. Set this to the
+## number of cores available on the machine actually running irace.
+parallel = 4
+
+## Where irace writes its own state/log (used by irace::checkIraceScenario
+## and for resuming an interrupted run with --recovery-file).
+logFile = "./irace.Rdata"

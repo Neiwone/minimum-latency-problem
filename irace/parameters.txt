@@ -1,0 +1,9 @@
+# Parameter space for tuning bin/gils_am_rvnd with irace.
+# Format: <name> <switch> <type> <domain>
+#   i = integer, r = real, c = categorical, o = ordinal
+# See https://mlopez-ibanez.github.io/irace/#sec:parameters
+
+pool         "--pool "         i    (5, 60)
+lambda       "--lambda "       r    (0.0, 1.0)
+parentmode   "--parent-mode "  c    ("pool", "pair")
+rvndmode     "--rvnd-mode "    c    ("single", "extended-oropt", "extended-oropt-wide", "lk-escape")

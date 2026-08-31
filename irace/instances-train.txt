@@ -1,0 +1,6 @@
+a280.tsp
+berlin52.tsp
+eil51.tsp
+eil101.tsp
+kroA100.tsp
+pr76.tsp
