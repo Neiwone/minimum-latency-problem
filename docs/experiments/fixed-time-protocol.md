@@ -50,7 +50,7 @@ Comparação de tempo não sobrevive a contenção de CPU. Rodar 6 solvers
 simultaneamente em 6 núcleos inflou os tempos por execução em 2-5x com
 variância enorme neste projeto (ver
 [[salehipour-tsplib-mdm-vs-am-extended]] seção 2 e as notas de processo do
-tier `n=1000`). `scripts/fixed_time_compare.py` roda **um processo por vez**,
+tier `n=1000`). O modo roda **um processo por vez**,
 sempre — é mais lento em parede, e é o único jeito de o número significar
 algo.
 
@@ -71,7 +71,7 @@ Medido em `lin318` com orçamento de 20s:
 | 100 (default) | 2 | **0** | **não** — mineração nunca disparou |
 | 10 | 13 | 4 | sim |
 
-Por isso o script usa `--iils 10` por default (o mesmo para todos os
+Por isso o modo usa `--iils 10` por default (o mesmo para todos os
 algoritmos, então a comparação segue justa) e **registra
 `RESTARTS`/`MINING_CALLS` em toda execução**, sinalizando os runs em que o
 mecanismo não disparou em vez de reportar um nulo enganoso.
@@ -85,32 +85,52 @@ parede — ou seja, o `mdm` recebia 4,6x mais tempo que os concorrentes.
 
 Corrigido trocando a mineração pela biblioteca C++ FPmax-LIB, chamada em
 memória (ver [[h13-mdm-gils-rvnd]] seção 2.2). Medido depois da troca, mesmo
-caso: **15,0s / 15,1s** em duas seeds — orçamento respeitado. O script
+caso: **15,0s / 15,1s** em duas seeds — orçamento respeitado. O modo
 continua gravando `time_ms` e `wall_s` de cada execução pra isso seguir
 auditável.
 
-## 5. Uso
+## 5. Uso — `run_experiments.py --mode fixed-time`
+
+Aceita **vários solvers** (o primeiro da lista é a referência das
+comparações pareadas) e o orçamento em segundos via `--time-limit`:
 
 ```bash
-# TSPLIB, 60s por execução, 10 seeds
-python3 scripts/fixed_time_compare.py \
-    --instances lin318 pr439 att532 --time-limit 60 --iils 10 --seeds 10
+# TSPLIB (lista padrão do projeto), 60s por execução, 10 seeds
+python3 run_experiments.py --mode fixed-time --time-limit 60 --runs 10 \
+    --solvers gils_rvnd gils_am_rvnd_extended_oropt mdm_gils_rvnd
 
-# benchmark Salehipour, tier n=500, 120s por execução
-python3 scripts/fixed_time_compare.py \
-    --salehipour 500 --time-limit 120 --iils 10 --seeds 5
+# instâncias escolhidas a dedo
+python3 run_experiments.py --mode fixed-time --time-limit 60 --runs 10 \
+    --instances lin318 pr439 att532 \
+    --solvers gils_rvnd gils_am_rvnd_extended_oropt mdm_gils_rvnd
+
+# tiers inteiros do benchmark Salehipour (20 instâncias cada)
+python3 run_experiments.py --mode fixed-time --time-limit 120 --runs 5 \
+    --salehipour-sizes 500 1000 \
+    --solvers gils_rvnd gils_am_rvnd_extended_oropt mdm_gils_rvnd
 
 # incluindo o or-opt adaptativo (H15)
-python3 scripts/fixed_time_compare.py --instances lin318 att532 \
-    --time-limit 60 --seeds 10 \
+python3 run_experiments.py --mode fixed-time --time-limit 60 --runs 10 \
+    --instances lin318 att532 \
     --solvers gils_rvnd gils_am_rvnd_extended_oropt gils_am_rvnd_adaptive_oropt mdm_gils_rvnd
 ```
+
+Parâmetros relevantes: `--time-limit` (segundos, obrigatório), `--iils`
+(default 10 — ver seção 3.2), `--runs` (seeds, pareadas entre solvers),
+`--instances` / `--salehipour-sizes`, `--checkpoint`.
+
+**Só aceita solvers cujo binário implementa `--max-time`** (`gils_rvnd`,
+`gils_am_rvnd`, `mdm_gils_rvnd` e suas variantes de flag). Isso é uma
+verificação explícita, não um detalhe: os parsers dos outros binários
+ignoram flags desconhecidas **em silêncio**, então passar `--max-time` pra
+eles produziria uma comparação que parece certa e na verdade estaria rodando
+orçamento de iteração ilimitado.
 
 Checkpoint incremental em `scripts/fixed_time_<T>s.json` (dentro do repo,
 não em `/tmp` — ver memória `feedback-experiment-rigor`), retomável. O
 relatório final sai com `mean_rel%`, W/T/L pareado por seed e p-valor do
 teste de sinal exato por instância e agregado, mais o bloco de sanidade do
-protocolo.
+protocolo (restarts médio/mínimo por solver e minerações do `mdm`).
 
 ## 6. Piloto (2 instâncias, 15s, 2 seeds — sem valor estatístico)
 

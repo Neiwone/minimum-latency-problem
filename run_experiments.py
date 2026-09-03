@@ -117,6 +117,18 @@ SOLVERS: Dict[str, SolverCmd] = {
     name: _normalize_solver(entry) for name, entry in SOLVERS_RAW.items()
 }
 
+# Solvers whose binary implements the wall-clock stopping criterion
+# (--max-time). Only these can be used in fixed-time mode: the other
+# binaries' argument parsers ignore unknown flags SILENTLY, so passing
+# --max-time to them would produce a comparison that looks fine and is
+# actually running an unbounded iteration budget.
+FIXED_TIME_BINARIES = {"./bin/gils_rvnd", "./bin/gils_am_rvnd", "./bin/mdm_gils_rvnd"}
+
+
+def supports_fixed_time(solver_name: str) -> bool:
+    return SOLVERS[solver_name][0] in FIXED_TIME_BINARIES
+
+
 VISUALIZER = "uv run scripts/instance_visualizer.py"
 
 
@@ -269,12 +281,17 @@ Examples:
 
   # Salehipour-protocol benchmark (140 instances, n=10..1000), paired comparison
   python run_experiments.py --mode salehipour-benchmark --solvers gils_rvnd gils_am_rvnd_extended_oropt
+
+  # Equal-time comparison: same wall-clock budget for every solver
+  python run_experiments.py --mode fixed-time --time-limit 60 --runs 10 \\
+      --solvers gils_rvnd gils_am_rvnd_extended_oropt mdm_gils_rvnd
         """
     )
 
     parser.add_argument(
         "--mode",
-        choices=["compare-best", "exact", "compare-solvers", "salehipour-benchmark"],
+        choices=["compare-best", "exact", "compare-solvers", "salehipour-benchmark",
+                 "fixed-time"],
         required=True,
         help=(
             "compare-best: Compare solver with tracked best solutions | "
@@ -282,7 +299,10 @@ Examples:
             "compare-solvers: Compare multiple solvers | "
             "salehipour-benchmark: run --solver or --solvers over the "
             "140-instance Salehipour-protocol set (instances/salehipour/), "
-            "aggregated per size"
+            "aggregated per size | "
+            "fixed-time: give every solver in --solvers the SAME wall-clock "
+            "budget (--time-limit, in seconds) and compare final quality, "
+            "paired by seed"
         )
     )
 
@@ -311,6 +331,52 @@ Examples:
         help="List of solvers to compare (for compare-solvers mode)"
     )
     
+    parser.add_argument(
+        "--time-limit",
+        type=float,
+        default=None,
+        help=(
+            "fixed-time mode: wall-clock budget PER RUN, in seconds, identical "
+            "for every solver (passed to the binaries as --max-time). Required "
+            "for that mode."
+        )
+    )
+
+    parser.add_argument(
+        "--iils",
+        type=int,
+        default=10,
+        help=(
+            "fixed-time mode: I_ILS passed to every solver (default 10). Keep it "
+            "small enough that SEVERAL restarts fit in --time-limit: mining "
+            "(mdm_gils_rvnd) and adaptive-memory construction (gils_am_rvnd) only "
+            "act at restart boundaries, so with too few restarts they degenerate "
+            "to plain GILS-RVND. See docs/experiments/fixed-time-protocol.md."
+        )
+    )
+
+    parser.add_argument(
+        "--salehipour-sizes",
+        type=int,
+        nargs="+",
+        choices=SALEHIPOUR_SIZES,
+        default=None,
+        help=(
+            "fixed-time mode: add whole Salehipour tiers (20 instances each) to "
+            "the instance list, e.g. --salehipour-sizes 500 1000"
+        )
+    )
+
+    parser.add_argument(
+        "--instances",
+        nargs="+",
+        default=None,
+        help=(
+            "fixed-time mode: instance names from instances/ (e.g. lin318 att532). "
+            f"Default: the tracked list ({len(INSTANCES)} instances)."
+        )
+    )
+
     parser.add_argument(
         "--plot",
         action="store_true",
@@ -430,6 +496,11 @@ def run_solver(solver: SolverCmd, instance_path: str, route: Optional[str] = Non
         "nodes": int(data.get("NODES", 0)),
         "cost": float(data.get("COST", 0)),
         "time": time_ms,
+        # Restart-boundary mechanism counters (see fixed-time mode): -1 when
+        # the solver does not report them.
+        "restarts": int(data.get("RESTARTS", -1)),
+        "mining_calls": int(data.get("MINING_CALLS", -1)),
+        "pattern_restarts": int(data.get("PATTERN_RESTARTS", -1)),
         "construction_ms": float(data.get("CONSTRUCTION_MS", 0)),
         "rvnd_ms": float(data.get("RVND_MS", 0)),
         "tabu_ms": float(data.get("TABU_MS", 0)),
@@ -960,6 +1031,202 @@ def run_salehipour_benchmark_mode(args):
         print("Error: --solver, or --solvers with exactly 2 names, is required for salehipour-benchmark mode")
 
 
+def run_fixed_time_mode(args):
+    """
+    Equal-time comparison: every solver gets the SAME wall-clock budget per
+    run (--time-limit, passed through as --max-time), paired by seed.
+
+    Comparing these algorithms at equal ITERATIONS is unfair -- their cost
+    per iteration differs a lot (extended-oropt scans more neighborhoods,
+    mdm runs FPMax* over the elite set) -- so equal iterations means unequal
+    compute. This is the "running time as stopping criterion" comparison of
+    the MDM-GILS-RVND paper (arXiv:1908.10705, Section 5.3.3).
+
+    Two protocol rules, both learned the hard way in this project (see
+    docs/experiments/fixed-time-protocol.md):
+
+      1. Runs are SEQUENTIAL. Timing comparisons do not survive CPU
+         contention -- running several solvers at once inflated per-run
+         times 2-5x here, with huge variance.
+      2. The budget must fit SEVERAL restarts, or mdm_gils_rvnd (mining)
+         and gils_am_rvnd (adaptive memory) silently degenerate to plain
+         GILS-RVND. RESTARTS / MINING_CALLS are recorded for every run and
+         reported, so a null result caused by the protocol is visible
+         instead of being mistaken for a null result about the algorithm.
+    """
+    if args.time_limit is None or args.time_limit <= 0:
+        print("Error: --time-limit (seconds, > 0) is required for fixed-time mode")
+        return
+    if not args.solvers or len(args.solvers) < 2:
+        print("Error: --solvers requires at least 2 solvers for fixed-time mode")
+        return
+
+    unsupported = [s for s in args.solvers if not supports_fixed_time(s)]
+    if unsupported:
+        print(f"Error: these solvers do not implement --max-time: {', '.join(unsupported)}")
+        print(f"       fixed-time mode only accepts solvers whose binary is one of: "
+              f"{', '.join(sorted(FIXED_TIME_BINARIES))}")
+        return
+
+    inst_paths = []
+
+    if args.salehipour_sizes:
+        for size in args.salehipour_sizes:
+            for rel in salehipour_instances(size):
+                inst_paths.append((Path(rel).stem, rel))
+
+    inst_names = args.instances
+    if inst_names is None and not inst_paths:
+        inst_names = [i.replace(".tsp", "") for i in INSTANCES]
+    for name in inst_names or []:
+        path = os.path.join(INST_DIR, name if name.endswith(".tsp") else name + ".tsp")
+        inst_paths.append((Path(name).stem, path))
+
+    missing = [p for _, p in inst_paths if not os.path.exists(p)]
+    if missing:
+        print(f"Error: instances not found: {', '.join(missing)}")
+        return
+
+    n_runs = args.runs
+    baseline = args.solvers[0]
+    time_limit = args.time_limit
+
+    checkpoint_path = Path(args.checkpoint) if args.checkpoint else \
+        Path("scripts") / f"fixed_time_{int(time_limit)}s.json"
+
+    results = {}
+    if checkpoint_path.exists():
+        results = json.loads(checkpoint_path.read_text())
+        print(f"Resuming from {checkpoint_path} ({len(results)} runs already done)")
+
+    print(f"\n{'='*104}")
+    print(f"Fixed-time comparison: {time_limit:.0f}s per run, --iils {args.iils}, "
+          f"{n_runs} seeds, sequential")
+    print(f"Solvers: {', '.join(args.solvers)}   (baseline: {baseline})")
+    print(f"Checkpoint: {checkpoint_path}")
+    print(f"{'='*104}\n", flush=True)
+
+    total = len(inst_paths) * len(args.solvers) * n_runs
+    done = 0
+    t_start = time.time()
+
+    for inst_name, inst_path in inst_paths:
+        for solver_name in args.solvers:
+            binary, extra = SOLVERS[solver_name]
+            for seed in range(1, n_runs + 1):
+                key = f"{inst_name}|{solver_name}|{seed}"
+                if key in results:
+                    done += 1
+                    continue
+
+                solver = (binary, extra + ["--max-time", str(time_limit),
+                                           "--iils", str(args.iils),
+                                           "--seed", str(seed)])
+                try:
+                    sol = run_solver(solver, inst_path, verbose=args.vb)
+                except RuntimeError as e:
+                    print(f"  FAILED {key}: {e}", flush=True)
+                    continue
+
+                results[key] = {
+                    "cost": sol["cost"],
+                    "time_ms": sol["time"],
+                    "restarts": sol["restarts"],
+                    "mining_calls": sol["mining_calls"],
+                }
+                checkpoint_path.write_text(json.dumps(results))
+                done += 1
+
+                flag = ""
+                if sol["mining_calls"] == 0:
+                    flag = "  [!] mining never fired"
+                elif sol["restarts"] in (0, 1):
+                    flag = f"  [!] only {sol['restarts']} restart(s)"
+                print(f"[{done}/{total}] {inst_name:14s} {solver_name:32s} seed={seed:<3d}"
+                      f" cost={sol['cost']:.0f} t={sol['time']/1000:6.1f}s"
+                      f" restarts={sol['restarts']}{flag}", flush=True)
+
+    print(f"\nFinished in {(time.time()-t_start)/60:.1f} min\n")
+    _fixed_time_report(results, inst_paths, args, baseline)
+
+
+def _fixed_time_report(results, inst_paths, args, baseline):
+    """Protocol sanity block + paired comparison of each solver vs baseline."""
+    n_runs = args.runs
+
+    print("Protocol sanity (mechanisms that live at restart boundaries):")
+    for solver_name in args.solvers:
+        restarts, mining_zero, seen = [], 0, 0
+        for inst_name, _ in inst_paths:
+            for seed in range(1, n_runs + 1):
+                r = results.get(f"{inst_name}|{solver_name}|{seed}")
+                if not r:
+                    continue
+                seen += 1
+                restarts.append(r["restarts"])
+                if r["mining_calls"] == 0:
+                    mining_zero += 1
+        if not seen:
+            continue
+        line = (f"  {solver_name:32s} restarts avg={statistics.mean(restarts):6.1f} "
+                f"min={min(restarts)}")
+        minings = [results[f"{i}|{solver_name}|{sd}"]["mining_calls"]
+                   for i, _ in inst_paths for sd in range(1, n_runs + 1)
+                   if f"{i}|{solver_name}|{sd}" in results
+                   and results[f"{i}|{solver_name}|{sd}"]["mining_calls"] >= 0]
+        if minings:
+            line += f"  mining_calls avg={statistics.mean(minings):5.1f} min={min(minings)}"
+        if mining_zero:
+            line += (f"  runs with NO mining={mining_zero}/{seen}"
+                     f"  <== not interpretable for those runs")
+        print(line)
+    print()
+
+    w = 104
+    for solver_name in args.solvers:
+        if solver_name == baseline:
+            continue
+        print(f"--- {solver_name} vs {baseline} ---")
+        print(f"{'Instance':14s} {'mean_rel%':>10s} {'w/t/l':>10s} {'sign_p':>8s} "
+              f"{'base_cost':>14s} {'solver_cost':>14s} {'base_t(s)':>10s} {'solver_t(s)':>11s}")
+        print("-" * w)
+
+        agg_w = agg_t = agg_l = 0
+        agg_rel = []
+        for inst_name, _ in inst_paths:
+            rels, wins, ties, losses = [], 0, 0, 0
+            cb_all, cs_all, tb_all, ts_all = [], [], [], []
+            for seed in range(1, n_runs + 1):
+                rb = results.get(f"{inst_name}|{baseline}|{seed}")
+                rs = results.get(f"{inst_name}|{solver_name}|{seed}")
+                if not rb or not rs:
+                    continue
+                cb, cs = rb["cost"], rs["cost"]
+                cb_all.append(cb); cs_all.append(cs)
+                tb_all.append(rb["time_ms"] / 1000.0); ts_all.append(rs["time_ms"] / 1000.0)
+                rels.append((cs - cb) / cb * 100.0)
+                if cs < cb:
+                    wins += 1
+                elif cs > cb:
+                    losses += 1
+                else:
+                    ties += 1
+            if not rels:
+                continue
+            agg_w += wins; agg_t += ties; agg_l += losses
+            agg_rel += rels
+            print(f"{inst_name:14s} {statistics.mean(rels):+10.3f} "
+                  f"{f'{wins}/{ties}/{losses}':>10s} {sign_test_p(wins, losses):8.4f} "
+                  f"{statistics.mean(cb_all):14.1f} {statistics.mean(cs_all):14.1f} "
+                  f"{statistics.mean(tb_all):10.1f} {statistics.mean(ts_all):11.1f}")
+
+        if agg_rel:
+            print("-" * w)
+            print(f"{'AGGREGATE':14s} {statistics.mean(agg_rel):+10.3f} "
+                  f"{f'{agg_w}/{agg_t}/{agg_l}':>10s} {sign_test_p(agg_w, agg_l):8.4f}")
+        print()
+
+
 def main():
     """Main entry point."""
     args = parse_args()
@@ -976,6 +1243,8 @@ def main():
         run_compare_solvers_mode(args, tracker)
     elif args.mode == "salehipour-benchmark":
         run_salehipour_benchmark_mode(args)
+    elif args.mode == "fixed-time":
+        run_fixed_time_mode(args)
 
 
 if __name__ == "__main__":

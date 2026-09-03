@@ -175,7 +175,7 @@ void gils_rvnd(Solution& bestSol, Evaluator& eval,
     vector<EliteEntry> elite;
 
     /* Wall-clock stopping criterion for equal-time comparisons (see
-       scripts/fixed_time_compare.py). Checked between ILS iterations and
+       run_experiments.py --mode fixed-time). Checked between ILS iterations and
        between restarts, never inside an RVND convergence, so the budget
        can be overshot by at most one convergence. */
     using SteadyClock = chrono::steady_clock;

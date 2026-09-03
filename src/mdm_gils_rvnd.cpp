@@ -213,7 +213,7 @@ void mdm_gils_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
     int phase1Iters = max(1, I_max / 2);
 
     /* Wall-clock stopping criterion for equal-time comparisons (see
-       scripts/fixed_time_compare.py). Checked between ILS iterations and
+       run_experiments.py --mode fixed-time). Checked between ILS iterations and
        between restarts, never inside an RVND convergence.
 
        IMPORTANT: under a time limit the phase split must be measured in
