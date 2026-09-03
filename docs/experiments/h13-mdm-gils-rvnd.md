@@ -1,6 +1,7 @@
 # H13 — MDM-GILS-RVND (mineração de segmentos consecutivos)
 
-Status: **ENCERRADA — nula, com a mineração real (FPMax*/`mlxtend`)
+Status: **ENCERRADA — nula, com a mineração real (FPMax*, hoje via a lib C++
+`external/fpmax` — ver seção 2.2 —, antes via `mlxtend`)
 corretamente implementada e testada com poder estatístico completo em
 `lin318`/`pr439`/`att532` (N=20/15/10). Resultado: nulo, levemente
 inclinado pra pior (agregado -0,02%, 12W/12T/21L, p=0,163). Custo de
@@ -64,6 +65,59 @@ dependências em cache) é desprezível frente ao tempo total de execução
 têm magnitude parecida à do proxy anterior (6-22 nós em `lin318`) — bom
 sinal de que o proxy não estava catastroficamente errado na prática,
 mas agora o mecanismo é fiel ao paper.
+
+## 2.2 Mineração em C++ (FPmax-LIB) — substitui o subprocesso Python
+
+A mineração agora roda **em memória**, via a
+[FPmax-LIB](https://github.com/marcelorhmaia/FPmax-LIB) (MIT), que empacota
+a implementação original do FPmax* de Grahne & Zhu (a mesma do
+[FIMI](http://fimi.uantwerpen.be/src) que o paper usa) como biblioteca
+chamável. Fontes vendorizados sem modificação em `external/fpmax/`,
+compilados pelo nosso `Makefile` com `-DMFI`; o acesso passa por
+`src/fpmax_mining.cpp` / `include/fpmax_mining.h` (shim necessário porque
+`fp_tree.h` declara uma `class stack` global *e* faz `using namespace std`,
+o que torna o nome ambíguo em qualquer arquivo que já tenha incluído
+`<stack>`).
+
+Convenções copiadas da integração de referência do mesmo autor,
+[MDM-HGS-CVRP](https://github.com/marcelorhmaia/MDM-HGS-CVRP)
+(`Program/Population.cpp::mineElite`): arco `(u,v)` é o item `u*n + v`;
+`minsup` é **absoluto**, `max(2, supMin × |elite|)`; o número de padrões é o
+`nlargest` da própria lib; e as Consecutive Arc Lists são remontadas
+**encadeando os arcos do itemset entre si** (em vez de varrer uma rota de
+elite procurando corridas de arcos, como a versão anterior fazia).
+
+**Equivalência verificada** com o exemplo de ground truth do próprio paper
+(Seção 4.1: `D={{1,2,3,4,5},{1,2,3,5},{2,3,4,5},{1,2,5},{2,3,4}}`,
+`supmin=80%`): a lib C++ retorna exatamente `{2,3}` e `{2,5}`, idêntico ao
+`mlxtend` e ao que o paper afirma.
+
+**Ganho de velocidade** (mesma seed, mesmos custos de solução):
+
+| instância | antes (subprocesso Python) | agora (C++ em memória) |
+|---|---:|---:|
+| Salehipour n=10 | ~2,1s | **4,3ms** |
+| Salehipour n=50 | ~2,9s | **0,36s** |
+| `eil51` | ~1,9s | **0,49s** |
+| `lin105` | ~3,1s | 2,41s |
+| `att532`, orçamento de 15s | **69,6s** (estourou 4,6x) | **15,0s** (respeita) |
+
+O último caso era o problema prático: o subprocesso não era interrompível,
+então o `mdm` estourava o orçamento no protocolo de tempo fixo (ver
+[[fixed-time-protocol]]). Em `n=1000` a mineração roda com ~244MB de pico
+(os ids de item chegam a ~10⁶ com o mapeamento `u*n+v`, e a lib aloca
+arrays proporcionais ao maior id).
+
+`scripts/fpmax_mine.py` deixou de ser chamado em runtime — fica no repo só
+como registro da versão anterior e para reproduzir a checagem de
+equivalência.
+
+**Ressalva para os resultados já publicados**: todos os lotes de H13 e das
+comparações Salehipour (`n≤500`, `n=1000`) foram gerados com a versão
+Python. Os padrões minerados são equivalentes, mas a remontagem das
+Consecutive Arc Lists mudou (encadeamento do itemset vs. varredura de rota
+de elite), então os números antigos não são bit-a-bit reprodutíveis com o
+código atual.
 
 ## 3. Implementação
 

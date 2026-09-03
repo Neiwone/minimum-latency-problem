@@ -5,6 +5,7 @@
 #include "evaluator.h"
 #include "construction.h"
 #include "rvnd.h"
+#include "fpmax_mining.h"
 
 using namespace std;
 
@@ -22,21 +23,20 @@ using namespace std;
    32.78% faster and 19/20 best-solution wins at n=1000).
 
    Mining uses the REAL FPMax* algorithm (not a hand-rolled proxy): each
-   elite tour is a "transaction" of arcs, and scripts/fpmax_mine.py
-   (mlxtend.frequent_patterns.fpmax) computes genuine maximal frequent
-   itemsets, invoked via a subprocess since mining only happens a handful
-   of times per run (whenever the elite set changes during phase 2) --
-   negligible overhead against total runtime. A first version of this
+   elite tour is a "transaction" of arcs, mined in memory by the vendored
+   FPmax-LIB (external/fpmax/ -- Grahne & Zhu's FIMI implementation
+   wrapped as a callable library). An earlier version called
+   scripts/fpmax_mine.py (mlxtend) through a subprocess instead; see
+   mine_patterns() for why that was replaced. A first version of this
    file used a hand-rolled proxy (individually-frequent arcs chained into
    runs) instead; that is NOT equivalent to true itemset mining, because
    itemset support is monotonically non-increasing with itemset size
    (Apriori/downward-closure) -- a chain of individually-frequent arcs is
    not guaranteed to be JOINTLY frequent as a set, which the proxy
-   silently assumed. Consecutive Arc Lists are reconstructed from each
-   mined maximal itemset by finding, within each elite tour, the maximal
-   runs of consecutive arcs that are all members of that itemset.
-   Candidate segments are deduplicated by node sequence and capped at
-   maxPatterns (longest first).
+   silently assumed. Consecutive Arc Lists are reconstructed by chaining
+   the arcs of each mined maximal itemset among themselves (see
+   mine_patterns()). Candidate segments are deduplicated by node sequence
+   and capped at maxPatterns (longest first).
 
    Two-phase adaptive mining (the "M" in MDM, vs. single-shot DM):
    first half of I_max restarts run plain GILS-RVND (build the elite
@@ -97,82 +97,36 @@ struct Segment {
     vector<int> nodes; // consecutive customers, length >= 2
 };
 
-static string arc_token(int u, int v) {
-    return to_string(u) + "_" + to_string(v);
-}
+/* Real FPMax* in memory, via the vendored FPmax-LIB (external/fpmax/,
+   MIT -- Grahne & Zhu's original FIMI implementation wrapped as a
+   callable library by Marcelo Maia), behind the fpmax_mine_arc_paths()
+   shim (see include/fpmax_mining.h for why the shim exists).
 
-/* Real FPMax* (mlxtend, via scripts/fpmax_mine.py subprocess): writes
-   the elite pool as arc-transactions, runs genuine maximal frequent
-   itemset mining, reads back the mined itemsets, then reconstructs
-   Consecutive Arc Lists by finding, within each elite tour, the maximal
-   runs of consecutive arcs that are all members of a given mined
-   itemset. See file header for why this replaced the earlier
-   individually-frequent-arc-chain proxy. */
+   This replaced an earlier version that shelled out to `uv run --with
+   mlxtend python3 scripts/fpmax_mine.py` on every mining call: correct,
+   but the subprocess was unbounded and not interruptible, which (a)
+   dominated runtime on small instances (+467% at n=50, and orders of
+   magnitude at n=10/20) and (b) blew fixed-time budgets wide open (a 15s
+   budget run on att532 took 69.6s of wall clock -- see
+   docs/experiments/fixed-time-protocol.md section 4).
+
+   Conventions follow the reference integration by the same author,
+   MDM-HGS-CVRP (Program/Population.cpp::mineElite): arc (u,v) is the
+   item u*n + v, minsup is absolute as max(2, supMin * |elite|), and the
+   number of patterns is the library's own `nlargest`. */
 vector<Segment> mine_patterns(const EliteSet& elite, double supMin, int maxPatterns) {
-    int d = (int)elite.sols.size();
-    if (d == 0) return {};
+    if (elite.sols.empty()) return {};
 
-    string tag = to_string(getpid());
-    string inPath = "/tmp/mdm_mine_" + tag + "_in.txt";
-    string outPath = "/tmp/mdm_mine_" + tag + "_out.txt";
+    int n = elite.sols.front().fN;
 
-    {
-        ofstream out(inPath);
-        for (const auto& s : elite.sols) {
-            for (int i = 0; i + 1 < s.fN; i++) {
-                if (i > 0) out << ' ';
-                out << arc_token(s.fTour[i], s.fTour[i + 1]);
-            }
-            out << '\n';
-        }
-    }
+    vector<vector<int>> tours;
+    tours.reserve(elite.sols.size());
+    for (const auto& s : elite.sols)
+        tours.emplace_back(s.fTour, s.fTour + s.fN);
 
-    string cmd = "uv run --with mlxtend --with pandas python3 scripts/fpmax_mine.py "
-                 + inPath + " " + to_string(supMin) + " " + outPath + " >/dev/null 2>&1";
-    int rc = system(cmd.c_str());
-    (void)rc; // best-effort: an empty/missing output file below is treated as "no patterns"
-
-    vector<vector<string>> minedItemsets;
-    {
-        ifstream in(outPath);
-        string line;
-        while (getline(in, line)) {
-            vector<string> tokens;
-            stringstream ss(line);
-            string tok;
-            while (ss >> tok) tokens.push_back(tok);
-            if (!tokens.empty()) minedItemsets.push_back(tokens);
-        }
-    }
-    remove(inPath.c_str());
-    remove(outPath.c_str());
-
-    set<vector<int>> seen;
     vector<Segment> candidates;
-
-    for (const auto& itemset : minedItemsets) {
-        unordered_set<string> arcSet(itemset.begin(), itemset.end());
-
-        for (const auto& s : elite.sols) {
-            int n = s.fN;
-            int i = 0;
-            while (i < n - 1) {
-                if (!arcSet.count(arc_token(s.fTour[i], s.fTour[i + 1]))) { i++; continue; }
-                int j = i;
-                while (j + 1 < n - 1 && arcSet.count(arc_token(s.fTour[j + 1], s.fTour[j + 2]))) j++;
-                vector<int> nodes(s.fTour + i, s.fTour + j + 2);
-                if (seen.insert(nodes).second)
-                    candidates.push_back({nodes});
-                i = j + 1;
-            }
-        }
-    }
-
-    sort(candidates.begin(), candidates.end(), [](const Segment& a, const Segment& b) {
-        return a.nodes.size() > b.nodes.size();
-    });
-    if ((int)candidates.size() > maxPatterns)
-        candidates.resize(maxPatterns);
+    for (auto& path : fpmax_mine_arc_paths(tours, n, supMin, maxPatterns))
+        candidates.push_back({std::move(path)});
 
     return candidates;
 }
@@ -239,20 +193,58 @@ void construction_mdm(Solution& sol, Evaluator& eval, double alpha,
     sol.calculateStructures();
 }
 
+/* Number of times the mining phase actually ran, and how many restarts
+   were built from mined patterns. Reported by main() so that "did the
+   mined-pattern mechanism actually fire?" is verifiable from the output
+   instead of assumed -- the --imax 1 bug (see
+   docs/experiments/salehipour-n1000-mdm-vs-am-extended.md section 2) went
+   unnoticed precisely because nothing in the output revealed it. */
+long g_miningCalls = 0;
+long g_patternRestarts = 0;
+long g_restarts = 0;
+
 void mdm_gils_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
                     const vector<double>& R, int poolSize, double supMin,
-                    int maxPatterns, mt19937& gen) {
+                    int maxPatterns, mt19937& gen, double maxTimeSec) {
     int fStar = INT_MAX;
     EliteSet elite(poolSize);
     unordered_map<int, Segment> segStarts; // empty until phase 2 mines something
 
     int phase1Iters = max(1, I_max / 2);
 
-    for (int i = 0; i < I_max; i++) {
-        bool usePatterns = (i >= phase1Iters) && !segStarts.empty();
+    /* Wall-clock stopping criterion for equal-time comparisons (see
+       scripts/fixed_time_compare.py). Checked between ILS iterations and
+       between restarts, never inside an RVND convergence.
 
-        if (i >= phase1Iters && elite.dirty) {
+       IMPORTANT: under a time limit the phase split must be measured in
+       TIME, not in restarts. The iteration-based rule (first I_max/2
+       restarts build the elite set, the rest mine it) silently disables
+       mining whenever the run ends before restart I_max/2 -- exactly the
+       bug that invalidated the first n=1000 batch with --imax 1 (see
+       docs/experiments/salehipour-n1000-mdm-vs-am-extended.md section 2).
+       With --max-time the algorithm therefore switches to the mining
+       phase at half the time budget, which is the faithful translation
+       of "half the iterations" to a time-based criterion. */
+    using SteadyClock = chrono::steady_clock;
+    const auto tStart = SteadyClock::now();
+    const bool timed = maxTimeSec > 0.0;
+    auto elapsedSec = [&]() {
+        return chrono::duration<double>(SteadyClock::now() - tStart).count();
+    };
+    auto outOfTime = [&]() { return timed && elapsedSec() >= maxTimeSec; };
+    auto inMiningPhase = [&](int i) {
+        return timed ? (elapsedSec() >= 0.5 * maxTimeSec) : (i >= phase1Iters);
+    };
+
+    for (int i = 0; i < I_max; i++) {
+        if (outOfTime()) break;
+
+        g_restarts++;
+        bool usePatterns = inMiningPhase(i) && !segStarts.empty();
+
+        if (inMiningPhase(i) && elite.dirty) {
             vector<Segment> segs = mine_patterns(elite, supMin, maxPatterns);
+            g_miningCalls++;
             segStarts.clear();
             for (auto& seg : segs) segStarts[seg.nodes.front()] = seg;
             elite.dirty = false;
@@ -263,7 +255,7 @@ void mdm_gils_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
         double alpha = R[rDist(gen)];
 
         Solution s;
-        if (usePatterns) construction_mdm(s, eval, alpha, segStarts, gen);
+        if (usePatterns) { construction_mdm(s, eval, alpha, segStarts, gen); g_patternRestarts++; }
         else construction(s, eval, alpha, gen);
 
         Solution sPrime(s);
@@ -272,10 +264,22 @@ void mdm_gils_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
         while (iterILS < I_ILS) {
             RVND(s, gen);
 
+            /* Algorithm 4 of the paper calls UpdateEliteSet(D, d, s) here,
+               INSIDE the ILS loop (lines 8 and 31), on every RVND result --
+               not once per restart. An earlier version of this file only
+               added sPrime after the ILS loop finished, which (a) deviated
+               from the paper and (b) made mining unreachable whenever the
+               run ended before completing two restarts -- visible with
+               --max-time budgets shorter than ~2 restarts, where
+               MINING_CALLS stayed 0. */
+            elite.add(s);
+
             if (s.fEvaluationValue < sPrime.fEvaluationValue) {
                 sPrime = s;
                 iterILS = 0;
             }
+
+            if (outOfTime()) break;
 
             s = sPrime;
             perturb(s, gen);
@@ -295,7 +299,7 @@ int main(int argc, char** argv) {
     if (argc < 2) {
         cerr << "Usage:\n";
         cerr << "  ./mdm_gils_rvnd <instance.tsp> [--imax 10] [--iils 100] [--pool 10]\n";
-        cerr << "    [--sup-min 0.70] [--max-patterns 5] [--seed N]\n";
+        cerr << "    [--sup-min 0.70] [--max-patterns 5] [--max-time SECONDS] [--seed N]\n";
         return 1;
     }
 
@@ -305,17 +309,26 @@ int main(int argc, char** argv) {
     int poolSize = 10;
     double supMin = 0.70;
     int maxPatterns = 5;
+    double maxTimeSec = -1.0;   /* <=0 disables the time limit */
+    bool imaxExplicit = false;
     long seed = -1;
 
     for (int i = 2; i < argc; i++) {
         string a = argv[i];
-        if (a == "--imax" && i + 1 < argc) I_max = stoi(argv[++i]);
+        if (a == "--imax" && i + 1 < argc) { I_max = stoi(argv[++i]); imaxExplicit = true; }
         else if (a == "--iils" && i + 1 < argc) I_ILS = stoi(argv[++i]);
         else if (a == "--pool" && i + 1 < argc) poolSize = stoi(argv[++i]);
         else if (a == "--sup-min" && i + 1 < argc) supMin = stod(argv[++i]);
         else if (a == "--max-patterns" && i + 1 < argc) maxPatterns = stoi(argv[++i]);
+        else if (a == "--max-time" && i + 1 < argc) maxTimeSec = stod(argv[++i]);
         else if (a == "--seed" && i + 1 < argc) seed = stol(argv[++i]);
     }
+
+    /* Under a time limit, time is meant to be the binding constraint, so
+       the restart count stops being one unless the caller pinned it. The
+       phase split then follows the clock, not the restart index -- see
+       mdm_gils_rvnd(). */
+    if (maxTimeSec > 0.0 && !imaxExplicit) I_max = 1000000000;
 
     if (poolSize < 1) poolSize = 1;
 
@@ -335,7 +348,7 @@ int main(int argc, char** argv) {
     using Clock = chrono::high_resolution_clock;
     auto t0 = Clock::now();
 
-    mdm_gils_rvnd(bestSol, eval, I_max, I_ILS, R, poolSize, supMin, maxPatterns, gen);
+    mdm_gils_rvnd(bestSol, eval, I_max, I_ILS, R, poolSize, supMin, maxPatterns, gen, maxTimeSec);
 
     auto t1 = Clock::now();
     double runtime_ms = chrono::duration<double, milli>(t1 - t0).count();
@@ -348,6 +361,11 @@ int main(int argc, char** argv) {
     cout << "POOL " << poolSize << "\n";
     cout << "SUP_MIN " << fixed << setprecision(2) << supMin << "\n";
     cout << "MAX_PATTERNS " << maxPatterns << "\n";
+    cout << "RESTARTS " << g_restarts << "\n";
+    cout << "MINING_CALLS " << g_miningCalls << "\n";
+    cout << "PATTERN_RESTARTS " << g_patternRestarts << "\n";
+    if (maxTimeSec > 0.0)
+        cout << "MAX_TIME_S " << fixed << setprecision(3) << maxTimeSec << "\n";
     cout << "TIME_MS " << fixed << setprecision(3) << runtime_ms << "\n";
     cout << "ROUTE ";
     for (int i = 0; i < bestSol.fN; i++)

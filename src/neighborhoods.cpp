@@ -186,6 +186,15 @@ static void neighborhood_oropt_generic(Solution& sol, int segLen) {
     }
 }
 
+/* Public entry point for an arbitrary segment length -- used by the
+   adaptive RVND (src/rvnd_adaptive.cpp), which decides at runtime which
+   lengths to scan instead of having them hard-wired in the neighborhood
+   list. Identical behavior to the fixed-length wrappers below. */
+void neighborhood_oropt_len(Solution& sol, int segLen) {
+    if (segLen < 2) return;
+    neighborhood_oropt_generic(sol, segLen);
+}
+
 void neighborhood_oropt4(Solution& sol) { neighborhood_oropt_generic(sol, 4); }
 void neighborhood_oropt5(Solution& sol) { neighborhood_oropt_generic(sol, 5); }
 void neighborhood_oropt6(Solution& sol) { neighborhood_oropt_generic(sol, 6); }

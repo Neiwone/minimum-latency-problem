@@ -3,18 +3,9 @@
 #include "evaluator.h"
 #include "rvnd.h"
 #include "rvnd_lk.h"
+#include "rvnd_adaptive.h"
 
 using namespace std;
-
-/* GILS-AM-RVND: same ILS loop as gils_rvnd (construction + RVND + fixed
-   double-bridge, I_max/I_ILS), but the construction is Construction_AM
-   (edge-frequency-biased greedy randomized construction, see
-   algorithms/grasp_am.md and src/grasp_am.cpp) instead of plain greedy
-   randomized construction. Built to test whether elite-biased construction
-   helps once given the same refinement depth as the GILS-RVND baseline --
-   see docs/experiments/grasp-am-large-scale.md for why that comparison
-   was missing before (grasp_am has no ILS loop, just one RVND pass per
-   restart). */
 
 void double_bridge_once(Solution& sol, mt19937& gen) {
     int n = sol.fN;
@@ -50,21 +41,17 @@ void perturb(Solution& sol, mt19937& gen) {
     sol.calculateStructures();
 }
 
-/* H12a follow-up: GILS-AM-RVND already ties gils_rvnd's quality while
-   being 20-26% faster (grasp-am-large-scale.md) -- unlike grasp_am (no
-   ILS loop), it has the same double-bridge+RVND depth as the baseline, so
-   it doesn't share the mechanism that made extended-oropt wash out to
-   noise there (h12-extended-oropt.md section 11). Testing whether
-   extended-oropt's real quality gain (H12a) survives on top of the
-   memory-biased construction + speed advantage this binary already has --
-   i.e. whether the two independent wins (speed here, quality there)
-   compose into something both faster and better than plain gils_rvnd. */
-enum class RvndMode { Single, ExtendedOrOpt, ExtendedOrOptWide, LKEscape };
+enum class RvndMode { Single, ExtendedOrOpt, ExtendedOrOptWide, LKEscape, AdaptiveOrOpt };
 
-void run_rvnd(RvndMode mode, Solution& sol, Evaluator& eval, mt19937& gen) {
+/* `adaptState` carries the adaptive-or-opt learning across every RVND
+   call of the run (it must NOT be re-created per call -- see
+   include/rvnd_adaptive.h); it is ignored by the other modes. */
+void run_rvnd(RvndMode mode, Solution& sol, Evaluator& eval, mt19937& gen,
+              AdaptiveOrOptState& adaptState) {
     if (mode == RvndMode::ExtendedOrOpt) RVND_ExtendedOrOpt(sol, gen);
     else if (mode == RvndMode::ExtendedOrOptWide) RVND_ExtendedOrOptWide(sol, gen);
     else if (mode == RvndMode::LKEscape) RVND_LKEscape(sol, eval, gen);
+    else if (mode == RvndMode::AdaptiveOrOpt) RVND_AdaptiveOrOpt(sol, gen, adaptState);
     else RVND(sol, gen);
 }
 
@@ -89,10 +76,6 @@ struct EliteSet {
         if ((int)sols.size() > maxSize) sols.pop_back();
     }
 };
-
-/* Sparse edge "vote" counts, normalized by however many solutions
-   contributed them -- the whole elite pool (ParentMode::Pool) or exactly
-   two chosen parents (ParentMode::Pair). Same scheme as src/grasp_am.cpp. */
 struct EdgeFreq {
     unordered_map<long long, int> counts;
     int normalizer = 0;
@@ -205,13 +188,35 @@ void construction_am(Solution& sol, Evaluator& eval, double alpha, const EdgeFre
     sol.calculateStructures();
 }
 
+/* Completed restarts, reported so a fixed-time protocol can verify that
+   the adaptive-memory construction (which only has content once at least
+   one restart has fed the elite pool) was exercised at all. */
+long g_restarts = 0;
+
 void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
                    const vector<double>& R, int poolSize, double lambda,
-                   ParentMode parentMode, RvndMode rvndMode, mt19937& gen) {
+                   ParentMode parentMode, RvndMode rvndMode, mt19937& gen,
+                   AdaptiveOrOptState& adaptState, double maxTimeSec) {
     int fStar = INT_MAX;
     EliteSet memory(poolSize);
 
+    /* Wall-clock stopping criterion (for equal-time comparisons between
+       algorithms -- see scripts/fixed_time_compare.py). Checked between
+       ILS iterations and between restarts, i.e. never in the middle of an
+       RVND convergence, so the budget can be overshot by at most one
+       convergence. */
+    using SteadyClock = chrono::steady_clock;
+    const auto tStart = SteadyClock::now();
+    const bool timed = maxTimeSec > 0.0;
+    auto outOfTime = [&]() {
+        if (!timed) return false;
+        return chrono::duration<double>(SteadyClock::now() - tStart).count() >= maxTimeSec;
+    };
+
     for (int i = 0; i < I_max; i++) {
+        if (outOfTime()) break;
+        g_restarts++;
+
         EdgeFreq freq = (parentMode == ParentMode::Pair)
             ? two_parent_frequency(memory, gen)
             : pool_frequency(memory);
@@ -226,12 +231,14 @@ void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
 
         int iterILS = 0;
         while (iterILS < I_ILS) {
-            run_rvnd(rvndMode, s, eval, gen);
+            run_rvnd(rvndMode, s, eval, gen, adaptState);
 
             if (s.fEvaluationValue < sPrime.fEvaluationValue) {
                 sPrime = s;
                 iterILS = 0;
             }
+
+            if (outOfTime()) break;
 
             s = sPrime;
             perturb(s, gen);
@@ -252,7 +259,10 @@ int main(int argc, char** argv) {
         cerr << "Usage:\n";
         cerr << "  ./gils_am_rvnd <instance.tsp> [--imax 10] [--iils 100] [--pool 20]\n";
         cerr << "    [--lambda 0.50] [--parent-mode pool|pair]\n";
-        cerr << "    [--rvnd-mode single|extended-oropt|extended-oropt-wide|lk-escape] [--seed N]\n";
+        cerr << "    [--rvnd-mode single|extended-oropt|extended-oropt-wide|lk-escape|adaptive-oropt]\n";
+        cerr << "    [--max-time SECONDS] [--seed N] [-v]\n";
+        cerr << "    adaptive-oropt: [--adapt-kstart 6] [--adapt-period 400] [--adapt-rho 0.30]\n";
+        cerr << "                    [--adapt-grow 0.10] [--adapt-shrink 0.02]\n";
         return 1;
     }
 
@@ -264,11 +274,20 @@ int main(int argc, char** argv) {
     ParentMode parentMode = ParentMode::Pool;
     RvndMode rvndMode = RvndMode::Single;
     long seed = -1;
+    bool verbose = false;
+    double maxTimeSec = -1.0;   /* <=0 disables the time limit */
+    bool imaxExplicit = false;
+    int    adaptKStart = 6;
+    int    adaptPeriod = 400;
+    double adaptRho    = 0.30;
+    double adaptGrow   = 0.10;
+    double adaptShrink = 0.02;
 
     for (int i = 2; i < argc; i++) {
         string a = argv[i];
         if (a == "--imax" && i + 1 < argc) {
             I_max = stoi(argv[++i]);
+            imaxExplicit = true;
         } else if (a == "--iils" && i + 1 < argc) {
             I_ILS = stoi(argv[++i]);
         } else if (a == "--pool" && i + 1 < argc) {
@@ -286,11 +305,30 @@ int main(int argc, char** argv) {
             else if (m == "extended-oropt") rvndMode = RvndMode::ExtendedOrOpt;
             else if (m == "extended-oropt-wide") rvndMode = RvndMode::ExtendedOrOptWide;
             else if (m == "lk-escape") rvndMode = RvndMode::LKEscape;
+            else if (m == "adaptive-oropt") rvndMode = RvndMode::AdaptiveOrOpt;
             else { cerr << "Unknown --rvnd-mode: " << m << "\n"; return 1; }
         } else if (a == "--seed" && i + 1 < argc) {
             seed = stol(argv[++i]);
+        } else if (a == "--adapt-kstart" && i + 1 < argc) {
+            adaptKStart = stoi(argv[++i]);
+        } else if (a == "--adapt-period" && i + 1 < argc) {
+            adaptPeriod = stoi(argv[++i]);
+        } else if (a == "--adapt-rho" && i + 1 < argc) {
+            adaptRho = stod(argv[++i]);
+        } else if (a == "--adapt-grow" && i + 1 < argc) {
+            adaptGrow = stod(argv[++i]);
+        } else if (a == "--adapt-shrink" && i + 1 < argc) {
+            adaptShrink = stod(argv[++i]);
+        } else if (a == "--max-time" && i + 1 < argc) {
+            maxTimeSec = stod(argv[++i]);
+        } else if (a == "-v") {
+            verbose = true;
         }
     }
+
+    /* Under a time limit, time is meant to be the binding constraint, so
+       the restart count stops being one unless the caller pinned it. */
+    if (maxTimeSec > 0.0 && !imaxExplicit) I_max = 1000000000;
 
     if (poolSize < 1) poolSize = 1;
 
@@ -311,7 +349,23 @@ int main(int argc, char** argv) {
     using Clock = chrono::high_resolution_clock;
     auto t0 = Clock::now();
 
-    gils_am_rvnd(bestSol, eval, I_max, I_ILS, R, poolSize, lambda, parentMode, rvndMode, gen);
+    /* One state for the whole run: the adaptive-or-opt policy needs to
+       pool statistics across every RVND convergence to learn anything.
+       The knobs are CLI-exposed so they can be tuned (see irace/). */
+    AdaptiveOrOptState adaptState;
+    adaptState.kMax = max(AdaptiveOrOptState::K_FLOOR,
+                          min(adaptKStart, (int)AdaptiveOrOptState::K_CAP));
+    adaptState.kMaxMinSeen = adaptState.kMax;
+    adaptState.kMaxMaxSeen = adaptState.kMax;
+    for (int L = 2; L <= AdaptiveOrOptState::K_CAP; L++)
+        adaptState.weight[L] = (L <= adaptState.kMax) ? 1.0 : 0.0;
+    adaptState.period        = adaptPeriod;
+    adaptState.rho           = adaptRho;
+    adaptState.growHitRate   = adaptGrow;
+    adaptState.shrinkHitRate = adaptShrink;
+
+    gils_am_rvnd(bestSol, eval, I_max, I_ILS, R, poolSize, lambda, parentMode, rvndMode, gen,
+                 adaptState, maxTimeSec);
 
     auto t1 = Clock::now();
     double runtime_ms = chrono::duration<double, milli>(t1 - t0).count();
@@ -321,12 +375,21 @@ int main(int argc, char** argv) {
     cout << "COST " << bestSol.fEvaluationValue << "\n";
     cout << "IMAX " << I_max << "\n";
     cout << "IILS " << I_ILS << "\n";
+    cout << "RESTARTS " << g_restarts << "\n";
+    if (maxTimeSec > 0.0)
+        cout << "MAX_TIME_S " << fixed << setprecision(3) << maxTimeSec << "\n";
     cout << "POOL " << poolSize << "\n";
     cout << "LAMBDA " << fixed << setprecision(2) << lambda << "\n";
     cout << "PARENT_MODE " << (parentMode == ParentMode::Pool ? "pool" : "pair") << "\n";
     cout << "RVND_MODE " << (rvndMode == RvndMode::ExtendedOrOpt ? "extended-oropt"
                               : rvndMode == RvndMode::ExtendedOrOptWide ? "extended-oropt-wide"
-                              : rvndMode == RvndMode::LKEscape ? "lk-escape" : "single") << "\n";
+                              : rvndMode == RvndMode::LKEscape ? "lk-escape"
+                              : rvndMode == RvndMode::AdaptiveOrOpt ? "adaptive-oropt" : "single") << "\n";
+    if (rvndMode == RvndMode::AdaptiveOrOpt) {
+        cout << "ADAPT_KMAX_FINAL " << adaptState.kMax << "\n";
+        cout << "ADAPT_KMAX_RANGE " << adaptState.kMaxMinSeen << "-" << adaptState.kMaxMaxSeen << "\n";
+        if (verbose) cerr << adaptState.summary();
+    }
     cout << "TIME_MS " << fixed << setprecision(3) << runtime_ms << "\n";
     cout << "ROUTE ";
     for (int i = 0; i < bestSol.fN; i++)

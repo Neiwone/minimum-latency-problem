@@ -22,6 +22,11 @@ void neighborhood_oropt6(Solution& sol);
 void neighborhood_oropt8(Solution& sol);
 void neighborhood_oropt10(Solution& sol);
 
+/* Same or-opt scan with the segment length chosen at runtime (>=2) --
+   used by the adaptive RVND, which picks which lengths to scan from
+   learned weights instead of a hard-wired list. See rvnd_adaptive.h. */
+void neighborhood_oropt_len(Solution& sol, int segLen);
+
 /* H12b: genuine 3-opt (reverse two disjoint segments independently,
    keeping their order -- see Solution::evaluateThreeOptDoubleReversal). */
 void neighborhood_3opt_double_reversal(Solution& sol);

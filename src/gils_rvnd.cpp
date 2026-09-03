@@ -3,6 +3,7 @@
 #include "evaluator.h"
 #include "construction.h"
 #include "rvnd.h"
+#include "rvnd_adaptive.h"
 
 using namespace std;
 
@@ -140,13 +141,16 @@ Solution path_relink(const Solution& start, const vector<int>& guideTour) {
    untouched first-improvement RVND; Multi batches non-conflicting
    improving moves per scan (see neighborhoods.cpp / rvnd.cpp). Both are
    available side by side; Single remains the default. */
-enum class RvndMode { Single, Multi, ExtendedOrOpt, ExtendedOrOptWide, ExtendedOrOpt3Opt };
+enum class RvndMode { Single, Multi, ExtendedOrOpt, ExtendedOrOptWide, ExtendedOrOpt3Opt, AdaptiveOrOpt };
 
-void run_rvnd(RvndMode mode, Solution& sol, mt19937& gen) {
+/* `adaptState` carries the adaptive-or-opt learning across every RVND
+   call of the run (see include/rvnd_adaptive.h); ignored by other modes. */
+void run_rvnd(RvndMode mode, Solution& sol, mt19937& gen, AdaptiveOrOptState& adaptState) {
     if (mode == RvndMode::Multi) RVND_Multi(sol, gen);
     else if (mode == RvndMode::ExtendedOrOpt) RVND_ExtendedOrOpt(sol, gen);
     else if (mode == RvndMode::ExtendedOrOptWide) RVND_ExtendedOrOptWide(sol, gen);
     else if (mode == RvndMode::ExtendedOrOpt3Opt) RVND_ExtendedOrOpt3Opt(sol, gen);
+    else if (mode == RvndMode::AdaptiveOrOpt) RVND_AdaptiveOrOpt(sol, gen, adaptState);
     else RVND(sol, gen);
 }
 
@@ -156,16 +160,36 @@ void run_rvnd(RvndMode mode, Solution& sol, mt19937& gen) {
    docs/experiments/h6-lookahead-construction.md. */
 enum class ConstructionMode { Greedy, Lookahead };
 
+/* Completed restarts, reported so a fixed-time protocol can verify
+   that mechanisms living at restart boundaries were exercised at all. */
+long g_restarts = 0;
+
 void gils_rvnd(Solution& bestSol, Evaluator& eval,
                int I_max, int I_ILS, const vector<double>& R, bool verbose,
                PertMode pertMode, int stagnationStep, int maxStrength,
                double targetMinFrac, double targetMaxFrac,
                bool pathRelinking, int eliteSize, RvndMode rvndMode,
-               ConstructionMode constructionMode, int lookaheadK, mt19937& gen) {
+               ConstructionMode constructionMode, int lookaheadK, mt19937& gen,
+               AdaptiveOrOptState& adaptState, double maxTimeSec) {
     int fStar = INT_MAX;
     vector<EliteEntry> elite;
 
+    /* Wall-clock stopping criterion for equal-time comparisons (see
+       scripts/fixed_time_compare.py). Checked between ILS iterations and
+       between restarts, never inside an RVND convergence, so the budget
+       can be overshot by at most one convergence. */
+    using SteadyClock = chrono::steady_clock;
+    const auto tStart = SteadyClock::now();
+    const bool timed = maxTimeSec > 0.0;
+    auto outOfTime = [&]() {
+        if (!timed) return false;
+        return chrono::duration<double>(SteadyClock::now() - tStart).count() >= maxTimeSec;
+    };
+
     for (int i = 0; i < I_max; i++) {
+        if (outOfTime()) break;
+        g_restarts++;
+
         uniform_int_distribution<int> rDist(0, (int)R.size() - 1);
         double alpha = R[rDist(gen)];
 
@@ -190,7 +214,7 @@ void gils_rvnd(Solution& bestSol, Evaluator& eval,
         vector<int> referenceTour(sPrime.fTour, sPrime.fTour + n);
 
         while (iterILS < I_ILS) {
-            run_rvnd(rvndMode, s, gen);
+            run_rvnd(rvndMode, s, gen, adaptState);
 
             if (pertMode == PertMode::Distance) {
                 int d = edge_distance(s.fTour, referenceTour.data(), n);
@@ -203,6 +227,8 @@ void gils_rvnd(Solution& bestSol, Evaluator& eval,
                 iterILS = 0;
                 if (verbose) print_trace(i, step, sPrime);
             }
+
+            if (outOfTime()) break;
 
             s = sPrime;
             referenceTour.assign(sPrime.fTour, sPrime.fTour + n);
@@ -224,7 +250,7 @@ void gils_rvnd(Solution& bestSol, Evaluator& eval,
             const vector<int>& guide = elite[eliteDist(gen)].tour;
 
             Solution prResult = path_relink(sPrime, guide);
-            run_rvnd(rvndMode, prResult, gen);
+            run_rvnd(rvndMode, prResult, gen, adaptState);
 
             if (prResult.fEvaluationValue < sPrime.fEvaluationValue) {
                 sPrime = prResult;
@@ -270,11 +296,19 @@ int main(int argc, char** argv) {
     ConstructionMode constructionMode = ConstructionMode::Greedy;
     int lookaheadK = 3;
     long seed = -1;
+    double maxTimeSec = -1.0;   /* <=0 disables the time limit */
+    bool imaxExplicit = false;
+    int    adaptKStart = 6;
+    int    adaptPeriod = 400;
+    double adaptRho    = 0.30;
+    double adaptGrow   = 0.10;
+    double adaptShrink = 0.02;
 
     for (int i = 2; i < argc; i++) {
         string a = argv[i];
         if (a == "--imax" && i + 1 < argc) {
             I_max = stoi(argv[++i]);
+            imaxExplicit = true;
         }
         else if (a == "--iils" && i + 1 < argc) {
             I_ILS = stoi(argv[++i]);
@@ -311,6 +345,7 @@ int main(int argc, char** argv) {
             else if (m == "extended-oropt") rvndMode = RvndMode::ExtendedOrOpt;
             else if (m == "extended-oropt-wide") rvndMode = RvndMode::ExtendedOrOptWide;
             else if (m == "extended-oropt-3opt") rvndMode = RvndMode::ExtendedOrOpt3Opt;
+            else if (m == "adaptive-oropt") rvndMode = RvndMode::AdaptiveOrOpt;
             else { cerr << "Unknown --rvnd-mode: " << m << "\n"; return 1; }
         }
         else if (a == "--construction-mode" && i + 1 < argc) {
@@ -325,10 +360,22 @@ int main(int argc, char** argv) {
         else if (a == "--seed" && i + 1 < argc) {
             seed = stol(argv[++i]);
         }
+        else if (a == "--max-time" && i + 1 < argc) {
+            maxTimeSec = stod(argv[++i]);
+        }
+        else if (a == "--adapt-kstart" && i + 1 < argc) { adaptKStart = stoi(argv[++i]); }
+        else if (a == "--adapt-period" && i + 1 < argc) { adaptPeriod = stoi(argv[++i]); }
+        else if (a == "--adapt-rho" && i + 1 < argc) { adaptRho = stod(argv[++i]); }
+        else if (a == "--adapt-grow" && i + 1 < argc) { adaptGrow = stod(argv[++i]); }
+        else if (a == "--adapt-shrink" && i + 1 < argc) { adaptShrink = stod(argv[++i]); }
         else if (a == "-v") {
             verbose = true;
         }
     }
+
+    /* Under a time limit, time is meant to be the binding constraint, so
+       the restart count stops being one unless the caller pinned it. */
+    if (maxTimeSec > 0.0 && !imaxExplicit) I_max = 1000000000;
 
     string filepath = instanceFile;
     if (instanceFile.find('/') == string::npos) {
@@ -350,9 +397,24 @@ int main(int argc, char** argv) {
 
     auto t0 = Clock::now();
 
+    /* One state for the whole run: the adaptive-or-opt policy needs to
+       pool statistics across every RVND convergence to learn anything.
+       The knobs are CLI-exposed so they can be tuned (see irace/). */
+    AdaptiveOrOptState adaptState;
+    adaptState.kMax = max(AdaptiveOrOptState::K_FLOOR,
+                          min(adaptKStart, (int)AdaptiveOrOptState::K_CAP));
+    adaptState.kMaxMinSeen = adaptState.kMax;
+    adaptState.kMaxMaxSeen = adaptState.kMax;
+    for (int L = 2; L <= AdaptiveOrOptState::K_CAP; L++)
+        adaptState.weight[L] = (L <= adaptState.kMax) ? 1.0 : 0.0;
+    adaptState.period        = adaptPeriod;
+    adaptState.rho           = adaptRho;
+    adaptState.growHitRate   = adaptGrow;
+    adaptState.shrinkHitRate = adaptShrink;
+
     gils_rvnd(bestSol, eval, I_max, I_ILS, R, verbose, pertMode, stagnationStep, maxStrength,
               targetMinFrac, targetMaxFrac, pathRelinking, eliteSize, rvndMode,
-              constructionMode, lookaheadK, gen);
+              constructionMode, lookaheadK, gen, adaptState, maxTimeSec);
 
     auto t1 = Clock::now();
 
@@ -366,12 +428,21 @@ int main(int argc, char** argv) {
     cout << "COST " << bestSol.fEvaluationValue << "\n";
     cout << "IMAX " << I_max << "\n";
     cout << "IILS " << I_ILS << "\n";
+    cout << "RESTARTS " << g_restarts << "\n";
+    if (maxTimeSec > 0.0)
+        cout << "MAX_TIME_S " << fixed << setprecision(3) << maxTimeSec << "\n";
     cout << "PERT_MODE " << pertModeName << "\n";
     cout << "PATH_RELINKING " << (pathRelinking ? "on" : "off") << "\n";
     cout << "RVND_MODE " << (rvndMode == RvndMode::Multi ? "multi"
                               : rvndMode == RvndMode::ExtendedOrOpt ? "extended-oropt"
                               : rvndMode == RvndMode::ExtendedOrOptWide ? "extended-oropt-wide"
-                              : rvndMode == RvndMode::ExtendedOrOpt3Opt ? "extended-oropt-3opt" : "single") << "\n";
+                              : rvndMode == RvndMode::ExtendedOrOpt3Opt ? "extended-oropt-3opt"
+                              : rvndMode == RvndMode::AdaptiveOrOpt ? "adaptive-oropt" : "single") << "\n";
+    if (rvndMode == RvndMode::AdaptiveOrOpt) {
+        cout << "ADAPT_KMAX_FINAL " << adaptState.kMax << "\n";
+        cout << "ADAPT_KMAX_RANGE " << adaptState.kMaxMinSeen << "-" << adaptState.kMaxMaxSeen << "\n";
+        if (verbose) cerr << adaptState.summary();
+    }
     cout << "CONSTRUCTION_MODE " << (constructionMode == ConstructionMode::Lookahead ? "lookahead" : "greedy") << "\n";
     cout << "TIME_MS " << fixed << setprecision(3) << runtime_ms << "\n";
     cout << "ROUTE ";
