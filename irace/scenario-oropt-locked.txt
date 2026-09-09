@@ -1,0 +1,35 @@
+# irace scenario: re-tune bin/gils_am_rvnd's pool/lambda/parent-mode with
+# --rvnd-mode LOCKED to extended-oropt (the adopted/validated finding). See
+# parameters-oropt-locked.txt and target-runner-oropt-locked.
+#
+# Run from inside this directory (after `make gils_am_rvnd` at the project
+# root), with, if the irace command-line wrapper is on PATH:
+#   irace --scenario scenario-oropt-locked.txt
+# or in pure R:
+#   Rscript -e 'irace::irace(scenario = irace::readScenario("scenario-oropt-locked.txt"))'
+# Resume an interrupted run with:
+#   irace --scenario scenario-oropt-locked.txt --recovery-file irace-oropt-locked.Rdata
+#
+# Motivation: the unconstrained tuning (scenario.txt) let irace pick rvnd-mode
+# too; its winner (config 21) did not beat the adopted default on the 10
+# TSPLIB reporting instances (paired, sign_p=0.720, +15.6% slower). This run
+# only tunes pool/lambda/parent-mode on top of the validated extended-oropt.
+
+## Same held-out training instances as the original run.
+trainInstancesDir  = "../instances"
+trainInstancesFile = "./instances-train.txt"
+
+## Locks --rvnd-mode extended-oropt; irace only sees pool/lambda/parent-mode.
+targetRunner  = "./target-runner-oropt-locked"
+parameterFile = "./parameters-oropt-locked.txt"
+
+## 3 parameters now (was 4). Rule of thumb >=200 x params -> >=600; 2000 is
+## still comfortably above that and keeps the budget comparable to the first
+## run for a fair contrast.
+maxExperiments = 2000
+
+## Number of concurrent target-runner calls; match the tuning machine's cores.
+parallel = 4
+
+## irace state / recovery file (separate from the first run's irace.Rdata).
+logFile = "./irace-oropt-locked.Rdata"

@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+###############################################################################
+# target-runner for the "--rvnd-mode locked to extended-oropt" irace run.
+# Identical to ./target-runner, except it appends "--rvnd-mode extended-oropt"
+# to every gils_am_rvnd call, so irace only tunes pool/lambda/parent-mode
+# (see parameters-oropt-locked.txt, which omits rvndmode).
+###############################################################################
+
+error() {
+    echo "$(basename "$0"): error: $1" >&2
+    exit 1
+}
+
+if [ $# -lt 4 ]; then
+    error "expected at least 4 arguments (configuration_id instance_id seed instance), got $#: $*"
+fi
+
+CONFIG_ID=$1
+INSTANCE_ID=$2
+SEED=$3
+INSTANCE=$4
+shift 4
+CONFIG_PARAMS=("$@")
+
+# rvnd-mode is fixed here, not part of irace's parameter space.
+LOCKED_ARGS=(--rvnd-mode extended-oropt)
+
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+PROJECT_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
+BINARY="$PROJECT_ROOT/bin/gils_am_rvnd"
+
+[ -x "$BINARY" ] || error "binary not found or not executable: $BINARY (run 'make gils_am_rvnd' in $PROJECT_ROOT first)"
+[ -f "$INSTANCE" ] || error "instance file not found: $INSTANCE"
+
+STDOUT_FILE=$(mktemp "/tmp/irace-gils-am-rvnd-oropt.${CONFIG_ID}.${INSTANCE_ID}.${SEED}.XXXXXX.stdout")
+STDERR_FILE=$(mktemp "/tmp/irace-gils-am-rvnd-oropt.${CONFIG_ID}.${INSTANCE_ID}.${SEED}.XXXXXX.stderr")
+trap 'rm -f "$STDOUT_FILE" "$STDERR_FILE"' EXIT
+
+"$BINARY" "$INSTANCE" --seed "$SEED" "${CONFIG_PARAMS[@]}" "${LOCKED_ARGS[@]}" > "$STDOUT_FILE" 2> "$STDERR_FILE"
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -ne 0 ]; then
+    echo "$(basename "$0"): $BINARY exited with code $EXIT_CODE" >&2
+    cat "$STDERR_FILE" >&2
+    exit 1
+fi
+
+COST=$(grep -m1 '^COST ' "$STDOUT_FILE" | awk '{print $2}')
+
+if [ -z "$COST" ]; then
+    echo "$(basename "$0"): could not parse COST from $BINARY output" >&2
+    cat "$STDOUT_FILE" >&2
+    exit 1
+fi
+
+echo "$COST"
+exit 0

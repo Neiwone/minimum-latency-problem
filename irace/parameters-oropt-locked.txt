@@ -1,0 +1,16 @@
+# Parameter space for tuning bin/gils_am_rvnd with irace, with --rvnd-mode
+# LOCKED to extended-oropt (the finding already adopted/validated by this
+# project). See target-runner-oropt-locked, which appends
+# "--rvnd-mode extended-oropt" to every call, and scenario-oropt-locked.txt.
+#
+# Rationale: the first tuning (parameters.txt) let irace also pick rvnd-mode
+# from scratch; its winner (config 21, extended-oropt-wide) did NOT beat the
+# adopted default on the 10 TSPLIB reporting instances (paired, sign_p=0.720,
+# +15.6% slower -- see scripts/irace_config21_vs_default_test.py). This run
+# instead only tunes pool/lambda/parent-mode on top of the validated
+# extended-oropt neighborhood, per irace/README.md "Ajustes" section.
+#
+# Format: <name> <switch> <type> <domain>
+pool         "--pool "         i    (5, 60)
+lambda       "--lambda "       r    (0.0, 1.0)
+parentmode   "--parent-mode "  c    ("pool", "pair")

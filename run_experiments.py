@@ -37,13 +37,7 @@ INST_DIR = "instances"
 SOLUTIONS_DIR = Path(INST_DIR) / "solutions"
 BEST_SOLUTIONS_FILE = SOLUTIONS_DIR / "best_solutions.json"
 
-# Benchmark set reproducing the protocol documented in Salehipour et al.
-# (2011) -- used by the GILS-RVND base paper (Silva et al. 2012) and by
-# DBMEA/GQPSO/MDM-GILS-RVND to evaluate at large n: 7 sizes, 20 random
-# uniform instances each. Generated via
-# scripts/generate_salehipour_benchmark.py into instances/salehipour/
-# (original authors' instance files are not publicly available; this
-# reproduces their documented protocol instead).
+
 SALEHIPOUR_DIR = Path(INST_DIR) / "salehipour"
 SALEHIPOUR_SIZES = [10, 20, 50, 100, 200, 500, 1000]
 SALEHIPOUR_INSTANCES_PER_SIZE = 20
@@ -117,11 +111,6 @@ SOLVERS: Dict[str, SolverCmd] = {
     name: _normalize_solver(entry) for name, entry in SOLVERS_RAW.items()
 }
 
-# Solvers whose binary implements the wall-clock stopping criterion
-# (--max-time). Only these can be used in fixed-time mode: the other
-# binaries' argument parsers ignore unknown flags SILENTLY, so passing
-# --max-time to them would produce a comparison that looks fine and is
-# actually running an unbounded iteration budget.
 FIXED_TIME_BINARIES = {"./bin/gils_rvnd", "./bin/gils_am_rvnd", "./bin/mdm_gils_rvnd"}
 
 
@@ -163,43 +152,43 @@ class DotAnimator:
 
 class SolutionTracker:
     """Manages best known solutions and TSPLIB tour files."""
-    
+
     def __init__(self, solutions_dir: Path):
         self.solutions_dir = solutions_dir
         self.solutions_dir.mkdir(parents=True, exist_ok=True)
         self.best_solutions_file = solutions_dir / "best_solutions.json"
         self.best_solutions = self._load_best_solutions()
-    
+
     def _load_best_solutions(self) -> Dict:
         """Load best known solutions from JSON file."""
         if self.best_solutions_file.exists():
             with open(self.best_solutions_file, 'r') as f:
                 return json.load(f)
         return {}
-    
+
     def _save_best_solutions(self):
         """Save best solutions to JSON file."""
         with open(self.best_solutions_file, 'w') as f:
             json.dump(self.best_solutions, indent=2, fp=f)
-    
+
     def get_best_cost(self, instance: str) -> Optional[float]:
         """Get the best known cost for an instance."""
         if instance in self.best_solutions:
             return self.best_solutions[instance]["cost"]
         return None
-    
+
     def is_better(self, instance: str, cost: float) -> bool:
         """Check if the given cost is better than the current best."""
         best_cost = self.get_best_cost(instance)
         if best_cost is None:
             return True
         return cost < best_cost
-    
-    def save_solution(self, instance: str, cost: float, route: str, solver: str, 
+
+    def save_solution(self, instance: str, cost: float, route: str, solver: str,
                      nodes: int, force: bool = False):
         """
         Save a solution in TSPLIB format and update best solutions.
-        
+
         Args:
             instance: Instance name (without .tsp extension)
             cost: Solution cost
@@ -212,7 +201,7 @@ class SolutionTracker:
             print(f"  Cost {cost:.2f} is not better than current best "
                   f"{self.get_best_cost(instance):.2f}")
             return False
-        
+
         # Prompt user if this is better
         if not force and instance in self.best_solutions:
             current_best = self.best_solutions[instance]["cost"]
@@ -223,15 +212,15 @@ class SolutionTracker:
                 f"(improvement: {improvement:.2f}%)\n"
                 f"  Save this solution? [Y/n]: "
             ).strip().lower()
-            
+
             if response and response != 'y' and response != 'yes':
                 print("  Solution not saved.")
                 return False
-        
+
         # Save TSPLIB tour file
         tour_file = self.solutions_dir / f"{instance}.tour"
         self._write_tsplib_tour(tour_file, instance, cost, route, nodes, solver)
-        
+
         # Update best solutions JSON
         self.best_solutions[instance] = {
             "cost": cost,
@@ -240,25 +229,25 @@ class SolutionTracker:
             "tour_file": str(tour_file.name)
         }
         self._save_best_solutions()
-        
+
         print(f"  ✓ Saved solution to {tour_file.name}")
         return True
-    
+
     def _write_tsplib_tour(self, filepath: Path, instance: str, cost: float,
                           route: str, nodes: int, solver: str):
         """Write solution in TSPLIB tour format."""
         route_nodes = route.split()
-        
+
         with open(filepath, 'w') as f:
             f.write(f"NAME : {instance}.tour\n")
             f.write(f"COMMENT : MLP solution (cost={cost:.2f}, solver={solver})\n")
             f.write("TYPE : TOUR\n")
             f.write(f"DIMENSION : {nodes}\n")
             f.write("TOUR_SECTION\n")
-            
+
             for node in route_nodes:
                 f.write(f"{node}\n")
-            
+
             f.write("-1\n")
             f.write("EOF\n")
 
@@ -272,10 +261,10 @@ def parse_args():
 Examples:
   # Compare solver with best known solutions
   python run_experiments.py --mode compare-best --solver nn
-  
+
   # Run exact comparison with backtracking
   python run_experiments.py --mode exact --solver nn
-  
+
   # Compare multiple solvers
   python run_experiments.py --mode compare-solvers --solvers nn local_search
 
@@ -317,20 +306,20 @@ Examples:
             f"(default: all of {SALEHIPOUR_SIZES})"
         )
     )
-    
+
     parser.add_argument(
         "--solver",
         choices=list(SOLVERS.keys()),
         help="Solver to use (required for compare-best and exact modes)"
     )
-    
+
     parser.add_argument(
         "--solvers",
         nargs="+",
         choices=list(SOLVERS.keys()),
         help="List of solvers to compare (for compare-solvers mode)"
     )
-    
+
     parser.add_argument(
         "--time-limit",
         type=float,
@@ -382,20 +371,20 @@ Examples:
         action="store_true",
         help="Visualize routes"
     )
-    
+
     parser.add_argument(
         "--auto-save",
         action="store_true",
         help="Automatically save better solutions without prompting"
     )
-    
+
     parser.add_argument(
         "--runs",
         type=int,
         default=10,
         help="Number of runs per instance (default: 10)"
     )
-    
+
     parser.add_argument(
         "--vb",
         action="store_true",
@@ -614,7 +603,7 @@ def run_compare_best_mode(args, tracker: SolutionTracker):
     if not args.solver:
         print("Error: --solver is required for compare-best mode")
         return
-    
+
     solver = SOLVERS[args.solver]
     n_runs = args.runs
     verbose = args.vb
@@ -642,21 +631,21 @@ def run_compare_best_mode(args, tracker: SolutionTracker):
         except RuntimeError as e:
             print(f"  Error: {e}")
             continue
-        
+
         best_known = tracker.get_best_cost(name)
         best_gap = None
         avg_gap = None
         best_known_hit_rate = None
-        
+
         if best_known is not None:
             best_gap = ((agg["best_cost"] - best_known) / best_known) * 100.0
             avg_gap = ((agg["avg_cost"] - best_known) / best_known) * 100.0
             known_hits = sum(1 for c in agg["all_costs"] if abs(c - best_known) < 1e-9)
             best_known_hit_rate = (known_hits / n_runs) * 100.0
-        
+
         # Check if this is a new best
         is_new_best = tracker.is_better(name, agg["best_cost"])
-        
+
         result_entry = {
             "instance": name,
             "nodes": agg["nodes"],
@@ -677,14 +666,14 @@ def run_compare_best_mode(args, tracker: SolutionTracker):
             "is_new_best": is_new_best,
         }
         results.append(result_entry)
-        
+
         # Save if better
         if is_new_best and agg["best_route"]:
             tracker.save_solution(
                 name, agg["best_cost"], agg["best_route"],
                 args.solver, agg["nodes"], force=args.auto_save
             )
-        
+
         # Visualize if requested
         if args.plot and agg["best_route"]:
             subprocess.run(
@@ -721,7 +710,7 @@ def run_exact_mode(args, tracker: SolutionTracker):
     if not args.solver:
         print("Error: --solver is required for exact mode")
         return
-    
+
     solver = SOLVERS[args.solver]
     bt_solver = SOLVERS["backtracking"]
     n_runs = args.runs
@@ -751,10 +740,10 @@ def run_exact_mode(args, tracker: SolutionTracker):
         except RuntimeError as e:
             print(f"  Error: {e}")
             continue
-        
+
         best_gap = ((agg["best_cost"] - bt_sol["cost"]) / bt_sol["cost"]) * 100.0
         avg_gap = ((agg["avg_cost"] - bt_sol["cost"]) / bt_sol["cost"]) * 100.0
-        
+
         results.append({
             "instance": name,
             "nodes": agg["nodes"],
@@ -772,7 +761,7 @@ def run_exact_mode(args, tracker: SolutionTracker):
             "avg_tabu_ms": agg["avg_tabu_ms"],
             "bt_time": bt_sol["time"],
         })
-    
+
     # Print results
     w = 130
     print(f"\n{'='*w}")
@@ -783,7 +772,7 @@ def run_exact_mode(args, tracker: SolutionTracker):
         f"{'Avg. Gap':>10} {'Hit Run%':>9} {'TTFB(s)':>9} {'Avg. Time(s)':>12} {'BT Time(s)':>12}"
     )
     print("-" * w)
-    
+
     for r in results:
         agap_str = f"{r['avg_gap']:.2f}%"
         hit_run_str = f"{r['best_hit_rate']:.1f}%"
@@ -794,7 +783,7 @@ def run_exact_mode(args, tracker: SolutionTracker):
             f"{agap_str:>10} {hit_run_str:>9} {ttfb_str:>9} "
             f"{r['avg_time']/1000:>9.3f}s {r['bt_time']/1000:>9.3f}s"
         )
-    
+
     print("=" * w)
 
 
@@ -803,26 +792,26 @@ def run_compare_solvers_mode(args, tracker: SolutionTracker):
     if not args.solvers or len(args.solvers) != 2:
         print("Error: --solvers requires exactly 2 solvers for this summary")
         return
-    
+
     n_runs = args.runs
     verbose = args.vb
     results = []
     solver_a = args.solvers[0]
     solver_b = args.solvers[1]
-    
+
     print(f"\n{'='*80}")
     print(f"Comparing Solvers: {solver_a.upper()} vs {solver_b.upper()} ({n_runs} runs each)")
     print(f"{'='*80}\n")
-    
+
     for inst in INSTANCES:
         path = os.path.join(INST_DIR, inst)
         name = inst.replace(".tsp", "")
-        
+
         if verbose:
             print(f"Running solvers on {name}...")
-        
+
         inst_result = {"instance": name, "solvers": {}}
-        
+
         for solver_name in (solver_a, solver_b):
             solver = SOLVERS[solver_name]
             try:
@@ -847,9 +836,9 @@ def run_compare_solvers_mode(args, tracker: SolutionTracker):
             except RuntimeError as e:
                 print(f"  {solver_name} failed: {e}")
                 inst_result["solvers"][solver_name] = None
-        
+
         results.append(inst_result)
-    
+
     # Print table with only the requested 4 values (plus instance identifier)
     # per instance:
     # 1) AVG_ONE: solver_a average cost
@@ -1230,10 +1219,10 @@ def _fixed_time_report(results, inst_paths, args, baseline):
 def main():
     """Main entry point."""
     args = parse_args()
-    
+
     # Initialize solution tracker
     tracker = SolutionTracker(SOLUTIONS_DIR)
-    
+
     # Run selected mode
     if args.mode == "compare-best":
         run_compare_best_mode(args, tracker)
