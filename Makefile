@@ -15,7 +15,7 @@ TARGETS = nearest_neighbour local_search backtracking construction gils_rvnd gra
 # ---- shared objects ----
 COMMON_OBJ = $(OBJ_DIR)/solution.o $(OBJ_DIR)/evaluator.o
 NEIGHBORHOOD_OBJ = $(OBJ_DIR)/neighborhoods.o
-RVND_OBJ = $(OBJ_DIR)/rvnd.o $(NEIGHBORHOOD_OBJ) $(OBJ_DIR)/rvnd_adaptive.o
+RVND_OBJ = $(OBJ_DIR)/rvnd.o $(NEIGHBORHOOD_OBJ) $(OBJ_DIR)/rvnd_adaptive.o $(OBJ_DIR)/neighborhoods_cand.o
 CONSTRUCTION_OBJ = $(OBJ_DIR)/construction_impl.o
 
 # ---- vendored FPmax* (external/fpmax, MIT) ----

@@ -76,6 +76,11 @@ public:
     long long* P;
     long long* SP;
 
+    /* posOf[city] = position of that city in fTour, refreshed by
+       calculateStructures(). Candidate-list scans need to go from "city
+       c is geometrically near city d" to "where is d in the tour". */
+    int* posOf;
+
     inline int getT(int i, int j) const { return (int)(P[j] - P[i]); }
 
     inline int getC(int i, int j) const {

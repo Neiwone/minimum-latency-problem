@@ -4,6 +4,7 @@
 #include "rvnd.h"
 #include "rvnd_lk.h"
 #include "rvnd_adaptive.h"
+#include "neighborhoods_cand.h"
 
 using namespace std;
 
@@ -69,7 +70,12 @@ void perturb(Solution& sol, mt19937& gen, int dbMaxSeg) {
     sol.calculateStructures();
 }
 
-enum class RvndMode { Single, ExtendedOrOpt, ExtendedOrOptWide, ExtendedOrOptRev, LKEscape, AdaptiveOrOpt };
+enum class RvndMode { Single, ExtendedOrOpt, ExtendedOrOptWide, ExtendedOrOptRev, Candidate, LKEscape, AdaptiveOrOpt };
+
+/* Candidate-list configuration, set once per run from the CLI. */
+static CandList g_cand;
+static int  g_candMaxLen  = 6;
+static bool g_candReversed = true;
 
 /* `adaptState` carries the adaptive-or-opt learning across every RVND
    call of the run (it must NOT be re-created per call -- see
@@ -79,6 +85,7 @@ void run_rvnd(RvndMode mode, Solution& sol, Evaluator& eval, mt19937& gen,
     if (mode == RvndMode::ExtendedOrOpt) RVND_ExtendedOrOpt(sol, gen);
     else if (mode == RvndMode::ExtendedOrOptWide) RVND_ExtendedOrOptWide(sol, gen);
     else if (mode == RvndMode::ExtendedOrOptRev) RVND_ExtendedOrOptRev(sol, gen);
+    else if (mode == RvndMode::Candidate) RVND_Candidate(sol, g_cand, g_candMaxLen, g_candReversed, gen);
     else if (mode == RvndMode::LKEscape) RVND_LKEscape(sol, eval, gen);
     else if (mode == RvndMode::AdaptiveOrOpt) RVND_AdaptiveOrOpt(sol, gen, adaptState);
     else RVND(sol, gen);
@@ -289,6 +296,7 @@ int main(int argc, char** argv) {
         cerr << "  ./gils_am_rvnd <instance.tsp> [--imax 10] [--iils 100] [--pool 20]\n";
         cerr << "    [--lambda 0.50] [--parent-mode pool|pair]\n";
         cerr << "    [--rvnd-mode single|extended-oropt|extended-oropt-wide|extended-oropt-rev|lk-escape|adaptive-oropt]\n";
+    cerr << "    [--cand-k K] [--cand-maxlen L] [--cand-no-rev]  (--rvnd-mode candidate)\n";
     cerr << "    [--db-maxseg K]  cap on each swapped double-bridge block (0 = unrestricted)\n";
         cerr << "    [--max-time SECONDS] [--seed N] [-v]\n";
         cerr << "    adaptive-oropt: [--adapt-kstart 6] [--adapt-period 400] [--adapt-rho 0.30]\n";
@@ -308,6 +316,7 @@ int main(int argc, char** argv) {
     double maxTimeSec = -1.0;   /* <=0 disables the time limit */
     int dbMaxSeg = 0;           /* <=0 keeps the unrestricted double bridge */
     int dbMaxSegDiv = 0;        /* >0 sets dbMaxSeg = max(2, n/dbMaxSegDiv) */
+    int candK = 12;
     bool imaxExplicit = false;
     int    adaptKStart = 6;
     int    adaptPeriod = 400;
@@ -331,6 +340,12 @@ int main(int argc, char** argv) {
             if (m == "pool") parentMode = ParentMode::Pool;
             else if (m == "pair") parentMode = ParentMode::Pair;
             else { cerr << "Unknown --parent-mode: " << m << "\n"; return 1; }
+        } else if (a == "--cand-k" && i + 1 < argc) {
+            candK = stoi(argv[++i]);
+        } else if (a == "--cand-maxlen" && i + 1 < argc) {
+            g_candMaxLen = stoi(argv[++i]);
+        } else if (a == "--cand-no-rev") {
+            g_candReversed = false;
         } else if (a == "--db-maxseg" && i + 1 < argc) {
             dbMaxSeg = stoi(argv[++i]);
         } else if (a == "--db-maxseg-div" && i + 1 < argc) {
@@ -341,6 +356,7 @@ int main(int argc, char** argv) {
             else if (m == "extended-oropt") rvndMode = RvndMode::ExtendedOrOpt;
             else if (m == "extended-oropt-wide") rvndMode = RvndMode::ExtendedOrOptWide;
             else if (m == "extended-oropt-rev") rvndMode = RvndMode::ExtendedOrOptRev;
+            else if (m == "candidate") rvndMode = RvndMode::Candidate;
             else if (m == "lk-escape") rvndMode = RvndMode::LKEscape;
             else if (m == "adaptive-oropt") rvndMode = RvndMode::AdaptiveOrOpt;
             else { cerr << "Unknown --rvnd-mode: " << m << "\n"; return 1; }
@@ -375,6 +391,8 @@ int main(int argc, char** argv) {
 
     Evaluator eval;
     eval.SetInstance((char*)filepath.c_str());
+
+    g_cand = make_candidate_list(eval, candK);
 
     if (dbMaxSegDiv > 0)
         dbMaxSeg = max(2, eval.Ncity / dbMaxSegDiv);
@@ -422,9 +440,13 @@ int main(int argc, char** argv) {
     cout << "LAMBDA " << fixed << setprecision(2) << lambda << "\n";
     cout << "PARENT_MODE " << (parentMode == ParentMode::Pool ? "pool" : "pair") << "\n";
     cout << "DB_MAXSEG " << dbMaxSeg << "\n";
+    if (rvndMode == RvndMode::Candidate)
+        cout << "CAND_K " << g_cand.K << "  CAND_MAXLEN " << g_candMaxLen
+             << "  CAND_REV " << (g_candReversed ? 1 : 0) << "\n";
     cout << "RVND_MODE " << (rvndMode == RvndMode::ExtendedOrOpt ? "extended-oropt"
                               : rvndMode == RvndMode::ExtendedOrOptWide ? "extended-oropt-wide"
                               : rvndMode == RvndMode::ExtendedOrOptRev ? "extended-oropt-rev"
+                              : rvndMode == RvndMode::Candidate ? "candidate"
                               : rvndMode == RvndMode::LKEscape ? "lk-escape"
                               : rvndMode == RvndMode::AdaptiveOrOpt ? "adaptive-oropt" : "single") << "\n";
     if (rvndMode == RvndMode::AdaptiveOrOpt) {

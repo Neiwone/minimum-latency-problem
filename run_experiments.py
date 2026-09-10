@@ -77,6 +77,15 @@ SOLVERS_RAW = {
     "gils_am_rvnd_pair": ("./bin/gils_am_rvnd", ["--parent-mode", "pair"]),
     "gils_am_rvnd_extended_oropt": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt"]),
     "gils_am_rvnd_extended_oropt_wide": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt-wide"]),
+    # H16/H17 candidates: reversed or-opt neighborhood and size-capped
+    # double bridge, alone and combined (see docs/experiments/h16-*.md).
+    "gils_am_rvnd_oropt_rev": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt-rev"]),
+    "gils_am_rvnd_ext_db10": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt", "--db-maxseg-div", "10"]),
+    "gils_am_rvnd_ext_db20": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt", "--db-maxseg-div", "20"]),
+    "gils_am_rvnd_rev_db10": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt-rev", "--db-maxseg-div", "10"]),
+    "gils_am_rvnd_cand12": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "12"]),
+    "gils_am_rvnd_cand20": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "20"]),
+    "gils_am_rvnd_cand12_db10": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "12", "--db-maxseg-div", "10"]),
     "gils_rvnd": "./bin/gils_rvnd",
     "gils_rvnd_extended_oropt": ("./bin/gils_rvnd", ["--rvnd-mode", "extended-oropt"]),
     "gils_rvnd_extended_oropt_wide": ("./bin/gils_rvnd", ["--rvnd-mode", "extended-oropt-wide"]),

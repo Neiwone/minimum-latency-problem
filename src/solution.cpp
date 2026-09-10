@@ -13,12 +13,14 @@ Solution::Solution() {
     x = NULL;
     y = NULL;
     P = SP = NULL;
+    posOf = NULL;
 }
 
 Solution::~Solution() {
     delete[] fTour;
     delete[] P;
     delete[] SP;
+    delete[] posOf;
 }
 
 void Solution::Define(int N) {
@@ -33,6 +35,7 @@ Solution::Solution(const Solution& src) {
     x = NULL;
     y = NULL;
     P = SP = NULL;
+    posOf = NULL;
 
     if (fN > 0) {
         fTour = new int[fN];
@@ -52,6 +55,7 @@ Solution& Solution::operator = (const Solution& src) {
         delete[] fTour;
         delete[] P;   P  = NULL;
         delete[] SP;  SP = NULL;
+        delete[] posOf; posOf = NULL;
         fN = src.fN;
         fTour = new int[fN];
     }
@@ -79,15 +83,18 @@ void Solution::calculateStructures() {
     assert(fDist != NULL);
 
     if (P == NULL) {
-        P  = new long long[fN];
-        SP = new long long[fN];
+        P     = new long long[fN];
+        SP    = new long long[fN];
+        posOf = new int[fN];
     }
 
     P[0]  = 0;
     SP[0] = 0;
+    posOf[fTour[0]] = 0;
     for (int j = 1; j < fN; j++) {
         P[j]  = P[j - 1] + fDist[fTour[j - 1]][fTour[j]];
         SP[j] = SP[j - 1] + P[j];
+        posOf[fTour[j]] = j;
     }
 
     fEvaluationValue = getC(0, fN - 1);

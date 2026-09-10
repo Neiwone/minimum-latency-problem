@@ -1,0 +1,9 @@
+Resuming from scripts/fixed_time_30s.json (9 runs already done)
+
+========================================================================================================
+Fixed-time comparison: 30s per run, --iils 10, 6 seeds, sequential
+Solvers: mdm_gils_rvnd, gils_am_rvnd_extended_oropt, gils_am_rvnd_oropt_rev, gils_am_rvnd_ext_db10, gils_am_rvnd_rev_db10, gils_am_rvnd_cand12, gils_am_rvnd_cand20, gils_am_rvnd_cand12_db10   (baseline: mdm_gils_rvnd)
+Checkpoint: scripts/fixed_time_30s.json
+========================================================================================================
+
+[7/144] lin318         gils_am_rvnd_extended_oropt      seed=1   cost=5588289 t=  30.0s restarts=45
