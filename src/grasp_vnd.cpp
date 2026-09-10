@@ -36,7 +36,7 @@ int delta_swap(const Solution& s, int i, int j) {
     int t = 0, c = 0; bool first = true; int last = -1;
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = s.T[u][v], Cu = s.C[u][v], Wu = s.getW(u, v);
+        int Tu = s.getT(u, v), Cu = s.getC(u, v), Wu = s.getW(u, v);
         int firstNode = s.fTour[u], lastNode = s.fTour[v];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
         int e = s.fDist[last][firstNode];
@@ -51,7 +51,7 @@ int delta_2opt(const Solution& s, int i, int j) {
     int t = 0, c = 0; bool first = true; int last = -1;
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = s.T[u][v], Cu = s.C[u][v], Wu = s.getW(u, v);
+        int Tu = s.getT(u, v), Cu = s.getC(u, v), Wu = s.getW(u, v);
         int firstNode = s.fTour[u], lastNode = s.fTour[v];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
         int e = s.fDist[last][firstNode];
@@ -59,7 +59,7 @@ int delta_2opt(const Solution& s, int i, int j) {
     };
     auto appendReversed = [&](int u, int v) {
         if (u > v) return;
-        int Tu = s.T[u][v], Cu = s.Cr[u][v], Wu = s.getW(u, v);
+        int Tu = s.getT(u, v), Cu = s.getCr(u, v), Wu = s.getW(u, v);
         int firstNode = s.fTour[v], lastNode = s.fTour[u];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
         int e = s.fDist[last][firstNode];
@@ -74,7 +74,7 @@ int delta_reinsertion(const Solution& s, int i, int j) {
     int t = 0, c = 0; bool first = true; int last = -1;
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = s.T[u][v], Cu = s.C[u][v], Wu = s.getW(u, v);
+        int Tu = s.getT(u, v), Cu = s.getC(u, v), Wu = s.getW(u, v);
         int firstNode = s.fTour[u], lastNode = s.fTour[v];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
         int e = s.fDist[last][firstNode];
@@ -90,7 +90,7 @@ int delta_oropt(const Solution& s, int i, int j, int k) {
     int t = 0, c = 0; bool first = true; int last = -1;
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = s.T[u][v], Cu = s.C[u][v], Wu = s.getW(u, v);
+        int Tu = s.getT(u, v), Cu = s.getC(u, v), Wu = s.getW(u, v);
         int firstNode = s.fTour[u], lastNode = s.fTour[v];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
         int e = s.fDist[last][firstNode];

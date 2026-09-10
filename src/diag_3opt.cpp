@@ -39,8 +39,8 @@ int delta_double_reversal(const Solution& sol, int i, int j, int k) {
 
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = sol.T[u][v];
-        int Cu = sol.C[u][v];
+        int Tu = sol.getT(u, v);
+        int Cu = sol.getC(u, v);
         int Wu = sol.getW(u, v);
         int firstNode = sol.fTour[u];
         int lastNode  = sol.fTour[v];
@@ -53,8 +53,8 @@ int delta_double_reversal(const Solution& sol, int i, int j, int k) {
 
     auto appendReversed = [&](int u, int v) {
         if (u > v) return;
-        int Tu = sol.T[u][v];
-        int Cu = sol.Cr[u][v];
+        int Tu = sol.getT(u, v);
+        int Cu = sol.getCr(u, v);
         int Wu = sol.getW(u, v);
         int firstNode = sol.fTour[v];
         int lastNode  = sol.fTour[u];
