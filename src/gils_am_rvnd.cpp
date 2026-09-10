@@ -17,7 +17,19 @@ using namespace std;
    the move a genuine double bridge (still not undoable by 2-opt or
    or-opt) while confining the damage to a bounded contiguous span.
    maxSeg <= 0 reproduces the unrestricted behaviour exactly. */
-void double_bridge_once(Solution& sol, mt19937& gen, int maxSeg) {
+/* H18: front-biased placement of the perturbation.
+
+   Under a latency objective an edge at position p is paid by all n-p
+   customers after it, so the front of the tour carries almost all of
+   the cost and the tail carries almost none. A double bridge dropped
+   uniformly at random therefore spends most ILS iterations rearranging
+   the part of the solution that barely affects the objective. frontBias
+   > 0 skews the start position towards position 1 by sampling u^bias
+   over the legal range (bias 1 = uniform, larger = more front-loaded).
+   Whether biasing towards the expensive region helps or just makes the
+   perturbation too destructive to repair is exactly what the paired
+   test has to answer. */
+void double_bridge_once(Solution& sol, mt19937& gen, int maxSeg, double frontBias) {
     int n = sol.fN;
     if (n < 8) return;
 
@@ -34,8 +46,17 @@ void double_bridge_once(Solution& sol, mt19937& gen, int maxSeg) {
         int span = s1 + s2;
         if (span > n - 2) return;
 
-        uniform_int_distribution<int> startDist(1, n - 1 - span);
-        p1 = startDist(gen);
+        int hi = n - 1 - span;
+        if (frontBias > 1.0) {
+            uniform_real_distribution<double> u01(0.0, 1.0);
+            double u = pow(u01(gen), frontBias);
+            p1 = 1 + (int)(u * (double)hi);
+            if (p1 > hi) p1 = hi;
+            if (p1 < 1)  p1 = 1;
+        } else {
+            uniform_int_distribution<int> startDist(1, hi);
+            p1 = startDist(gen);
+        }
         p2 = p1 + s1;
         p3 = p2 + s2;
     } else {
@@ -65,8 +86,8 @@ void double_bridge_once(Solution& sol, mt19937& gen, int maxSeg) {
         sol.fTour[i] = newTour[i];
 }
 
-void perturb(Solution& sol, mt19937& gen, int dbMaxSeg) {
-    double_bridge_once(sol, gen, dbMaxSeg);
+void perturb(Solution& sol, mt19937& gen, int dbMaxSeg, double frontBias) {
+    double_bridge_once(sol, gen, dbMaxSeg, frontBias);
     sol.calculateStructures();
 }
 
@@ -174,20 +195,24 @@ void construction_am(Solution& sol, Evaluator& eval, double alpha, const EdgeFre
     route.push_back(0);
     int current = 0;
 
+    /* The RCL is a threshold set, so the candidates never needed to be
+       sorted -- an O(n log n) sort inside an O(n) construction loop that
+       changed nothing about which nodes pass the threshold. Dropping it
+       makes the construction O(n^2), which matters now that the pruned
+       RVND converges fast enough for construction to be a visible share
+       of a restart. */
+    vector<pair<int, double>> candidates;
+    vector<int> rcl;
+
     while (!CL.empty()) {
-        vector<pair<int, double>> candidates;
-        vector<int> dists;
         double minCost = numeric_limits<double>::max();
         double maxCost = numeric_limits<double>::lowest();
 
-        dists.reserve(CL.size());
-        for (int node : CL)
-            dists.push_back(eval.fEdgeDis[current][node]);
-
         double avgDist = 0.0;
-        for (int d : dists) avgDist += d;
-        avgDist /= (double)dists.size();
+        for (int node : CL) avgDist += eval.fEdgeDis[current][node];
+        avgDist /= (double)CL.size();
 
+        candidates.clear();
         for (int node : CL) {
             double origDist = eval.fEdgeDis[current][node];
             double freqNorm = freq.normalized(current, node);
@@ -199,15 +224,18 @@ void construction_am(Solution& sol, Evaluator& eval, double alpha, const EdgeFre
             if (pseudoCost > maxCost) maxCost = pseudoCost;
         }
 
-        sort(candidates.begin(), candidates.end(), [](const auto& a, const auto& b) {
-            return a.second < b.second;
-        });
-
         double threshold = minCost + alphaClamped * (maxCost - minCost);
-        vector<int> rcl;
+        rcl.clear();
         for (const auto& c : candidates)
             if (c.second <= threshold) rcl.push_back(c.first);
-        if (rcl.empty()) rcl.push_back(candidates.front().first);
+
+        if (rcl.empty()) {
+            int best = candidates.front().first;
+            double bestCost = candidates.front().second;
+            for (const auto& c : candidates)
+                if (c.second < bestCost) { bestCost = c.second; best = c.first; }
+            rcl.push_back(best);
+        }
 
         uniform_int_distribution<int> dist(0, rcl.size() - 1);
         int nextNode = rcl[dist(gen)];
@@ -232,7 +260,8 @@ long g_restarts = 0;
 void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
                    const vector<double>& R, int poolSize, double lambda,
                    ParentMode parentMode, RvndMode rvndMode, mt19937& gen,
-                   AdaptiveOrOptState& adaptState, double maxTimeSec, int dbMaxSeg) {
+                   AdaptiveOrOptState& adaptState, double maxTimeSec, int dbMaxSeg,
+                   double dbFrontBias) {
     int fStar = INT_MAX;
     EliteSet memory(poolSize);
 
@@ -277,7 +306,7 @@ void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
             if (outOfTime()) break;
 
             s = sPrime;
-            perturb(s, gen, dbMaxSeg);
+            perturb(s, gen, dbMaxSeg, dbFrontBias);
             iterILS++;
         }
 
@@ -297,6 +326,7 @@ int main(int argc, char** argv) {
         cerr << "    [--lambda 0.50] [--parent-mode pool|pair]\n";
         cerr << "    [--rvnd-mode single|extended-oropt|extended-oropt-wide|extended-oropt-rev|lk-escape|adaptive-oropt]\n";
     cerr << "    [--cand-k K] [--cand-maxlen L] [--cand-no-rev]  (--rvnd-mode candidate)\n";
+    cerr << "    [--db-front-bias B]  skew perturbation towards the tour front (1 = uniform)\n";
     cerr << "    [--db-maxseg K]  cap on each swapped double-bridge block (0 = unrestricted)\n";
         cerr << "    [--max-time SECONDS] [--seed N] [-v]\n";
         cerr << "    adaptive-oropt: [--adapt-kstart 6] [--adapt-period 400] [--adapt-rho 0.30]\n";
@@ -317,6 +347,7 @@ int main(int argc, char** argv) {
     int dbMaxSeg = 0;           /* <=0 keeps the unrestricted double bridge */
     int dbMaxSegDiv = 0;        /* >0 sets dbMaxSeg = max(2, n/dbMaxSegDiv) */
     int candK = 12;
+    double dbFrontBias = 1.0;   /* 1.0 = uniform placement */
     bool imaxExplicit = false;
     int    adaptKStart = 6;
     int    adaptPeriod = 400;
@@ -340,6 +371,8 @@ int main(int argc, char** argv) {
             if (m == "pool") parentMode = ParentMode::Pool;
             else if (m == "pair") parentMode = ParentMode::Pair;
             else { cerr << "Unknown --parent-mode: " << m << "\n"; return 1; }
+        } else if (a == "--db-front-bias" && i + 1 < argc) {
+            dbFrontBias = stod(argv[++i]);
         } else if (a == "--cand-k" && i + 1 < argc) {
             candK = stoi(argv[++i]);
         } else if (a == "--cand-maxlen" && i + 1 < argc) {
@@ -423,7 +456,7 @@ int main(int argc, char** argv) {
     adaptState.shrinkHitRate = adaptShrink;
 
     gils_am_rvnd(bestSol, eval, I_max, I_ILS, R, poolSize, lambda, parentMode, rvndMode, gen,
-                 adaptState, maxTimeSec, dbMaxSeg);
+                 adaptState, maxTimeSec, dbMaxSeg, dbFrontBias);
 
     auto t1 = Clock::now();
     double runtime_ms = chrono::duration<double, milli>(t1 - t0).count();
