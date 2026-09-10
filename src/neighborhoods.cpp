@@ -462,3 +462,57 @@ void neighborhood_oropt3_multi(Solution& sol) {
         improved = true;
     }
 }
+
+/* H16: relocate segment [i..i+segLen-1] REVERSED, right after the node
+   currently at position k. Same scan shape as neighborhood_oropt_len;
+   the apply step is written generically (extract, reverse, reinsert)
+   because the in-place shifting used by the fixed-length variants above
+   does not carry over once the block is flipped. */
+void neighborhood_oropt_rev_len(Solution& sol, int segLen) {
+    if (segLen < 2 || segLen >= sol.fN - 1) return;
+
+    bool improved = true;
+    vector<int> seg(segLen), rest;
+    rest.reserve(sol.fN);
+
+    while (improved) {
+        improved = false;
+
+        for (int i = 1; i + segLen - 1 < sol.fN; i++) {
+            int j = i + segLen - 1;
+
+            for (int k = 0; k < sol.fN; k++) {
+                if (k >= i && k <= j) continue;
+
+                if (!sol.evaluateOrOptReversed(i, j, k)) continue;
+
+                int anchor = sol.fTour[k];
+
+                for (int m = 0; m < segLen; m++)
+                    seg[m] = sol.fTour[j - m];          /* reversed */
+
+                rest.clear();
+                for (int m = 0; m < sol.fN; m++)
+                    if (m < i || m > j) rest.push_back(sol.fTour[m]);
+
+                int pos = 0;
+                for (int m = 0; m < (int)rest.size(); m++) {
+                    sol.fTour[pos++] = rest[m];
+                    if (rest[m] == anchor)
+                        for (int q = 0; q < segLen; q++) sol.fTour[pos++] = seg[q];
+                }
+
+                sol.calculateStructures();
+                improved = true;
+                break;
+            }
+            if (improved) break;
+        }
+    }
+}
+
+void neighborhood_oropt_rev2(Solution& sol) { neighborhood_oropt_rev_len(sol, 2); }
+void neighborhood_oropt_rev3(Solution& sol) { neighborhood_oropt_rev_len(sol, 3); }
+void neighborhood_oropt_rev4(Solution& sol) { neighborhood_oropt_rev_len(sol, 4); }
+void neighborhood_oropt_rev5(Solution& sol) { neighborhood_oropt_rev_len(sol, 5); }
+void neighborhood_oropt_rev6(Solution& sol) { neighborhood_oropt_rev_len(sol, 6); }

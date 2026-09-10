@@ -28,6 +28,17 @@ public:
     bool evaluateReinsertion(int i, int j);
     bool evaluateOrOpt(int i, int j, int k);
 
+    /* Same relocation as evaluateOrOpt, but the segment [i..j] is
+       inserted REVERSED. The five neighborhoods of Silva et al. (2012)
+       -- and every MLP paper this project reproduces -- only ever
+       reinsert a segment in its original orientation, while joint
+       relocate+reverse is standard in the vehicle-routing local-search
+       literature. For a latency objective the two are genuinely
+       different moves: reversing a relocated block changes the arrival
+       time of every customer inside it, not just the two junctions, so
+       this is not reachable by any composition of the existing five. */
+    bool evaluateOrOptReversed(int i, int j, int k);
+
     /* H12b: genuine 3-opt reconnection not reachable by any single
        existing move. 3 cuts (i<j<k) split the tour into A=[0,i],
        B=[i+1,j], C=[j+1,k], D=[k+1,n-1]; this reverses B and C

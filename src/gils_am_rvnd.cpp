@@ -7,22 +7,50 @@
 
 using namespace std;
 
-void double_bridge_once(Solution& sol, mt19937& gen) {
+/* H17: double-bridge with a cap on the size of the two swapped blocks.
+   The unrestricted version (three uniform cuts over the whole tour)
+   swaps blocks that average n/4 customers, which at n=532 throws away
+   most of the incumbent -- and [[h1-adaptive-diversification]] already
+   found, from the other direction, that this ILS reconverges worse the
+   more violently it is perturbed. Capping both blocks at maxSeg keeps
+   the move a genuine double bridge (still not undoable by 2-opt or
+   or-opt) while confining the damage to a bounded contiguous span.
+   maxSeg <= 0 reproduces the unrestricted behaviour exactly. */
+void double_bridge_once(Solution& sol, mt19937& gen, int maxSeg) {
     int n = sol.fN;
     if (n < 8) return;
 
-    vector<int> cuts;
-    uniform_int_distribution<int> dist(1, n - 2);
+    int p1, p2, p3;
 
-    while ((int)cuts.size() < 3) {
-        int c = dist(gen);
-        bool dup = false;
-        for (int x : cuts) if (x == c) { dup = true; break; }
-        if (!dup) cuts.push_back(c);
+    if (maxSeg > 0) {
+        int cap = min(maxSeg, (n - 2) / 2);
+        if (cap < 1) cap = 1;
+
+        uniform_int_distribution<int> segDist(1, cap);
+        int s1 = segDist(gen);
+        int s2 = segDist(gen);
+
+        int span = s1 + s2;
+        if (span > n - 2) return;
+
+        uniform_int_distribution<int> startDist(1, n - 1 - span);
+        p1 = startDist(gen);
+        p2 = p1 + s1;
+        p3 = p2 + s2;
+    } else {
+        vector<int> cuts;
+        uniform_int_distribution<int> dist(1, n - 2);
+
+        while ((int)cuts.size() < 3) {
+            int c = dist(gen);
+            bool dup = false;
+            for (int x : cuts) if (x == c) { dup = true; break; }
+            if (!dup) cuts.push_back(c);
+        }
+        sort(cuts.begin(), cuts.end());
+
+        p1 = cuts[0]; p2 = cuts[1]; p3 = cuts[2];
     }
-    sort(cuts.begin(), cuts.end());
-
-    int p1 = cuts[0], p2 = cuts[1], p3 = cuts[2];
 
     vector<int> newTour;
     newTour.reserve(n);
@@ -36,12 +64,12 @@ void double_bridge_once(Solution& sol, mt19937& gen) {
         sol.fTour[i] = newTour[i];
 }
 
-void perturb(Solution& sol, mt19937& gen) {
-    double_bridge_once(sol, gen);
+void perturb(Solution& sol, mt19937& gen, int dbMaxSeg) {
+    double_bridge_once(sol, gen, dbMaxSeg);
     sol.calculateStructures();
 }
 
-enum class RvndMode { Single, ExtendedOrOpt, ExtendedOrOptWide, LKEscape, AdaptiveOrOpt };
+enum class RvndMode { Single, ExtendedOrOpt, ExtendedOrOptWide, ExtendedOrOptRev, LKEscape, AdaptiveOrOpt };
 
 /* `adaptState` carries the adaptive-or-opt learning across every RVND
    call of the run (it must NOT be re-created per call -- see
@@ -50,6 +78,7 @@ void run_rvnd(RvndMode mode, Solution& sol, Evaluator& eval, mt19937& gen,
               AdaptiveOrOptState& adaptState) {
     if (mode == RvndMode::ExtendedOrOpt) RVND_ExtendedOrOpt(sol, gen);
     else if (mode == RvndMode::ExtendedOrOptWide) RVND_ExtendedOrOptWide(sol, gen);
+    else if (mode == RvndMode::ExtendedOrOptRev) RVND_ExtendedOrOptRev(sol, gen);
     else if (mode == RvndMode::LKEscape) RVND_LKEscape(sol, eval, gen);
     else if (mode == RvndMode::AdaptiveOrOpt) RVND_AdaptiveOrOpt(sol, gen, adaptState);
     else RVND(sol, gen);
@@ -196,7 +225,7 @@ long g_restarts = 0;
 void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
                    const vector<double>& R, int poolSize, double lambda,
                    ParentMode parentMode, RvndMode rvndMode, mt19937& gen,
-                   AdaptiveOrOptState& adaptState, double maxTimeSec) {
+                   AdaptiveOrOptState& adaptState, double maxTimeSec, int dbMaxSeg) {
     int fStar = INT_MAX;
     EliteSet memory(poolSize);
 
@@ -241,7 +270,7 @@ void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
             if (outOfTime()) break;
 
             s = sPrime;
-            perturb(s, gen);
+            perturb(s, gen, dbMaxSeg);
             iterILS++;
         }
 
@@ -259,7 +288,8 @@ int main(int argc, char** argv) {
         cerr << "Usage:\n";
         cerr << "  ./gils_am_rvnd <instance.tsp> [--imax 10] [--iils 100] [--pool 20]\n";
         cerr << "    [--lambda 0.50] [--parent-mode pool|pair]\n";
-        cerr << "    [--rvnd-mode single|extended-oropt|extended-oropt-wide|lk-escape|adaptive-oropt]\n";
+        cerr << "    [--rvnd-mode single|extended-oropt|extended-oropt-wide|extended-oropt-rev|lk-escape|adaptive-oropt]\n";
+    cerr << "    [--db-maxseg K]  cap on each swapped double-bridge block (0 = unrestricted)\n";
         cerr << "    [--max-time SECONDS] [--seed N] [-v]\n";
         cerr << "    adaptive-oropt: [--adapt-kstart 6] [--adapt-period 400] [--adapt-rho 0.30]\n";
         cerr << "                    [--adapt-grow 0.10] [--adapt-shrink 0.02]\n";
@@ -276,6 +306,8 @@ int main(int argc, char** argv) {
     long seed = -1;
     bool verbose = false;
     double maxTimeSec = -1.0;   /* <=0 disables the time limit */
+    int dbMaxSeg = 0;           /* <=0 keeps the unrestricted double bridge */
+    int dbMaxSegDiv = 0;        /* >0 sets dbMaxSeg = max(2, n/dbMaxSegDiv) */
     bool imaxExplicit = false;
     int    adaptKStart = 6;
     int    adaptPeriod = 400;
@@ -299,11 +331,16 @@ int main(int argc, char** argv) {
             if (m == "pool") parentMode = ParentMode::Pool;
             else if (m == "pair") parentMode = ParentMode::Pair;
             else { cerr << "Unknown --parent-mode: " << m << "\n"; return 1; }
+        } else if (a == "--db-maxseg" && i + 1 < argc) {
+            dbMaxSeg = stoi(argv[++i]);
+        } else if (a == "--db-maxseg-div" && i + 1 < argc) {
+            dbMaxSegDiv = stoi(argv[++i]);
         } else if (a == "--rvnd-mode" && i + 1 < argc) {
             string m = argv[++i];
             if (m == "single") rvndMode = RvndMode::Single;
             else if (m == "extended-oropt") rvndMode = RvndMode::ExtendedOrOpt;
             else if (m == "extended-oropt-wide") rvndMode = RvndMode::ExtendedOrOptWide;
+            else if (m == "extended-oropt-rev") rvndMode = RvndMode::ExtendedOrOptRev;
             else if (m == "lk-escape") rvndMode = RvndMode::LKEscape;
             else if (m == "adaptive-oropt") rvndMode = RvndMode::AdaptiveOrOpt;
             else { cerr << "Unknown --rvnd-mode: " << m << "\n"; return 1; }
@@ -339,6 +376,9 @@ int main(int argc, char** argv) {
     Evaluator eval;
     eval.SetInstance((char*)filepath.c_str());
 
+    if (dbMaxSegDiv > 0)
+        dbMaxSeg = max(2, eval.Ncity / dbMaxSegDiv);
+
     vector<double> R;
     for (double r = 0.0; r <= 0.25; r += 0.01)
         R.push_back(r);
@@ -365,7 +405,7 @@ int main(int argc, char** argv) {
     adaptState.shrinkHitRate = adaptShrink;
 
     gils_am_rvnd(bestSol, eval, I_max, I_ILS, R, poolSize, lambda, parentMode, rvndMode, gen,
-                 adaptState, maxTimeSec);
+                 adaptState, maxTimeSec, dbMaxSeg);
 
     auto t1 = Clock::now();
     double runtime_ms = chrono::duration<double, milli>(t1 - t0).count();
@@ -381,8 +421,10 @@ int main(int argc, char** argv) {
     cout << "POOL " << poolSize << "\n";
     cout << "LAMBDA " << fixed << setprecision(2) << lambda << "\n";
     cout << "PARENT_MODE " << (parentMode == ParentMode::Pool ? "pool" : "pair") << "\n";
+    cout << "DB_MAXSEG " << dbMaxSeg << "\n";
     cout << "RVND_MODE " << (rvndMode == RvndMode::ExtendedOrOpt ? "extended-oropt"
                               : rvndMode == RvndMode::ExtendedOrOptWide ? "extended-oropt-wide"
+                              : rvndMode == RvndMode::ExtendedOrOptRev ? "extended-oropt-rev"
                               : rvndMode == RvndMode::LKEscape ? "lk-escape"
                               : rvndMode == RvndMode::AdaptiveOrOpt ? "adaptive-oropt" : "single") << "\n";
     if (rvndMode == RvndMode::AdaptiveOrOpt) {

@@ -342,3 +342,65 @@ bool Solution::evaluateOrOpt(int i, int j, int k) {
 
     return c < fEvaluationValue;
 }
+
+
+bool Solution::evaluateOrOptReversed(int i, int j, int k) {
+    if (i > j) swap(i, j);
+    if (k >= i && k <= j) return false;
+
+    int t = 0, c = 0;
+    bool first = true;
+    int last = -1;
+
+    auto append = [&](int u, int v) {
+        if (u > v) return;
+        int Tu = getT(u, v);
+        int Cu = getC(u, v);
+        int Wu = getW(u, v);
+        int firstNode = fTour[u];
+        int lastNode  = fTour[v];
+
+        if (first) {
+            t = Tu; c = Cu;
+            last = lastNode; first = false;
+            return;
+        }
+        int e = fDist[last][firstNode];
+        c += Wu * (t + e) + Cu;
+        t += e + Tu;
+        last = lastNode;
+    };
+
+    auto appendReversed = [&](int u, int v) {
+        if (u > v) return;
+        int Tu = getT(u, v);
+        int Cu = getCr(u, v);
+        int Wu = getW(u, v);
+        int firstNode = fTour[v];
+        int lastNode  = fTour[u];
+
+        if (first) {
+            t = Tu; c = Cu;
+            last = lastNode; first = false;
+            return;
+        }
+        int e = fDist[last][firstNode];
+        c += Wu * (t + e) + Cu;
+        t += e + Tu;
+        last = lastNode;
+    };
+
+    if (k < i) {
+        append(0, k);
+        appendReversed(i, j);
+        append(k + 1, i - 1);
+        append(j + 1, fN - 1);
+    } else {
+        append(0, i - 1);
+        append(j + 1, k);
+        appendReversed(i, j);
+        append(k + 1, fN - 1);
+    }
+
+    return c < fEvaluationValue;
+}

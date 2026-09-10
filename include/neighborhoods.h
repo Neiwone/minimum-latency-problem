@@ -27,6 +27,17 @@ void neighborhood_oropt10(Solution& sol);
    learned weights instead of a hard-wired list. See rvnd_adaptive.h. */
 void neighborhood_oropt_len(Solution& sol, int segLen);
 
+/* H16: or-opt that inserts the relocated segment REVERSED (segLen >= 2).
+   Never tried in this project and absent from the MLP papers it follows,
+   though relocate-with-reversal is standard in vehicle routing. See
+   Solution::evaluateOrOptReversed. */
+void neighborhood_oropt_rev_len(Solution& sol, int segLen);
+void neighborhood_oropt_rev2(Solution& sol);
+void neighborhood_oropt_rev3(Solution& sol);
+void neighborhood_oropt_rev4(Solution& sol);
+void neighborhood_oropt_rev5(Solution& sol);
+void neighborhood_oropt_rev6(Solution& sol);
+
 /* H12b: genuine 3-opt (reverse two disjoint segments independently,
    keeping their order -- see Solution::evaluateThreeOptDoubleReversal). */
 void neighborhood_3opt_double_reversal(Solution& sol);
