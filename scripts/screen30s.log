@@ -7,3 +7,6 @@ Checkpoint: scripts/fixed_time_30s.json
 ========================================================================================================
 
 [7/144] lin318         gils_am_rvnd_extended_oropt      seed=1   cost=5588289 t=  30.0s restarts=45
+[8/144] lin318         gils_am_rvnd_extended_oropt      seed=2   cost=5585866 t=  30.0s restarts=41
+[9/144] lin318         gils_am_rvnd_extended_oropt      seed=3   cost=5591864 t=  30.0s restarts=42
+[10/144] lin318         gils_am_rvnd_extended_oropt      seed=4   cost=5566079 t=  30.0s restarts=56

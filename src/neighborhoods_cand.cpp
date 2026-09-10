@@ -38,11 +38,20 @@ static void apply_oropt(Solution& sol, int i, int j, int k, bool reversed,
     sol.calculateStructures();
 }
 
-/* One first-improvement pass over the pruned or-opt neighborhood.
-   Returns true if a move was applied. */
-static bool pass_oropt(Solution& sol, const CandList& cl, int len, bool reversed,
-                       vector<int>& seg, vector<int>& rest) {
+/* One sweep over the pruned or-opt neighborhood, returning how many
+   moves it applied.
+
+   The neighborhoods in src/neighborhoods.cpp restart their scan at the
+   first position after every applied move, which costs a full extra
+   sweep per improvement -- expensive early in a descent, when most
+   positions still yield a move. This sweep instead keeps going from the
+   position it was at and is repeated until it comes back clean, so the
+   descent still ends at a local optimum of the pruned neighborhood but
+   pays O(n*K) per sweep rather than per move. */
+static int pass_oropt(Solution& sol, const CandList& cl, int len, bool reversed,
+                      vector<int>& seg, vector<int>& rest) {
     const int n = sol.fN;
+    int applied = 0;
 
     for (int i = 1; i + len - 1 < n; i++) {
         int j = i + len - 1;
@@ -65,16 +74,19 @@ static bool pass_oropt(Solution& sol, const CandList& cl, int len, bool reversed
                     if (!ok) continue;
 
                     apply_oropt(sol, i, j, k, reversed, seg, rest);
-                    return true;
+                    applied++;
+                    goto nextPosition;
                 }
             }
         }
+        nextPosition: ;
     }
-    return false;
+    return applied;
 }
 
-static bool pass_2opt(Solution& sol, const CandList& cl) {
+static int pass_2opt(Solution& sol, const CandList& cl) {
     const int n = sol.fN;
+    int applied = 0;
 
     for (int i = 1; i < n; i++) {
         int a = sol.fTour[i - 1];
@@ -86,15 +98,17 @@ static bool pass_2opt(Solution& sol, const CandList& cl) {
             if (sol.evaluate2Opt(i, j)) {
                 reverse(sol.fTour + i, sol.fTour + j + 1);
                 sol.calculateStructures();
-                return true;
+                applied++;
+                break;
             }
         }
     }
-    return false;
+    return applied;
 }
 
-static bool pass_swap(Solution& sol, const CandList& cl) {
+static int pass_swap(Solution& sol, const CandList& cl) {
     const int n = sol.fN;
+    int applied = 0;
 
     for (int i = 1; i < n; i++) {
         int a = sol.fTour[i - 1];
@@ -106,11 +120,12 @@ static bool pass_swap(Solution& sol, const CandList& cl) {
             if (sol.evaluateSwap(i, j)) {
                 swap(sol.fTour[i], sol.fTour[j]);
                 sol.calculateStructures();
-                return true;
+                applied++;
+                break;
             }
         }
     }
-    return false;
+    return applied;
 }
 
 void RVND_Candidate(Solution& sol, const CandList& cl, int maxLen,
@@ -136,15 +151,15 @@ void RVND_Candidate(Solution& sol, const CandList& cl, int maxLen,
         int oldCost = sol.fEvaluationValue;
 
         if (eta == 0) {
-            while (pass_swap(sol, cl)) {}
+            while (pass_swap(sol, cl) > 0) {}
         } else if (eta == 1) {
-            while (pass_2opt(sol, cl)) {}
+            while (pass_2opt(sol, cl) > 0) {}
         } else if (eta < 2 + nFwd) {
             int len = eta - 1;
-            while (pass_oropt(sol, cl, len, false, seg, rest)) {}
+            while (pass_oropt(sol, cl, len, false, seg, rest) > 0) {}
         } else {
             int len = eta - (2 + nFwd) + 2;
-            while (pass_oropt(sol, cl, len, true, seg, rest)) {}
+            while (pass_oropt(sol, cl, len, true, seg, rest) > 0) {}
         }
 
         if (sol.fEvaluationValue < oldCost) {
