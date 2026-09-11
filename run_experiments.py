@@ -77,15 +77,26 @@ SOLVERS_RAW = {
     "gils_am_rvnd_pair": ("./bin/gils_am_rvnd", ["--parent-mode", "pair"]),
     "gils_am_rvnd_extended_oropt": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt"]),
     "gils_am_rvnd_extended_oropt_wide": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt-wide"]),
-    # H16/H17 candidates: reversed or-opt neighborhood and size-capped
-    # double bridge, alone and combined (see docs/experiments/h16-*.md).
+    # H16 WINNER -- the configuration to use. GILS-AM-RVND with
+    # candidate-list pruned neighborhoods (K=12): swap, 2-opt, or-opt
+    # forward 1-6 and or-opt REVERSED 2-6, all scanned only against each
+    # city's 12 nearest neighbours. Beats mdm_gils_rvnd at 100s/run on
+    # lin318/pr439/att532: -0.649% aggregate, 27/0/3 over 30 paired
+    # seeds, p < 0.0001, winning on all three instances.
+    # See docs/experiments/h16-candidate-neighborhoods.md.
+    "gils_am_rvnd_cand": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "12"]),
+
+    # H16/H17 variants kept for reproducing the screening table in that
+    # doc: the reversed or-opt and the size-capped double bridge on their
+    # own, and other K values.
+    "gils_am_rvnd_cand12": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "12"]),
+    "gils_am_rvnd_cand8": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "8"]),
+    "gils_am_rvnd_cand20": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "20"]),
+    "gils_am_rvnd_cand12_db10": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "12", "--db-maxseg-div", "10"]),
     "gils_am_rvnd_oropt_rev": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt-rev"]),
     "gils_am_rvnd_ext_db10": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt", "--db-maxseg-div", "10"]),
     "gils_am_rvnd_ext_db20": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt", "--db-maxseg-div", "20"]),
     "gils_am_rvnd_rev_db10": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt-rev", "--db-maxseg-div", "10"]),
-    "gils_am_rvnd_cand12": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "12"]),
-    "gils_am_rvnd_cand20": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "20"]),
-    "gils_am_rvnd_cand12_db10": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "12", "--db-maxseg-div", "10"]),
     "gils_rvnd": "./bin/gils_rvnd",
     "gils_rvnd_extended_oropt": ("./bin/gils_rvnd", ["--rvnd-mode", "extended-oropt"]),
     "gils_rvnd_extended_oropt_wide": ("./bin/gils_rvnd", ["--rvnd-mode", "extended-oropt-wide"]),
@@ -283,6 +294,12 @@ Examples:
   # Equal-time comparison: same wall-clock budget for every solver
   python run_experiments.py --mode fixed-time --time-limit 60 --runs 10 \\
       --solvers gils_rvnd gils_am_rvnd_extended_oropt mdm_gils_rvnd
+
+  # H16 result: the candidate-list solver vs MDM-GILS-RVND at 100s/run on
+  # the three instances with n > 200 (docs/experiments/h16-candidate-neighborhoods.md)
+  python run_experiments.py --mode fixed-time --time-limit 100 --runs 10 \\
+      --instances lin318 pr439 att532 \\
+      --solvers mdm_gils_rvnd gils_am_rvnd_cand
         """
     )
 

@@ -73,9 +73,9 @@ def compare(runs, instances, baseline, solver):
 
 
 def main():
-    budget = sys.argv[1] if len(sys.argv) > 1 else "30"
+    arg = sys.argv[1] if len(sys.argv) > 1 else "30"
     baseline = sys.argv[2] if len(sys.argv) > 2 else "mdm_gils_rvnd"
-    path = Path("scripts") / f"fixed_time_{budget}s.json"
+    path = Path(arg) if arg.endswith(".json") else Path("scripts") / f"fixed_time_{arg}s.json"
 
     runs, solvers, instances = load(path)
     print(f"{path}  ({sum(len(v) for v in runs.values())} runs)  baseline: {baseline}\n")
