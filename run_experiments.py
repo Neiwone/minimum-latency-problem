@@ -422,11 +422,14 @@ Examples:
         type=str,
         default=None,
         help=(
-            "salehipour-benchmark (--solvers) only: JSON file to save per-instance "
-            "results incrementally (flushed after every instance) and resume from "
-            "if it already exists. Default: scripts/salehipour_<a>_vs_<b>.json. "
-            "Long runs (n=500/1000) should always use this -- an interrupted run "
-            "resumes instead of losing hours of work."
+            "JSON file to save results incrementally and RESUME FROM. Giving this "
+            "flag means 'continue that batch': runs already in the file are reused "
+            "and only the missing ones are executed. Omitting it means 'start a new "
+            "batch': the default file for this run (scripts/fixed_time_<T>s.json, "
+            "or scripts/salehipour_<a>_vs_<b>.json) is DELETED and rewritten from "
+            "scratch. Long runs (n=500/1000, or a big fixed-time batch) should "
+            "always pass it -- an interrupted run then resumes instead of losing "
+            "hours of work."
         )
     )
 
@@ -948,15 +951,24 @@ def run_salehipour_benchmark_mode(args):
         solver_a = SOLVERS[solver_a_name]
         solver_b = SOLVERS[solver_b_name]
 
-        checkpoint_path = Path(args.checkpoint) if args.checkpoint else \
+        resuming = args.checkpoint is not None
+        checkpoint_path = Path(args.checkpoint) if resuming else \
             Path("scripts") / f"salehipour_{solver_a_name}_vs_{solver_b_name}.json"
 
         all_rows = []
         done = set()
-        if checkpoint_path.exists():
-            all_rows = json.loads(checkpoint_path.read_text())
-            done = {r["instance"] for r in all_rows}
-            print(f"Resuming from {checkpoint_path} ({len(all_rows)} instances already done)")
+        if resuming:
+            if checkpoint_path.exists():
+                all_rows = json.loads(checkpoint_path.read_text())
+                done = {r["instance"] for r in all_rows}
+                print(f"Resuming from {checkpoint_path} ({len(all_rows)} instances already done)")
+            else:
+                print(f"No checkpoint at {checkpoint_path} yet -- starting a new one")
+        elif checkpoint_path.exists():
+            discarded = len(json.loads(checkpoint_path.read_text()))
+            checkpoint_path.unlink()
+            print(f"Starting fresh: DISCARDED {checkpoint_path} ({discarded} instances). "
+                  f"Pass --checkpoint {checkpoint_path} to resume one instead.")
 
         print(f"\n{'='*90}")
         print(f"Salehipour benchmark: {solver_a_name.upper()} vs {solver_b_name.upper()}")
@@ -1106,13 +1118,22 @@ def run_fixed_time_mode(args):
     baseline = args.solvers[0]
     time_limit = args.time_limit
 
-    checkpoint_path = Path(args.checkpoint) if args.checkpoint else \
+    resuming = args.checkpoint is not None
+    checkpoint_path = Path(args.checkpoint) if resuming else \
         Path("scripts") / f"fixed_time_{int(time_limit)}s.json"
 
     results = {}
-    if checkpoint_path.exists():
-        results = json.loads(checkpoint_path.read_text())
-        print(f"Resuming from {checkpoint_path} ({len(results)} runs already done)")
+    if resuming:
+        if checkpoint_path.exists():
+            results = json.loads(checkpoint_path.read_text())
+            print(f"Resuming from {checkpoint_path} ({len(results)} runs already done)")
+        else:
+            print(f"No checkpoint at {checkpoint_path} yet -- starting a new one")
+    elif checkpoint_path.exists():
+        discarded = len(json.loads(checkpoint_path.read_text()))
+        checkpoint_path.unlink()
+        print(f"Starting fresh: DISCARDED {checkpoint_path} ({discarded} runs). "
+              f"Pass --checkpoint {checkpoint_path} to resume one instead.")
 
     print(f"\n{'='*104}")
     print(f"Fixed-time comparison: {time_limit:.0f}s per run, --iils {args.iils}, "
