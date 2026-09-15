@@ -6,30 +6,8 @@
 
 using namespace std;
 
-/* Read-only diagnostic for H12b (genuine 3-opt). Does NOT touch
-   solution.cpp/neighborhoods.cpp/rvnd.cpp -- only reads T/C/Cr via the
-   same append/appendReversed pattern already used by
-   Solution::evaluate2Opt/evaluateOrOpt, chained over 4 blocks instead of
-   2-3. Never mutates the Solution passed in.
-
-   3 cuts (i<j<k) split the tour into 4 blocks: A=[0,i], B=[i+1,j],
-   C=[j+1,k], D=[k+1,n-1] (A always first since it holds the depot at
-   position 0). Of the reconnections of these 4 blocks, the ones already
-   reachable by a SINGLE existing neighborhood are:
-     - reversing any one contiguous span (B alone, C alone, or B+C as one
-       merged span, which equals rev(C)+rev(B) -- i.e. swaps B/C order
-       AND reverses each) -- all already covered by neighborhood_2opt,
-       since it tries every contiguous [p,q] reversal.
-     - relocating a short segment (B or C, length <= current Or-opt max)
-       elsewhere -- covered by neighborhood_oropt2/3/4/5/6/8/10 (H12a).
-
-   The reconnection that is NOT reachable by any single existing move:
-   reversing B and C INDEPENDENTLY while keeping their original order --
-   A + rev(B) + rev(C) + D. (Reversing the merged B+C span gives
-   rev(C)+rev(B), a different tour -- order swapped too.) This is the
-   textbook "type-7" 3-opt reconnection that only a genuine 3-opt
-   neighborhood reaches. This diagnostic measures whether that specific
-   move ever improves a fully extended-oropt-converged local optimum. */
+/* Read-only probe for H12b: does A + rev(B) + rev(C) + D -- the one 3-opt
+   reconnection no single 2-opt or or-opt reaches -- ever improve? */
 
 int delta_double_reversal(const Solution& sol, int i, int j, int k) {
     int n = sol.fN;

@@ -93,6 +93,19 @@ SOLVERS_RAW = {
     "gils_am_rvnd_cand8": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "8"]),
     "gils_am_rvnd_cand20": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "20"]),
     "gils_am_rvnd_cand12_db10": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "12", "--db-maxseg-div", "10"]),
+    # H19 WINNER -- pruned RVND + don't-look bits, I_ILS retuned. Beats
+    # mdm_gils_rvnd at 100s/run for n >= 200: -1.249%, 60/10/0 of 70 pairs.
+    "gils_am_rvnd_dlb": ("./bin/gils_am_rvnd",
+                         ["--rvnd-mode", "candidate-dlb", "--cand-k", "12", "--iils", "300"]),
+    "gils_am_rvnd_dlb_i100": ("./bin/gils_am_rvnd",
+                              ["--rvnd-mode", "candidate-dlb", "--cand-k", "12", "--iils", "100"]),
+    "gils_am_rvnd_cand_i300": ("./bin/gils_am_rvnd",
+                               ["--rvnd-mode", "candidate", "--cand-k", "12", "--iils", "300"]),
+    # Baselines at their own best I_ILS, so it is best config vs best
+    # config rather than everyone at the protocol default.
+    "mdm_gils_rvnd_i100": ("./bin/mdm_gils_rvnd", ["--iils", "100"]),
+    "mdm_gils_rvnd_i300": ("./bin/mdm_gils_rvnd", ["--iils", "300"]),
+    "gils_rvnd_i100": ("./bin/gils_rvnd", ["--iils", "100"]),
     "gils_am_rvnd_oropt_rev": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt-rev"]),
     "gils_am_rvnd_ext_db10": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt", "--db-maxseg-div", "10"]),
     "gils_am_rvnd_ext_db20": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt", "--db-maxseg-div", "20"]),
@@ -1155,9 +1168,12 @@ def run_fixed_time_mode(args):
                     done += 1
                     continue
 
-                solver = (binary, extra + ["--max-time", str(time_limit),
-                                           "--iils", str(args.iils),
-                                           "--seed", str(seed)])
+                # A solver that pins its own --iils keeps it: one value for
+                # everyone compares each at someone else's tuning.
+                flags = ["--max-time", str(time_limit), "--seed", str(seed)]
+                if "--iils" not in extra:
+                    flags += ["--iils", str(args.iils)]
+                solver = (binary, extra + flags)
                 try:
                     sol = run_solver(solver, inst_path, verbose=args.vb)
                 except RuntimeError as e:

@@ -56,10 +56,8 @@ void print_trace(int outer, int step, const Solution& sol) {
 
 enum class PertMode { Fixed, Stagnation, Distance };
 
-/* Number of nodes whose successor differs between two tours over the same
-   n customers -- a cheap O(n) proxy for edge-set symmetric difference
-   (Máximo & Nascimento's d(s, s_ref) = |E^s Delta E^s_ref|), since each node
-   contributes at most one outgoing edge to a Hamiltonian path. */
+/* Nodes whose successor differs between two tours: an O(n) proxy for
+   edge-set symmetric difference (Máximo & Nascimento's d(s, s_ref)). */
 int edge_distance(const int* tourA, const int* tourB, int n) {
     vector<int> succA(n, -1), succB(n, -1);
     for (int i = 0; i + 1 < n; i++) succA[tourA[i]] = tourA[i + 1];
@@ -71,24 +69,15 @@ int edge_distance(const int* tourA, const int* tourB, int n) {
     return diff;
 }
 
-/* Perturbation strength schedule for H1 (adaptive diversification),
-   "stagnation" variant: strength starts at 1 and increases by 1 every
-   `stagnationStep` consecutive non-improving iterations (iterILS), capped
-   at `maxStrength`. Tested against fixed double-bridge and rejected (see
-   docs/experiments/h1-adaptive-diversification.md, secs 4-6): ties on
-   easy instances at higher time cost, loses on the one instance with real
-   optimization headroom -- it escalates blindly on elapsed time without
-   checking whether the extra strength is actually producing useful
-   diversity. */
+/* H1 "stagnation": strength grows every `stagnationStep` non-improving
+   iterations. Rejected -- escalates blindly, without checking diversity. */
 int stagnation_strength(int iterILS, int stagnationStep, int maxStrength) {
     int strength = 1 + iterILS / stagnationStep;
     return min(strength, maxStrength);
 }
 
-/* H2 (path relinking between elites): a pool of the best distinct restart
-   solutions found so far, kept sorted ascending by cost. Only the tour is
-   kept (not the O(n^2) re-optimization matrices) since idle pool members
-   are never RVND'd directly -- see algorithms/grasp_am.md's AddElite. */
+/* H2: pool of the best distinct restart solutions, sorted by cost. Only
+   the tour is kept; idle members are never RVND'd directly. */
 struct EliteEntry { int cost; vector<int> tour; };
 
 void add_elite(vector<EliteEntry>& elite, const Solution& sol, int maxSize) {
@@ -104,12 +93,8 @@ void add_elite(vector<EliteEntry>& elite, const Solution& sol, int maxSize) {
     if ((int)elite.size() > maxSize) elite.pop_back();
 }
 
-/* Classic swap-based path relinking (Glover): moves `start` one position at
-   a time towards `guide` (each step swaps whichever element currently sits
-   where `guide` wants a given customer), evaluating cost along the way.
-   Returns the best solution found anywhere on the path, including the
-   endpoints. O(n) steps, O(n^2) re-optimization per step -> O(n^3) total,
-   but called only once per outer restart, not inside the ILS loop. */
+/* Path relinking (Glover): walk `start` towards `guide` one swap at a time,
+   returning the best tour on the path. O(n^3), so once per restart only. */
 Solution path_relink(const Solution& start, const vector<int>& guideTour) {
     Solution current(start);
     int n = current.fN;
@@ -137,10 +122,8 @@ Solution path_relink(const Solution& start, const vector<int>& guideTour) {
     return best;
 }
 
-/* H4: which RVND implementation to call -- Single is the original,
-   untouched first-improvement RVND; Multi batches non-conflicting
-   improving moves per scan (see neighborhoods.cpp / rvnd.cpp). Both are
-   available side by side; Single remains the default. */
+/* H4: Single is the original first-improvement RVND; Multi batches
+   non-conflicting moves per scan. Single is the default. */
 enum class RvndMode { Single, Multi, ExtendedOrOpt, ExtendedOrOptWide, ExtendedOrOpt3Opt, AdaptiveOrOpt };
 
 /* `adaptState` carries the adaptive-or-opt learning across every RVND
@@ -154,10 +137,8 @@ void run_rvnd(RvndMode mode, Solution& sol, mt19937& gen, AdaptiveOrOptState& ad
     else RVND(sol, gen);
 }
 
-/* H6: which constructive procedure to use -- Greedy is the original,
-   untouched construction(); Lookahead scores candidates by a k-step
-   greedy rollout instead of just dist(r,c). See construction_impl.cpp /
-   docs/experiments/h6-lookahead-construction.md. */
+/* H6: Greedy is the original construction(); Lookahead scores candidates
+   by a k-step greedy rollout instead of dist(r,c). */
 enum class ConstructionMode { Greedy, Lookahead };
 
 /* Completed restarts, reported so a fixed-time protocol can verify
@@ -174,10 +155,8 @@ void gils_rvnd(Solution& bestSol, Evaluator& eval,
     int fStar = INT_MAX;
     vector<EliteEntry> elite;
 
-    /* Wall-clock stopping criterion for equal-time comparisons (see
-       run_experiments.py --mode fixed-time). Checked between ILS iterations and
-       between restarts, never inside an RVND convergence, so the budget
-       can be overshot by at most one convergence. */
+    /* Wall-clock stop, checked between ILS iterations and restarts, so
+       the budget can overshoot by at most one RVND convergence. */
     using SteadyClock = chrono::steady_clock;
     const auto tStart = SteadyClock::now();
     const bool timed = maxTimeSec > 0.0;
@@ -208,9 +187,8 @@ void gils_rvnd(Solution& bestSol, Evaluator& eval,
         int iterILS = 0;
         int step = 0;
         int strength = 1;
-        /* Reference tour perturb() was applied to, snapshotted each time a
-           new perturbation is issued -- used by "distance" mode to measure
-           how much diversity the last kick+RVND cycle actually achieved. */
+        /* Tour the last perturbation started from -- "distance" mode
+           measures against it how much diversity that cycle achieved. */
         vector<int> referenceTour(sPrime.fTour, sPrime.fTour + n);
 
         while (iterILS < I_ILS) {
@@ -397,9 +375,8 @@ int main(int argc, char** argv) {
 
     auto t0 = Clock::now();
 
-    /* One state for the whole run: the adaptive-or-opt policy needs to
-       pool statistics across every RVND convergence to learn anything.
-       The knobs are CLI-exposed so they can be tuned (see irace/). */
+    /* One state for the whole run: the policy pools statistics across
+       every RVND convergence to learn anything. */
     AdaptiveOrOptState adaptState;
     adaptState.kMax = max(AdaptiveOrOptState::K_FLOOR,
                           min(adaptKStart, (int)AdaptiveOrOptState::K_CAP));

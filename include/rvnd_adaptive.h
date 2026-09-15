@@ -6,51 +6,8 @@
 #include <string>
 #include <vector>
 
-/* Adaptive-or-opt RVND.
-
-   Motivation: RVND_ExtendedOrOpt (H12a, the one real quality finding of
-   this project) hard-wires or-opt segment lengths 2..6 and scans all of
-   them with equal probability, forever. Two things are left on the table:
-
-     1. The useful ceiling is not the same for every instance or for every
-        phase of the search -- early on, when the tour is far from a local
-        optimum, short segments pay off; later, the improvements that
-        remain tend to need longer relocations. A fixed k_max=6 both
-        over-scans (paying O(n^2) for lengths that stopped producing) and
-        under-scans (never trying 7..10 when they would still pay).
-     2. Within the ceiling, lengths are not equally productive, but plain
-        RVND visits them uniformly at random.
-
-   This RVND makes the or-opt ceiling `kMax` an adaptive parameter and
-   biases selection toward the lengths that are actually producing
-   improvements ("the ones that most need to be visited"):
-
-     - Selection: the neighborhood list holds the three fixed structures
-       (swap, 2-opt, reinsertion, i.e. or-opt of length 1) plus one entry
-       per or-opt length in [2, kMax]. The next structure to scan is drawn
-       by roulette wheel: fixed structures keep weight 1.0, each or-opt
-       length carries its learned weight.
-     - Credit: every scan is an attempt; an improving scan earns
-       1 + gainScale * (relative cost improvement). Reward per length is
-       credit/attempts over the current period.
-     - Adaptation (every `period` scans, accumulated ACROSS RVND calls so
-       learning survives the hundreds/thousands of convergences an ILS
-       run performs): weights are smoothed toward the observed reward,
-       w <- (1-rho)*w + rho*reward_normalized, with a floor so no length
-       is permanently starved; then the ceiling moves -- if the frontier
-       lengths (the largest ones currently enabled) are still hitting
-       above `growHitRate`, kMax grows by one (up to K_CAP, the new length
-       entering with an optimistic weight so it gets a fair trial); if
-       they hit below `shrinkHitRate`, kMax shrinks by one (never below
-       K_FLOOR), so the search stops paying for scans that no longer
-       produce.
-
-   Termination is unchanged from RVND(): the scan stops once every
-   structure currently in the list has failed to improve, so the result
-   is still a local optimum with respect to the enabled neighborhoods.
-
-   The state is owned by the caller (one instance per algorithm run, NOT
-   per RVND call) -- see src/gils_am_rvnd.cpp --rvnd-mode adaptive-oropt. */
+/* H15: or-opt lengths picked by roulette on learned weights, ceiling kMax
+   moving with the frontier hit rate. State is per RUN, not per call. */
 struct AdaptiveOrOptState {
     static const int K_FLOOR = 3;  /* never shrink the ceiling below this (the paper's original) */
     static const int K_CAP   = 12; /* never grow past this */
@@ -82,8 +39,7 @@ struct AdaptiveOrOptState {
 
     AdaptiveOrOptState();
 
-    /* One line per or-opt length: attempts, hits, hit rate, final weight,
-       plus the kMax range visited. Printed under -v by the solvers. */
+    /* Per-length attempts/hits/weight plus the kMax range, for -v. */
     std::string summary() const;
 };
 

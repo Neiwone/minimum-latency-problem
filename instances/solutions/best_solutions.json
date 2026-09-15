@@ -84,9 +84,15 @@
     "tour_file": "pr439.tour"
   },
   "att532": {
-    "cost": 5589568.0,
-    "solver": "gils_rvnd_extended_oropt",
-    "timestamp": "2026-08-15T11:37:08.030742",
+    "cost": 5573783.0,
+    "solver": "gils_am_rvnd candidate-dlb k12 iils300 maxtime100s",
+    "timestamp": "2026-09-11T12:53:21.091793",
     "tour_file": "att532.tour"
+  },
+  "a280": {
+    "cost": 340998.0,
+    "solver": "gils_am_rvnd candidate-dlb k12 iils300 maxtime100s",
+    "timestamp": "2026-09-11T13:02:05.283737",
+    "tour_file": "a280.tour"
   }
 }

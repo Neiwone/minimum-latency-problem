@@ -101,6 +101,20 @@ void Solution::calculateStructures() {
 }
 
 
+void Solution::calculateStructuresFrom(int lo) {
+    if (P == NULL || lo <= 0) { calculateStructures(); return; }
+    if (lo >= fN) { fEvaluationValue = getC(0, fN - 1); return; }
+
+    for (int j = lo; j < fN; j++) {
+        P[j]  = P[j - 1] + fDist[fTour[j - 1]][fTour[j]];
+        SP[j] = SP[j - 1] + P[j];
+        posOf[fTour[j]] = j;
+    }
+
+    fEvaluationValue = getC(0, fN - 1);
+}
+
+
 void Solution::printAllSubsequences() {
     assert(P != NULL && SP != NULL);
 

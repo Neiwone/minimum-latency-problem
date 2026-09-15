@@ -9,39 +9,13 @@
 
 using namespace std;
 
-/* H13: MDM-GILS-RVND (Santana, Plastino & Rosseti, "Improving a
-   State-of-the-Art Heuristic for the Minimum Latency Problem with Data
-   Mining", arXiv:1908.10705) -- see docs/experiments/h13-mdm-gils-rvnd.md.
+/* H13: MDM-GILS-RVND (Santana, Plastino & Rosseti, arXiv:1908.10705). */
 
-   Unlike our own GRASP-AM/GILS-AM-RVND (src/grasp_am.cpp,
-   src/gils_am_rvnd.cpp -- which bias construction by INDIVIDUAL edge
-   frequency across the elite pool, tested in this session as ties
-   quality / wins speed, never wins quality), the paper mines MAXIMAL
-   FREQUENT CONSECUTIVE-ARC SEGMENTS (whole sub-paths, not single edges)
-   and splices them into new constructions as atomic units. Reported
-   result: quality *and* speed both improve, growing with n (up to
-   32.78% faster and 19/20 best-solution wins at n=1000).
+/* Mines maximal frequent ARC SEGMENTS from the elite pool with FPMax*, then
+   splices whole sub-paths into new constructions as atomic units. */
 
-   Mining uses the REAL FPMax* algorithm (not a hand-rolled proxy): each
-   elite tour is a "transaction" of arcs, mined in memory by the vendored
-   FPmax-LIB (external/fpmax/ -- Grahne & Zhu's FIMI implementation
-   wrapped as a callable library). An earlier version called
-   scripts/fpmax_mine.py (mlxtend) through a subprocess instead; see
-   mine_patterns() for why that was replaced. A first version of this
-   file used a hand-rolled proxy (individually-frequent arcs chained into
-   runs) instead; that is NOT equivalent to true itemset mining, because
-   itemset support is monotonically non-increasing with itemset size
-   (Apriori/downward-closure) -- a chain of individually-frequent arcs is
-   not guaranteed to be JOINTLY frequent as a set, which the proxy
-   silently assumed. Consecutive Arc Lists are reconstructed by chaining
-   the arcs of each mined maximal itemset among themselves (see
-   mine_patterns()). Candidate segments are deduplicated by node sequence
-   and capped at maxPatterns (longest first).
-
-   Two-phase adaptive mining (the "M" in MDM, vs. single-shot DM):
-   first half of I_max restarts run plain GILS-RVND (build the elite
-   pool); from the second half on, patterns are re-mined every time the
-   elite set changes, and construction is guided by them. */
+/* Two-phase: the first half of the budget fills the elite pool, the second
+   re-mines it every time it changes. */
 
 void double_bridge_once(Solution& sol, mt19937& gen) {
     int n = sol.fN;
@@ -97,23 +71,8 @@ struct Segment {
     vector<int> nodes; // consecutive customers, length >= 2
 };
 
-/* Real FPMax* in memory, via the vendored FPmax-LIB (external/fpmax/,
-   MIT -- Grahne & Zhu's original FIMI implementation wrapped as a
-   callable library by Marcelo Maia), behind the fpmax_mine_arc_paths()
-   shim (see include/fpmax_mining.h for why the shim exists).
-
-   This replaced an earlier version that shelled out to `uv run --with
-   mlxtend python3 scripts/fpmax_mine.py` on every mining call: correct,
-   but the subprocess was unbounded and not interruptible, which (a)
-   dominated runtime on small instances (+467% at n=50, and orders of
-   magnitude at n=10/20) and (b) blew fixed-time budgets wide open (a 15s
-   budget run on att532 took 69.6s of wall clock -- see
-   docs/experiments/fixed-time-protocol.md section 4).
-
-   Conventions follow the reference integration by the same author,
-   MDM-HGS-CVRP (Program/Population.cpp::mineElite): arc (u,v) is the
-   item u*n + v, minsup is absolute as max(2, supMin * |elite|), and the
-   number of patterns is the library's own `nlargest`. */
+/* FPMax* must stay IN-MEMORY: shelling out to Python per call once blew a
+   15s fixed-time budget out to 69.6s of wall clock on att532. */
 vector<Segment> mine_patterns(const EliteSet& elite, double supMin, int maxPatterns) {
     if (elite.sols.empty()) return {};
 
@@ -131,10 +90,8 @@ vector<Segment> mine_patterns(const EliteSet& elite, double supMin, int maxPatte
     return candidates;
 }
 
-/* Algorithm 5 (HybridConstructiveProc): same semi-greedy RCL/alpha
-   mechanism as construction(), but when the selected candidate is the
-   first node of a still-fully-unvisited mined segment, the whole
-   segment is spliced in as one atomic step instead of just that node. */
+/* Algorithm 5: construction() plus, when the chosen candidate opens a
+   still-unvisited mined segment, splicing that whole segment in at once. */
 void construction_mdm(Solution& sol, Evaluator& eval, double alpha,
                        const unordered_map<int, Segment>& segStarts, mt19937& gen) {
     int n = eval.Ncity;
@@ -193,12 +150,8 @@ void construction_mdm(Solution& sol, Evaluator& eval, double alpha,
     sol.calculateStructures();
 }
 
-/* Number of times the mining phase actually ran, and how many restarts
-   were built from mined patterns. Reported by main() so that "did the
-   mined-pattern mechanism actually fire?" is verifiable from the output
-   instead of assumed -- the --imax 1 bug (see
-   docs/experiments/salehipour-n1000-mdm-vs-am-extended.md section 2) went
-   unnoticed precisely because nothing in the output revealed it. */
+/* Reported by main() so "did mining actually fire?" is verifiable instead
+   of assumed -- an --imax 1 bug once hid behind exactly that. */
 long g_miningCalls = 0;
 long g_patternRestarts = 0;
 long g_restarts = 0;
@@ -212,19 +165,8 @@ void mdm_gils_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
 
     int phase1Iters = max(1, I_max / 2);
 
-    /* Wall-clock stopping criterion for equal-time comparisons (see
-       run_experiments.py --mode fixed-time). Checked between ILS iterations and
-       between restarts, never inside an RVND convergence.
-
-       IMPORTANT: under a time limit the phase split must be measured in
-       TIME, not in restarts. The iteration-based rule (first I_max/2
-       restarts build the elite set, the rest mine it) silently disables
-       mining whenever the run ends before restart I_max/2 -- exactly the
-       bug that invalidated the first n=1000 batch with --imax 1 (see
-       docs/experiments/salehipour-n1000-mdm-vs-am-extended.md section 2).
-       With --max-time the algorithm therefore switches to the mining
-       phase at half the time budget, which is the faithful translation
-       of "half the iterations" to a time-based criterion. */
+    /* Wall-clock stop. The phase split must then follow TIME, not restart
+       count, or mining silently never fires in short runs. */
     using SteadyClock = chrono::steady_clock;
     const auto tStart = SteadyClock::now();
     const bool timed = maxTimeSec > 0.0;
@@ -264,14 +206,8 @@ void mdm_gils_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
         while (iterILS < I_ILS) {
             RVND(s, gen);
 
-            /* Algorithm 4 of the paper calls UpdateEliteSet(D, d, s) here,
-               INSIDE the ILS loop (lines 8 and 31), on every RVND result --
-               not once per restart. An earlier version of this file only
-               added sPrime after the ILS loop finished, which (a) deviated
-               from the paper and (b) made mining unreachable whenever the
-               run ended before completing two restarts -- visible with
-               --max-time budgets shorter than ~2 restarts, where
-               MINING_CALLS stayed 0. */
+            /* Algorithm 4 updates the elite set HERE, on every RVND result
+               -- not once per restart, or short runs never mine. */
             elite.add(s);
 
             if (s.fEvaluationValue < sPrime.fEvaluationValue) {
@@ -324,10 +260,8 @@ int main(int argc, char** argv) {
         else if (a == "--seed" && i + 1 < argc) seed = stol(argv[++i]);
     }
 
-    /* Under a time limit, time is meant to be the binding constraint, so
-       the restart count stops being one unless the caller pinned it. The
-       phase split then follows the clock, not the restart index -- see
-       mdm_gils_rvnd(). */
+    /* Under a time limit, time is the binding constraint -- not I_max,
+       unless the caller pinned it. */
     if (maxTimeSec > 0.0 && !imaxExplicit) I_max = 1000000000;
 
     if (poolSize < 1) poolSize = 1;

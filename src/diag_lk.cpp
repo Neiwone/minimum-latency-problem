@@ -6,50 +6,15 @@
 
 using namespace std;
 
-/* Diagnostic for the Lin-Kernighan-style variable-depth idea.
+/* Probe for Lin-Kernighan: from a converged tour, can a chain of 2-opts
+   allowed through worse tours reach a better one? */
 
-   Classic LK's gain criterion ("new edge shorter than the one removed")
-   is additive over edge lengths, which is only valid for edge-additive
-   costs -- it is WRONG for MLP's cumulative latency, where an edge's
-   contribution depends on how many customers come after it. This probe
-   replaces that criterion with the EXACT total cost via the existing
-   T/C/Cr concatenation tables (delta_2opt below, mirrors
-   Solution::evaluate2Opt), so every step is evaluated honestly.
+/* LK's edge-additive gain criterion is wrong for cumulative latency, so
+   every step below is priced exactly via T/C/Cr. */
 
-   Unlike H10 (dynasearch), which needed to search over combinations of
-   SIMULTANEOUS disjoint reversals and hit a genuine Pareto-front
-   complication (T and C don't decompose into a scalar DP), an LK chain
-   is SEQUENTIAL: each step commits to one 2-opt-style reversal, applied
-   for real (fTour mutated, T/C/Cr recomputed via calculateStructures),
-   before considering the next. That avoids the DP entirely, at the cost
-   of an O(n^2) recompute per step -- acceptable since depth and the
-   number of chain attempts are both small.
-
-   Question: starting from a solution already converged by
-   RVND_ExtendedOrOpt (H12a's best known local search -- so no single
-   swap/2-opt/reinsertion/or-opt(1..6) move improves it), can a chain of
-   several sequential 2-opt-style moves, guided by nearest-neighbor
-   candidate lists and allowed to pass through temporarily worse tours,
-   ever reach a strictly better tour than the one RVND converged to?
-   If never: RVND's neighborhoods already reach everything a bounded-depth
-   sequential search reaches, and that itself is a useful, cheap null
-   result. If sometimes: it's worth building this into a real
-   neighborhood/algorithm.
-
-   Chain mechanics (positions, not city ids; depot is fixed at position
-   0 and is never part of a reversed range or a free end):
-
-   Given the current tour and a "free end" position `freeEnd` holding
-   city c1, and a nearest-neighbor candidate c2 (from Evaluator::
-   fNearCity[c1]) currently at position posC2:
-     - if posC2 > freeEnd: reverse [freeEnd+1, posC2]
-     - if posC2 < freeEnd: reverse [posC2, freeEnd-1]
-   Both cases make (c1, c2) a new tour edge (verified by hand against
-   Solution::evaluate2Opt's own derivation: reversing [i,j] creates edges
-   (tour[i-1], tour[j]) and (tour[i], tour[j+1])). In both cases the new
-   free end is exactly posC2 -- the old neighbor of c1 ends up there,
-   dangling toward whatever was on the other side of c2 -- so the chain
-   continues from there without any extra bookkeeping. */
+/* Chain step: free end `freeEnd` holds c1, candidate c2 sits at posC2. */
+/* Reverse [freeEnd+1, posC2] if posC2 > freeEnd, else [posC2, freeEnd-1] --
+   either way (c1,c2) becomes an edge and posC2 is the new free end. */
 
 int delta_2opt(const Solution& sol, int i, int j) {
     if (i > j) swap(i, j);

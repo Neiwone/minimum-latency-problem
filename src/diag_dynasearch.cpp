@@ -6,34 +6,8 @@
 
 using namespace std;
 
-/* Read-only diagnostic for H10 (dynasearch-style DP over T/C/Cr).
-
-   Does NOT touch solution.cpp/neighborhoods.cpp/rvnd.cpp -- only reads
-   the existing (unmodified) T/C/Cr tables and fTour. Never mutates the
-   Solution passed in.
-
-   Question: starting from an RVND-converged local optimum (where by
-   definition no SINGLE 2-opt move improves), does applying a PAIR of
-   individually non-improving disjoint 2-opt reversals TOGETHER ever
-   improve the total cost? Classic TSP dynasearch works because 2-opt
-   gains are purely additive across disjoint moves (edges don't
-   interact) -- so if that additivity held here too, no pair of
-   non-improving moves could ever combine into an improvement, and the
-   whole DP idea (H10) would be moot. MLP's cumulative-latency cost is
-   position-dependent (a delay early in the route taxes every customer
-   after it), so additivity is NOT guaranteed -- this is exactly what we
-   test, honestly, before investing in the full DP machinery.
-
-   Method: collect all O(n^2) 2-opt candidates (delta = cost_after -
-   cost_before, computed in O(1) via the existing T/C/Cr tables, no
-   mutation), keep the K candidates closest to breaking even (smallest
-   delta -- since converged, delta >= 0 for all), then for every disjoint
-   pair among those K, physically apply BOTH reversals to a throwaway
-   copy of the tour and recompute the EXACT total cost directly in O(n)
-   (cumulative latency, no O(n^2) T/C/Cr rebuild needed -- we only need
-   the final scalar cost, not the full reoptimization tables). This is
-   exact by construction: no boundary-footprint approximation, no
-   overlap-adjacency bug like the one found in H4. */
+/* Read-only probe for H10: TSP 2-opt gains are additive over disjoint moves,
+   MLP's may not be -- do non-improving PAIRS ever improve together? */
 
 int full_route_cost(const vector<int>& tour, int** dist) {
     int n = (int)tour.size();
@@ -45,10 +19,8 @@ int full_route_cost(const vector<int>& tour, int** dist) {
     return total;
 }
 
-/* Mirrors Solution::evaluate2Opt's internal computation but returns the
-   signed delta (new cost - current cost) instead of a boolean. Reads
-   only sol.T/C/Cr/fDist/fTour/fEvaluationValue -- all public, all
-   untouched. */
+/* Solution::evaluate2Opt's computation, returning the signed delta instead
+   of a boolean. Read-only. */
 int delta_2opt(const Solution& sol, int i, int j) {
     if (i > j) swap(i, j);
     int n = sol.fN;

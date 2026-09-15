@@ -8,30 +8,11 @@
 
 using namespace std;
 
-/* H17: double-bridge with a cap on the size of the two swapped blocks.
-   The unrestricted version (three uniform cuts over the whole tour)
-   swaps blocks that average n/4 customers, which at n=532 throws away
-   most of the incumbent -- and [[h1-adaptive-diversification]] already
-   found, from the other direction, that this ILS reconverges worse the
-   more violently it is perturbed. Capping both blocks at maxSeg keeps
-   the move a genuine double bridge (still not undoable by 2-opt or
-   or-opt) while confining the damage to a bounded contiguous span.
-   maxSeg <= 0 reproduces the unrestricted behaviour exactly. */
-/* H18: front-biased placement of the perturbation.
-
-   Under a latency objective an edge at position p is paid by all n-p
-   customers after it, so the front of the tour carries almost all of
-   the cost and the tail carries almost none. A double bridge dropped
-   uniformly at random therefore spends most ILS iterations rearranging
-   the part of the solution that barely affects the objective. frontBias
-   > 0 skews the start position towards position 1 by sampling u^bias
-   over the legal range (bias 1 = uniform, larger = more front-loaded).
-   Whether biasing towards the expensive region helps or just makes the
-   perturbation too destructive to repair is exactly what the paired
-   test has to answer. */
-void double_bridge_once(Solution& sol, mt19937& gen, int maxSeg, double frontBias) {
+/* Double bridge, returning the position range it disturbed so the ILS can
+   re-arm just that span. maxSeg/frontBias measured worse, off by default. */
+pair<int,int> double_bridge_once(Solution& sol, mt19937& gen, int maxSeg, double frontBias) {
     int n = sol.fN;
-    if (n < 8) return;
+    if (n < 8) return {-1, -1};
 
     int p1, p2, p3;
 
@@ -44,10 +25,10 @@ void double_bridge_once(Solution& sol, mt19937& gen, int maxSeg, double frontBia
         int s2 = segDist(gen);
 
         int span = s1 + s2;
-        if (span > n - 2) return;
+        if (span > n - 2) return {-1, -1};
 
         int hi = n - 1 - span;
-        if (frontBias > 1.0) {
+        if (frontBias > 1.0) {   /* note: only reachable when maxSeg > 0 */
             uniform_real_distribution<double> u01(0.0, 1.0);
             double u = pow(u01(gen), frontBias);
             p1 = 1 + (int)(u * (double)hi);
@@ -84,26 +65,29 @@ void double_bridge_once(Solution& sol, mt19937& gen, int maxSeg, double frontBia
 
     for (int i = 0; i < n; i++)
         sol.fTour[i] = newTour[i];
+
+    return {p1, p3 - 1};
 }
 
-void perturb(Solution& sol, mt19937& gen, int dbMaxSeg, double frontBias) {
-    double_bridge_once(sol, gen, dbMaxSeg, frontBias);
+pair<int,int> perturb(Solution& sol, mt19937& gen, int dbMaxSeg, double frontBias) {
+    auto range = double_bridge_once(sol, gen, dbMaxSeg, frontBias);
     sol.calculateStructures();
+    return range;
 }
 
-enum class RvndMode { Single, ExtendedOrOpt, ExtendedOrOptWide, ExtendedOrOptRev, Candidate, LKEscape, AdaptiveOrOpt };
+enum class RvndMode { Single, ExtendedOrOpt, ExtendedOrOptWide, ExtendedOrOptRev, Candidate,
+                      CandidateDLB, LKEscape, AdaptiveOrOpt };
 
 /* Candidate-list configuration, set once per run from the CLI. */
 static CandList g_cand;
 static int  g_candMaxLen  = 6;
 static bool g_candReversed = true;
 
-/* `adaptState` carries the adaptive-or-opt learning across every RVND
-   call of the run (it must NOT be re-created per call -- see
-   include/rvnd_adaptive.h); it is ignored by the other modes. */
+/* `adaptState` and `dlb` must live across the whole run, not per call. */
 void run_rvnd(RvndMode mode, Solution& sol, Evaluator& eval, mt19937& gen,
-              AdaptiveOrOptState& adaptState) {
-    if (mode == RvndMode::ExtendedOrOpt) RVND_ExtendedOrOpt(sol, gen);
+              AdaptiveOrOptState& adaptState, DlbState& dlb) {
+    if (mode == RvndMode::CandidateDLB) RVND_CandidateDLB(sol, g_cand, g_candMaxLen, g_candReversed, gen, dlb);
+    else if (mode == RvndMode::ExtendedOrOpt) RVND_ExtendedOrOpt(sol, gen);
     else if (mode == RvndMode::ExtendedOrOptWide) RVND_ExtendedOrOptWide(sol, gen);
     else if (mode == RvndMode::ExtendedOrOptRev) RVND_ExtendedOrOptRev(sol, gen);
     else if (mode == RvndMode::Candidate) RVND_Candidate(sol, g_cand, g_candMaxLen, g_candReversed, gen);
@@ -195,12 +179,8 @@ void construction_am(Solution& sol, Evaluator& eval, double alpha, const EdgeFre
     route.push_back(0);
     int current = 0;
 
-    /* The RCL is a threshold set, so the candidates never needed to be
-       sorted -- an O(n log n) sort inside an O(n) construction loop that
-       changed nothing about which nodes pass the threshold. Dropping it
-       makes the construction O(n^2), which matters now that the pruned
-       RVND converges fast enough for construction to be a visible share
-       of a restart. */
+    /* The RCL is a threshold set, so sorting the candidates changed
+       nothing about which ones pass -- dropped, leaving this O(n^2). */
     vector<pair<int, double>> candidates;
     vector<int> rcl;
 
@@ -252,24 +232,73 @@ void construction_am(Solution& sol, Evaluator& eval, double alpha, const EdgeFre
     sol.calculateStructures();
 }
 
-/* Completed restarts, reported so a fixed-time protocol can verify that
-   the adaptive-memory construction (which only has content once at least
-   one restart has fed the elite pool) was exercised at all. */
+
+/* Arc-based crossover (Ren, Hao, Wu & Fu, EJOR 304(2), 2023): keep the arcs
+   both parents agree on, graft a `rate` fraction of the rest. Off by default. */
+void crossover_abx(Solution& child, const Solution& A, const Solution& B,
+                   mt19937& gen, double rate) {
+    const int n = A.fN;
+    child = A;
+
+    vector<int> succA(n, -1), succB(n, -1), pos(n, 0);
+    for (int i = 0; i + 1 < n; i++) succA[A.fTour[i]] = A.fTour[i + 1];
+    for (int i = 0; i + 1 < n; i++) succB[B.fTour[i]] = B.fTour[i + 1];
+    for (int i = 0; i < n; i++) pos[child.fTour[i]] = i;
+
+    vector<char> fixed(n, 0);
+    for (int c = 0; c < n; c++)
+        if (succA[c] != -1 && succA[c] == succB[c]) {
+            fixed[c] = 1;
+            fixed[succA[c]] = 1;
+        }
+
+    vector<pair<int,int>> graft;
+    for (int c = 0; c < n; c++)
+        if (succB[c] != -1 && succB[c] != succA[c])
+            graft.push_back({c, succB[c]});
+
+    shuffle(graft.begin(), graft.end(), gen);
+    int take = (int)(graft.size() * rate);
+
+    const int depot = child.fTour[0];
+    for (int g = 0; g < take; g++) {
+        int u = graft[g].first, v = graft[g].second;
+        if (fixed[u] || fixed[v]) continue;
+        if (v == depot) continue;
+
+        int pu = pos[u], pv = pos[v];
+        if (pv == pu + 1) { fixed[u] = fixed[v] = 1; continue; }
+
+        if (pv > pu) {
+            rotate(child.fTour + pu + 1, child.fTour + pv, child.fTour + pv + 1);
+            for (int i = pu + 1; i <= pv; i++) pos[child.fTour[i]] = i;
+        } else {
+            rotate(child.fTour + pv, child.fTour + pv + 1, child.fTour + pu + 1);
+            for (int i = pv; i <= pu; i++) pos[child.fTour[i]] = i;
+        }
+        fixed[u] = fixed[v] = 1;
+    }
+
+    child.calculateStructures();
+}
+
+/* Reported so a fixed-time run can show the restart-boundary mechanisms
+   were exercised at all. */
 long g_restarts = 0;
+long g_crossovers = 0;
 
 void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
                    const vector<double>& R, int poolSize, double lambda,
                    ParentMode parentMode, RvndMode rvndMode, mt19937& gen,
                    AdaptiveOrOptState& adaptState, double maxTimeSec, int dbMaxSeg,
-                   double dbFrontBias) {
+                   double dbFrontBias, double acceptEps, bool polishOnBest,
+                   double abxRate, int restartKick) {
+    DlbState dlb;
     int fStar = INT_MAX;
     EliteSet memory(poolSize);
 
-    /* Wall-clock stopping criterion (for equal-time comparisons between
-       algorithms -- see run_experiments.py --mode fixed-time). Checked between
-       ILS iterations and between restarts, i.e. never in the middle of an
-       RVND convergence, so the budget can be overshot by at most one
-       convergence. */
+    /* Wall-clock stop, checked between ILS iterations and restarts, so
+       the budget can overshoot by at most one RVND convergence. */
     using SteadyClock = chrono::steady_clock;
     const auto tStart = SteadyClock::now();
     const bool timed = maxTimeSec > 0.0;
@@ -290,13 +319,31 @@ void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
         double alpha = R[rDist(gen)];
 
         Solution s;
-        construction_am(s, eval, alpha, freq, lambda, gen);
+        if (restartKick > 0 && fStar < INT_MAX) {
+            /* Soft restart: kick the incumbent instead of throwing it
+               away for a fresh construction. Measured worse. */
+            s = bestSol;
+            for (int k = 0; k < restartKick; k++)
+                perturb(s, gen, dbMaxSeg, dbFrontBias);
+        } else if (abxRate > 0.0 && (int)memory.sols.size() >= 2) {
+            uniform_int_distribution<int> d(0, (int)memory.sols.size() - 1);
+            int a = d(gen), b = d(gen);
+            while (b == a) b = d(gen);
+            crossover_abx(s, memory.sols[a], memory.sols[b], gen, abxRate);
+            g_crossovers++;
+        } else {
+            construction_am(s, eval, alpha, freq, lambda, gen);
+        }
+
+        /* A fresh construction is nowhere near a local optimum: arm
+           everything. Only perturbations get the cheap partial re-arm. */
+        dlb.reset(s.fN);
 
         Solution sPrime(s);
 
         int iterILS = 0;
         while (iterILS < I_ILS) {
-            run_rvnd(rvndMode, s, eval, gen, adaptState);
+            run_rvnd(rvndMode, s, eval, gen, adaptState, dlb);
 
             if (s.fEvaluationValue < sPrime.fEvaluationValue) {
                 sPrime = s;
@@ -305,14 +352,32 @@ void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
 
             if (outOfTime()) break;
 
-            s = sPrime;
-            perturb(s, gen, dbMaxSeg, dbFrontBias);
+            /* acceptEps = 0 is GILS-RVND's strict descent; > 0 is
+               threshold acceptance, measured worse. */
+            if (!(acceptEps > 0.0 &&
+                  (double)s.fEvaluationValue <
+                      (double)sPrime.fEvaluationValue * (1.0 + acceptEps)))
+                s = sPrime;
+
+            auto hit = perturb(s, gen, dbMaxSeg, dbFrontBias);
+            if (hit.first >= 0) dlb.arm_range(s, hit.first - 1, hit.second + 1);
+            else dlb.reset(s.fN);
             iterILS++;
         }
 
         memory.add(sPrime);
 
         if (sPrime.fEvaluationValue < fStar) {
+            /* Two-level VND: the full unpruned RVND buys back the depth
+               the pruning gave away. Measured worse. */
+            if (polishOnBest) {
+                RVND_ExtendedOrOptRev(sPrime, gen);
+                if (sPrime.fEvaluationValue < s.fEvaluationValue) {
+                    s = sPrime;
+                    dlb.reset(s.fN);
+                }
+            }
+
             bestSol = sPrime;
             fStar = sPrime.fEvaluationValue;
         }
@@ -324,8 +389,8 @@ int main(int argc, char** argv) {
         cerr << "Usage:\n";
         cerr << "  ./gils_am_rvnd <instance.tsp> [--imax 10] [--iils 100] [--pool 20]\n";
         cerr << "    [--lambda 0.50] [--parent-mode pool|pair]\n";
-        cerr << "    [--rvnd-mode single|extended-oropt|extended-oropt-wide|extended-oropt-rev|lk-escape|adaptive-oropt]\n";
-    cerr << "    [--cand-k K] [--cand-maxlen L] [--cand-no-rev]  (--rvnd-mode candidate)\n";
+        cerr << "    [--rvnd-mode single|extended-oropt|extended-oropt-wide|extended-oropt-rev|candidate|candidate-dlb|lk-escape|adaptive-oropt]\n";
+    cerr << "    [--cand-k K] [--cand-maxlen L] [--cand-no-rev] [--cand-front F] [--cand-2opt-both]\n";
     cerr << "    [--db-front-bias B]  skew perturbation towards the tour front (1 = uniform)\n";
     cerr << "    [--db-maxseg K]  cap on each swapped double-bridge block (0 = unrestricted)\n";
         cerr << "    [--max-time SECONDS] [--seed N] [-v]\n";
@@ -347,7 +412,14 @@ int main(int argc, char** argv) {
     int dbMaxSeg = 0;           /* <=0 keeps the unrestricted double bridge */
     int dbMaxSegDiv = 0;        /* >0 sets dbMaxSeg = max(2, n/dbMaxSegDiv) */
     int candK = 12;
+    int candFront = 0;          /* extra depot-side or-opt anchors (0 = off) */
+    bool cand2optBoth = false;  /* anchor 2-opt on both new edges */
+    bool dlbStrict = false;     /* skip (city, neighborhood) pairs already failed */
     double dbFrontBias = 1.0;   /* 1.0 = uniform placement */
+    double acceptEps = 0.0;     /* 0 = always walk back to the incumbent */
+    bool polishOnBest = false;  /* full unpruned RVND on every new global best */
+    double abxRate = 0.0;       /* >0: restarts recombine two elites instead of constructing */
+    int restartKick = 0;        /* >0: restarts kick the incumbent instead of constructing */
     bool imaxExplicit = false;
     int    adaptKStart = 6;
     int    adaptPeriod = 400;
@@ -377,6 +449,20 @@ int main(int argc, char** argv) {
             candK = stoi(argv[++i]);
         } else if (a == "--cand-maxlen" && i + 1 < argc) {
             g_candMaxLen = stoi(argv[++i]);
+        } else if (a == "--restart-kick" && i + 1 < argc) {
+            restartKick = stoi(argv[++i]);
+        } else if (a == "--abx-rate" && i + 1 < argc) {
+            abxRate = stod(argv[++i]);
+        } else if (a == "--polish-on-best") {
+            polishOnBest = true;
+        } else if (a == "--accept-eps" && i + 1 < argc) {
+            acceptEps = stod(argv[++i]);
+        } else if (a == "--cand-front" && i + 1 < argc) {
+            candFront = stoi(argv[++i]);
+        } else if (a == "--cand-dlb-strict") {
+            dlbStrict = true;
+        } else if (a == "--cand-2opt-both") {
+            cand2optBoth = true;
         } else if (a == "--cand-no-rev") {
             g_candReversed = false;
         } else if (a == "--db-maxseg" && i + 1 < argc) {
@@ -390,6 +476,7 @@ int main(int argc, char** argv) {
             else if (m == "extended-oropt-wide") rvndMode = RvndMode::ExtendedOrOptWide;
             else if (m == "extended-oropt-rev") rvndMode = RvndMode::ExtendedOrOptRev;
             else if (m == "candidate") rvndMode = RvndMode::Candidate;
+            else if (m == "candidate-dlb") rvndMode = RvndMode::CandidateDLB;
             else if (m == "lk-escape") rvndMode = RvndMode::LKEscape;
             else if (m == "adaptive-oropt") rvndMode = RvndMode::AdaptiveOrOpt;
             else { cerr << "Unknown --rvnd-mode: " << m << "\n"; return 1; }
@@ -412,8 +499,8 @@ int main(int argc, char** argv) {
         }
     }
 
-    /* Under a time limit, time is meant to be the binding constraint, so
-       the restart count stops being one unless the caller pinned it. */
+    /* Under a time limit, time is the binding constraint -- not I_max,
+       unless the caller pinned it. */
     if (maxTimeSec > 0.0 && !imaxExplicit) I_max = 1000000000;
 
     if (poolSize < 1) poolSize = 1;
@@ -426,6 +513,8 @@ int main(int argc, char** argv) {
     eval.SetInstance((char*)filepath.c_str());
 
     g_cand = make_candidate_list(eval, candK);
+    set_cand_opts(candFront, cand2optBoth);
+    set_dlb_strict(dlbStrict);
 
     if (dbMaxSegDiv > 0)
         dbMaxSeg = max(2, eval.Ncity / dbMaxSegDiv);
@@ -440,9 +529,8 @@ int main(int argc, char** argv) {
     using Clock = chrono::high_resolution_clock;
     auto t0 = Clock::now();
 
-    /* One state for the whole run: the adaptive-or-opt policy needs to
-       pool statistics across every RVND convergence to learn anything.
-       The knobs are CLI-exposed so they can be tuned (see irace/). */
+    /* One state for the whole run: the policy pools statistics across
+       every RVND convergence to learn anything. */
     AdaptiveOrOptState adaptState;
     adaptState.kMax = max(AdaptiveOrOptState::K_FLOOR,
                           min(adaptKStart, (int)AdaptiveOrOptState::K_CAP));
@@ -456,7 +544,8 @@ int main(int argc, char** argv) {
     adaptState.shrinkHitRate = adaptShrink;
 
     gils_am_rvnd(bestSol, eval, I_max, I_ILS, R, poolSize, lambda, parentMode, rvndMode, gen,
-                 adaptState, maxTimeSec, dbMaxSeg, dbFrontBias);
+                 adaptState, maxTimeSec, dbMaxSeg, dbFrontBias, acceptEps, polishOnBest,
+                 abxRate, restartKick);
 
     auto t1 = Clock::now();
     double runtime_ms = chrono::duration<double, milli>(t1 - t0).count();
@@ -467,19 +556,21 @@ int main(int argc, char** argv) {
     cout << "IMAX " << I_max << "\n";
     cout << "IILS " << I_ILS << "\n";
     cout << "RESTARTS " << g_restarts << "\n";
+    if (abxRate > 0.0) cout << "CROSSOVERS " << g_crossovers << "\n";
     if (maxTimeSec > 0.0)
         cout << "MAX_TIME_S " << fixed << setprecision(3) << maxTimeSec << "\n";
     cout << "POOL " << poolSize << "\n";
     cout << "LAMBDA " << fixed << setprecision(2) << lambda << "\n";
     cout << "PARENT_MODE " << (parentMode == ParentMode::Pool ? "pool" : "pair") << "\n";
     cout << "DB_MAXSEG " << dbMaxSeg << "\n";
-    if (rvndMode == RvndMode::Candidate)
+    if (rvndMode == RvndMode::Candidate || rvndMode == RvndMode::CandidateDLB)
         cout << "CAND_K " << g_cand.K << "  CAND_MAXLEN " << g_candMaxLen
              << "  CAND_REV " << (g_candReversed ? 1 : 0) << "\n";
     cout << "RVND_MODE " << (rvndMode == RvndMode::ExtendedOrOpt ? "extended-oropt"
                               : rvndMode == RvndMode::ExtendedOrOptWide ? "extended-oropt-wide"
                               : rvndMode == RvndMode::ExtendedOrOptRev ? "extended-oropt-rev"
                               : rvndMode == RvndMode::Candidate ? "candidate"
+                              : rvndMode == RvndMode::CandidateDLB ? "candidate-dlb"
                               : rvndMode == RvndMode::LKEscape ? "lk-escape"
                               : rvndMode == RvndMode::AdaptiveOrOpt ? "adaptive-oropt" : "single") << "\n";
     if (rvndMode == RvndMode::AdaptiveOrOpt) {

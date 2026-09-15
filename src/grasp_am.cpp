@@ -57,10 +57,8 @@ struct EliteSet {
 
 enum class ParentMode { Pool, Pair };
 
-/* Sparse edge "vote" counts, normalized by however many solutions
-   contributed them (the whole elite pool for ParentMode::Pool, or exactly
-   two chosen parents for ParentMode::Pair -- the greedy-crossover framing:
-   importance(u,v) = how many of the "parents" agree on that edge). */
+/* Sparse edge votes, normalized by however many solutions contributed:
+   importance(u,v) = how many "parents" agree on that edge. */
 struct EdgeFreq {
     unordered_map<long long, int> counts;
     int normalizer = 0;
@@ -87,11 +85,8 @@ EdgeFreq pool_frequency(const EliteSet& memory) {
     return ef;
 }
 
-/* Picks two distinct elite solutions at random each call ("parents") and
-   builds importance purely from their edges -- classic greedy/heuristic
-   crossover (Grefenstette et al., 1985) instead of Prais & Ribeiro-style
-   pool-wide frequency: importance comes from two specific good solutions
-   agreeing on an edge, not from how common it is across the whole pool. */
+/* Importance from two random elites only -- greedy crossover (Grefenstette
+   et al., 1985) rather than pool-wide frequency. */
 EdgeFreq two_parent_frequency(const EliteSet& memory, mt19937& gen) {
     EdgeFreq ef;
     int k = (int)memory.sols.size();
@@ -185,13 +180,8 @@ void construction_am(Solution& sol, Evaluator& eval, double alpha, const EdgeFre
     sol.calculateStructures();
 }
 
-/* H12a follow-up: which RVND variant runs after each memory-biased
-   construction. grasp_am does exactly ONE convergence per iteration (no
-   ILS escape loop) -- its established weakness is lack of intensification
-   depth, not the adaptive-memory bias itself (see docs/experiments/
-   grasp-am-large-scale.md). A stronger single convergence (extended-oropt,
-   H12a) could close part of that gap without the full ILS restructuring
-   that GILS-AM-RVND needed. Single is the original, untouched behavior. */
+/* grasp_am does ONE convergence per iteration, so its weakness is depth,
+   not the memory bias -- a stronger RVND may close part of that gap. */
 enum class RvndMode { Single, ExtendedOrOpt, ExtendedOrOptWide };
 
 void run_rvnd(RvndMode mode, Solution& sol, mt19937& gen) {

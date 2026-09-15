@@ -144,12 +144,8 @@ void neighborhood_oropt3(Solution& sol) {
     }
 }
 
-/* ---------------------------------------------------------------------
- * H12a: Or-opt generalized to arbitrary segment length. Same shift-block
- * logic as neighborhood_oropt2/oropt3 above (verified to match them
- * exactly for segLen=2 and segLen=3), parameterized instead of
- * hand-duplicated per length. See docs/experiments/h12-extended-oropt.md.
- * ------------------------------------------------------------------- */
+/* H12a: or-opt for any segment length -- the same shift-block logic as
+   oropt2/oropt3, parameterized instead of duplicated per length. */
 
 static void neighborhood_oropt_generic(Solution& sol, int segLen) {
     bool improved = true;
@@ -186,10 +182,8 @@ static void neighborhood_oropt_generic(Solution& sol, int segLen) {
     }
 }
 
-/* Public entry point for an arbitrary segment length -- used by the
-   adaptive RVND (src/rvnd_adaptive.cpp), which decides at runtime which
-   lengths to scan instead of having them hard-wired in the neighborhood
-   list. Identical behavior to the fixed-length wrappers below. */
+/* Runtime-chosen length, for the adaptive RVND. Same behaviour as the
+   fixed-length wrappers below. */
 void neighborhood_oropt_len(Solution& sol, int segLen) {
     if (segLen < 2) return;
     neighborhood_oropt_generic(sol, segLen);
@@ -201,10 +195,8 @@ void neighborhood_oropt6(Solution& sol) { neighborhood_oropt_generic(sol, 6); }
 void neighborhood_oropt8(Solution& sol) { neighborhood_oropt_generic(sol, 8); }
 void neighborhood_oropt10(Solution& sol) { neighborhood_oropt_generic(sol, 10); }
 
-/* H12b: genuine 3-opt -- reverse B=[i+1,j] and C=[j+1,k] independently,
-   keeping their relative order. O(n^3) candidates, but each is O(1) via
-   T/C/Cr, and empirically the full scan is fast (~30-170ms up to
-   n=532 -- see docs/experiments/h12-extended-oropt.md section 12). */
+/* H12b: reverse B=[i+1,j] and C=[j+1,k] independently, keeping their
+   order. O(n^3) candidates, each O(1); ~30-170ms up to n=532. */
 void neighborhood_3opt_double_reversal(Solution& sol) {
     bool improved = true;
 
@@ -226,16 +218,8 @@ void neighborhood_3opt_double_reversal(Solution& sol) {
     }
 }
 
-/* ---------------------------------------------------------------------
- * H4: multi-improvement variants. Scan the whole neighborhood against a
- * frozen T/C/Cr snapshot, keep every improving move whose position
- * footprint [lo,hi] doesn't overlap another already-chosen move's, apply
- * all chosen moves, then recompute once per batch instead of once per
- * move. Footprints are defined conservatively as the full range of
- * positions each move's apply-logic writes to (see docs/experiments/
- * h4-multi-improvement.md for why disjoint footprints make this exactly
- * equivalent to sequential first-improvement, not an approximation).
- * ------------------------------------------------------------------- */
+/* H4: scan against a frozen snapshot, keep improving moves with disjoint
+   position footprints, apply them all, recompute once per batch. */
 
 namespace {
 
@@ -243,21 +227,8 @@ struct FootprintMove {
     int lo, hi;
 };
 
-/* Greedy activity selection: sort by footprint end, accept if it starts
-   after the last accepted footprint's end **plus a 1-position buffer**.
-   Maximizes count of disjoint moves (not total gain) -- evaluate*() only
-   exposes a bool today, and preserving that (not touching the
-   single-improvement code path) was a deliberate constraint.
-
-   The buffer is required, not just non-overlap: every evaluate*() here
-   computes a boundary edge via fDist[last][firstNode] against the
-   position immediately *outside* its footprint (e.g. evaluate2Opt(i,j)
-   reads fTour[j+1] to price the edge leaving the reversed segment). If a
-   second move's footprint starts exactly at that neighboring position, it
-   rewrites the very node the first move's evaluation assumed unchanged,
-   silently invalidating its delta -- confirmed empirically: without this
-   buffer, applying two such "disjoint" moves together sometimes
-   *increased* cost despite both individually improving. */
+/* Greedy activity selection by footprint end. The 1-position BUFFER is
+   required: evaluate*() prices a boundary edge just outside its footprint. */
 template <typename Move, typename GetFootprint>
 vector<Move> select_disjoint(vector<Move>& moves, GetFootprint footprint) {
     sort(moves.begin(), moves.end(), [&](const Move& a, const Move& b) {
@@ -463,11 +434,8 @@ void neighborhood_oropt3_multi(Solution& sol) {
     }
 }
 
-/* H16: relocate segment [i..i+segLen-1] REVERSED, right after the node
-   currently at position k. Same scan shape as neighborhood_oropt_len;
-   the apply step is written generically (extract, reverse, reinsert)
-   because the in-place shifting used by the fixed-length variants above
-   does not carry over once the block is flipped. */
+/* H16: relocate [i..i+segLen-1] REVERSED after position k. Applies by
+   extract/reverse/reinsert -- in-place shifting does not survive a flip. */
 void neighborhood_oropt_rev_len(Solution& sol, int segLen) {
     if (segLen < 2 || segLen >= sol.fN - 1) return;
 

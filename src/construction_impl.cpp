@@ -40,10 +40,8 @@ void construction(Solution& sol, Evaluator& eval, double alpha, mt19937& gen) {
     sol.calculateStructures();
 }
 
-/* Cumulative cost of the hypothetical segment r -> c -> (k-1 more
-   nearest-unvisited hops), used to score candidate c during
-   construction_lookahead(). `used` marks nodes already placed in the
-   route so far (not including c); this function does not mutate it. */
+/* Cumulative cost of r -> c -> (k-1 nearest-unvisited hops), the score of
+   candidate c. `used` marks nodes already routed, c excluded; not mutated. */
 static int lookahead_score(Evaluator& eval, int r, int c, const vector<bool>& used, int k) {
     vector<bool> avail = used;
     avail[c] = true;

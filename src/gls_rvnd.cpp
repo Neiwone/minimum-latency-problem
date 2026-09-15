@@ -6,27 +6,10 @@
 
 using namespace std;
 
-/* H11: Guided Local Search (Voudouris & Tsang, 1997) on top of the
-   existing (unmodified) RVND -- see docs/experiments/h11-guided-local-search.md.
+/* H11: Guided Local Search (Voudouris & Tsang, 1997). Changes WHAT the search
+   climbs: converged edges get penalized in a guide matrix RVND reruns on. */
 
-   Unlike every perturbation/recombination/LNS mechanism tried so far this
-   session (all of which change WHERE the search restarts but keep the
-   cost function fixed, and all got absorbed by RVND converging back to
-   similar-quality optima), GLS changes WHAT the search is climbing: after
-   RVND converges, it penalizes the edges of the current tour (the
-   "features") by inflating their distance in a separate guide-cost
-   matrix, then re-runs RVND on that biased landscape. The real cost is
-   tracked completely separately (via a plain O(n) cumulative-latency
-   sum on the TRUE distance matrix) -- penalties only ever affect what
-   RVND is optimizing, never what gets reported as the actual solution
-   quality.
-
-   This requires zero changes to solution.cpp/neighborhoods.cpp/rvnd.cpp:
-   T/C/Cr are entirely derived from whatever Solution::fDist points to
-   (calculateStructures() just reads it), so swapping fDist between the
-   true distance matrix and a penalized copy, and calling
-   calculateStructures() again, is enough to make the existing RVND search
-   under either cost function unmodified. */
+/* True cost is tracked separately -- this only swaps Solution::fDist. */
 
 int full_route_cost(const int* tour, int n, int** dist) {
     int t = 0, total = 0;
@@ -37,14 +20,8 @@ int full_route_cost(const int* tour, int n, int** dist) {
     return total;
 }
 
-/* Optional hybrid (--kick-every N): plain GLS plateaus hard once the
-   single-edge-per-iteration penalty stops finding new useful territory
-   (confirmed empirically -- identical best cost between 3k and 13k
-   iterations at several lambda values). A double-bridge kick every N
-   iterations injects the one escape mechanism this session has
-   consistently seen work at all (it's what gils_rvnd's own ILS loop
-   uses) on top of GLS's guided reconvergence, instead of relying on
-   edge penalties alone to find a genuinely different region. */
+/* Plain GLS plateaus hard (identical best cost from 3k to 13k iterations),
+   so --kick-every N adds a double-bridge on top of the guided reconvergence. */
 void double_bridge_once(Solution& sol, mt19937& gen) {
     int n = sol.fN;
     if (n < 8) return;

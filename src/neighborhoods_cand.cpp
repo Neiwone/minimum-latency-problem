@@ -11,10 +11,8 @@ CandList make_candidate_list(const Evaluator& eval, int K) {
     return cl;
 }
 
-/* Rebuild fTour with [i..j] (optionally reversed) moved so that it sits
-   immediately after the city currently at position k -- the same
-   semantics evaluateOrOpt/evaluateOrOptReversed price. Scratch buffers
-   are passed in so a scan does not reallocate per applied move. */
+/* Move [i..j] (optionally reversed) after the city at position k. Scratch
+   buffers are passed in so a scan does not reallocate per move. */
 static void apply_oropt(Solution& sol, int i, int j, int k, bool reversed,
                         vector<int>& seg, vector<int>& rest) {
     int len = j - i + 1;
@@ -38,16 +36,8 @@ static void apply_oropt(Solution& sol, int i, int j, int k, bool reversed,
     sol.calculateStructures();
 }
 
-/* One sweep over the pruned or-opt neighborhood, returning how many
-   moves it applied.
-
-   The neighborhoods in src/neighborhoods.cpp restart their scan at the
-   first position after every applied move, which costs a full extra
-   sweep per improvement -- expensive early in a descent, when most
-   positions still yield a move. This sweep instead keeps going from the
-   position it was at and is repeated until it comes back clean, so the
-   descent still ends at a local optimum of the pruned neighborhood but
-   pays O(n*K) per sweep rather than per move. */
+/* One sweep, returning how many moves it applied. It carries on after a
+   move instead of restarting: O(n*K) per sweep, not per move. */
 static int pass_oropt(Solution& sol, const CandList& cl, int len, bool reversed,
                       vector<int>& seg, vector<int>& rest) {
     const int n = sol.fN;
@@ -130,9 +120,8 @@ static int pass_swap(Solution& sol, const CandList& cl) {
 
 void RVND_Candidate(Solution& sol, const CandList& cl, int maxLen,
                     bool useReversed, mt19937& gen) {
-    /* Neighborhood ids: 0 = swap, 1 = 2-opt,
-       2..(1+maxLen)            = or-opt forward, length id-1
-       (2+maxLen)..             = or-opt reversed, length id-maxLen */
+    /* ids: 0 swap, 1 2-opt, 2..1+maxLen or-opt forward (len id-1),
+       then or-opt reversed (len id-maxLen). */
     const int nFwd = maxLen;
     const int nRev = useReversed ? max(0, maxLen - 1) : 0;
     const int total = 2 + nFwd + nRev;
@@ -167,6 +156,244 @@ void RVND_Candidate(Solution& sol, const CandList& cl, int maxLen,
             for (int i = 0; i < total; i++) NL[i] = i;
         } else {
             NL.erase(NL.begin() + idx);
+        }
+    }
+}
+
+/* ---- Don't-look bits over the same pruned neighborhoods ---------- */
+
+static int  g_frontAnchors   = 0;
+static bool g_twoOptBothDirs = false;
+static bool g_dlbStrict      = false;
+
+void set_dlb_strict(bool strict) { g_dlbStrict = strict; }
+
+void set_cand_opts(int frontAnchors, bool twoOptBothDirs) {
+    g_frontAnchors   = frontAnchors;
+    g_twoOptBothDirs = twoOptBothDirs;
+}
+
+void DlbState::reset(int n) {
+    examined.assign(n, 0u);
+    active.assign(n, 1);
+    nActive = n;
+}
+
+void DlbState::arm_city(int c) {
+    examined[c] = 0u;
+    if (!active[c]) { active[c] = 1; nActive++; }
+}
+
+void DlbState::arm_range(const Solution& sol, int lo, int hi) {
+    if (lo < 0) lo = 0;
+    if (hi > sol.fN - 1) hi = sol.fN - 1;
+    for (int p = lo; p <= hi; p++) arm_city(sol.fTour[p]);
+}
+
+/* A city retires only once every neighborhood failed on it. */
+static inline void dlb_fail(DlbState& d, int c, unsigned bit, unsigned full) {
+    if (!d.active[c]) return;
+    d.examined[c] |= bit;
+    if (d.examined[c] == full) { d.active[c] = 0; d.nActive--; }
+}
+
+/* Same relocation in O(span): a rotation of the affected range, prefix
+   sums re-derived from the first disturbed position (returned). */
+static int apply_oropt_fast(Solution& sol, int i, int j, int k, bool reversed) {
+    int len = j - i + 1;
+    if (reversed) reverse(sol.fTour + i, sol.fTour + j + 1);
+
+    int lo;
+    if (k < i) {
+        rotate(sol.fTour + k + 1, sol.fTour + i, sol.fTour + j + 1);
+        lo = k + 1;
+    } else {
+        rotate(sol.fTour + i, sol.fTour + j + 1, sol.fTour + k + 1);
+        lo = i;
+    }
+    (void)len;
+
+    sol.calculateStructuresFrom(lo);
+    return lo;
+}
+
+static int pass_oropt_dlb(Solution& sol, const CandList& cl, int len, bool reversed,
+                          DlbState& dlb, unsigned bit, unsigned full) {
+    const int n = sol.fN;
+    int applied = 0;
+
+    for (int i = 1; i + len - 1 < n; i++) {
+        int j = i + len - 1;
+        int ci = sol.fTour[i], cj = sol.fTour[j];
+        bool lookI = dlb.active[ci] && !(g_dlbStrict && (dlb.examined[ci] & bit));
+        bool lookJ = len > 1 && dlb.active[cj] && !(g_dlbStrict && (dlb.examined[cj] & bit));
+        if (!lookI && !lookJ) continue;
+
+        int endpoints[2] = { ci, cj };
+        int nEnd = (len == 1) ? 1 : 2;
+
+        for (int e = 0; e < nEnd; e++) {
+            for (int t = 0; t < cl.K; t++) {
+                int m  = cl.near[endpoints[e]][t];
+                int pm = sol.posOf[m];
+
+                for (int d = 0; d < 2; d++) {
+                    int k = pm - d;
+                    if (k < 0 || k >= n) continue;
+                    if (k >= i && k <= j) continue;
+
+                    bool ok = reversed ? sol.evaluateOrOptReversed(i, j, k)
+                                       : sol.evaluateOrOpt(i, j, k);
+                    if (!ok) continue;
+
+                    int hi = (k < i) ? j : k;
+                    int lo = apply_oropt_fast(sol, i, j, k, reversed);
+                    dlb.arm_range(sol, lo - 1, hi + 1);
+                    applied++;
+                    goto nextPosition;
+                }
+            }
+        }
+
+        /* Front anchors: reinsertions near the head of the tour, which
+           geometric pruning is blind to. Off by default. */
+        for (int k = 0; k < g_frontAnchors && k < n; k++) {
+            if (k >= i && k <= j) continue;
+
+            bool ok = reversed ? sol.evaluateOrOptReversed(i, j, k)
+                               : sol.evaluateOrOpt(i, j, k);
+            if (!ok) continue;
+
+            int hi = (k < i) ? j : k;
+            int lo = apply_oropt_fast(sol, i, j, k, reversed);
+            dlb.arm_range(sol, lo - 1, hi + 1);
+            applied++;
+            goto nextPosition;
+        }
+        dlb_fail(dlb, ci, bit, full);
+        if (len > 1) dlb_fail(dlb, cj, bit, full);
+        nextPosition: ;
+    }
+    return applied;
+}
+
+static int pass_2opt_dlb(Solution& sol, const CandList& cl,
+                         DlbState& dlb, unsigned bit, unsigned full) {
+    const int n = sol.fN;
+    int applied = 0;
+
+    for (int i = 1; i < n; i++) {
+        int a = sol.fTour[i - 1];
+        if (!dlb.active[a]) continue;
+        if (g_dlbStrict && (dlb.examined[a] & bit)) continue;
+
+        bool moved = false;
+        for (int t = 0; t < cl.K; t++) {
+            int j = sol.posOf[cl.near[a][t]];
+            if (j <= i) continue;
+
+            if (sol.evaluate2Opt(i, j)) {
+                reverse(sol.fTour + i, sol.fTour + j + 1);
+                sol.calculateStructuresFrom(i);
+                dlb.arm_range(sol, i - 1, j + 1);
+                applied++;
+                moved = true;
+                break;
+            }
+        }
+
+        /* Anchor on the other new edge, (tour[i], tour[j+1]). Off by default. */
+        if (!moved && g_twoOptBothDirs) {
+            int b = sol.fTour[i];
+            for (int t = 0; t < cl.K; t++) {
+                int j = sol.posOf[cl.near[b][t]] - 1;
+                if (j <= i || j >= n) continue;
+
+                if (sol.evaluate2Opt(i, j)) {
+                    reverse(sol.fTour + i, sol.fTour + j + 1);
+                    sol.calculateStructuresFrom(i);
+                    dlb.arm_range(sol, i - 1, j + 1);
+                    applied++;
+                    moved = true;
+                    break;
+                }
+            }
+        }
+        if (!moved) dlb_fail(dlb, a, bit, full);
+    }
+    return applied;
+}
+
+static int pass_swap_dlb(Solution& sol, const CandList& cl,
+                         DlbState& dlb, unsigned bit, unsigned full) {
+    const int n = sol.fN;
+    int applied = 0;
+
+    for (int i = 1; i < n; i++) {
+        int a = sol.fTour[i - 1];
+        if (!dlb.active[a]) continue;
+        if (g_dlbStrict && (dlb.examined[a] & bit)) continue;
+
+        bool moved = false;
+        for (int t = 0; t < cl.K; t++) {
+            int j = sol.posOf[cl.near[a][t]];
+            if (j == i || j < 1) continue;
+
+            if (sol.evaluateSwap(i, j)) {
+                swap(sol.fTour[i], sol.fTour[j]);
+                sol.calculateStructuresFrom(min(i, j));
+                dlb.arm_range(sol, min(i, j) - 1, min(i, j) + 1);
+                dlb.arm_range(sol, max(i, j) - 1, max(i, j) + 1);
+                applied++;
+                moved = true;
+                break;
+            }
+        }
+        if (!moved) dlb_fail(dlb, a, bit, full);
+    }
+    return applied;
+}
+
+void RVND_CandidateDLB(Solution& sol, const CandList& cl, int maxLen,
+                       bool useReversed, mt19937& gen, DlbState& dlb) {
+    const int nFwd = maxLen;
+    const int nRev = useReversed ? max(0, maxLen - 1) : 0;
+    const int total = 2 + nFwd + nRev;
+    const unsigned full = (total >= 32) ? ~0u : ((1u << total) - 1u);
+
+    if ((int)dlb.active.size() != sol.fN) dlb.reset(sol.fN);
+
+    vector<int> NL(total);
+    for (int i = 0; i < total; i++) NL[i] = i;
+
+    while (dlb.nActive > 0) {
+        shuffle(NL.begin(), NL.end(), gen);
+        bool progressed = false;
+
+        for (int eta : NL) {
+            unsigned bit = 1u << eta;
+            int got = 0;
+            if (eta == 0) {
+                while (pass_swap_dlb(sol, cl, dlb, bit, full) > 0) got = 1;
+            } else if (eta == 1) {
+                while (pass_2opt_dlb(sol, cl, dlb, bit, full) > 0) got = 1;
+            } else if (eta < 2 + nFwd) {
+                int len = eta - 1;
+                while (pass_oropt_dlb(sol, cl, len, false, dlb, bit, full) > 0) got = 1;
+            } else {
+                int len = eta - (2 + nFwd) + 2;
+                while (pass_oropt_dlb(sol, cl, len, true, dlb, bit, full) > 0) got = 1;
+            }
+            if (got) progressed = true;
+            if (dlb.nActive == 0) break;
+        }
+
+        /* A round with no move means local optimum. Some bits never fill
+           up (no or-opt anchors on the depot), so retire by hand. */
+        if (!progressed) {
+            for (int c = 0; c < sol.fN; c++) dlb.active[c] = 0;
+            dlb.nActive = 0;
+            break;
         }
     }
 }

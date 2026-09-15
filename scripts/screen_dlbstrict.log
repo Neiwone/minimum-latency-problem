@@ -1,0 +1,73 @@
+[1/54] att532|loose_i300|1                          cost=5577392 restarts=6
+[2/54] att532|strict_i300|1                         cost=5585393 restarts=8
+[3/54] att532|strict_i100|1                         cost=5584550 restarts=22
+[4/54] att532|loose_i300|2                          cost=5585070 restarts=5
+[5/54] att532|strict_i300|2                         cost=5582691 restarts=9
+[6/54] att532|strict_i100|2                         cost=5610834 restarts=13
+[7/54] att532|loose_i300|3                          cost=5594443 restarts=3
+[8/54] att532|strict_i300|3                         cost=5580254 restarts=6
+[9/54] att532|strict_i100|3                         cost=5586705 restarts=19
+[10/54] att532|loose_i300|4                          cost=5575445 restarts=4
+[11/54] att532|strict_i300|4                         cost=5581472 restarts=8
+[12/54] att532|strict_i100|4                         cost=5582606 restarts=16
+[13/54] att532|loose_i300|5                          cost=5588772 restarts=4
+[14/54] att532|strict_i300|5                         cost=5596380 restarts=9
+[15/54] att532|strict_i100|5                         cost=5595280 restarts=17
+[16/54] att532|loose_i300|6                          cost=5582155 restarts=5
+[17/54] att532|strict_i300|6                         cost=5586927 restarts=7
+[18/54] att532|strict_i100|6                         cost=5589451 restarts=19
+[19/54] salehipour_n0500_i01|loose_i300|1            cost=1810674 restarts=7
+[20/54] salehipour_n0500_i01|strict_i300|1           cost=1823128 restarts=5
+[21/54] salehipour_n0500_i01|strict_i100|1           cost=1828650 restarts=18
+[22/54] salehipour_n0500_i01|loose_i300|2            cost=1820543 restarts=5
+[23/54] salehipour_n0500_i01|strict_i300|2           cost=1816637 restarts=7
+[24/54] salehipour_n0500_i01|strict_i100|2           cost=1824609 restarts=15
+[25/54] salehipour_n0500_i01|loose_i300|3            cost=1811647 restarts=3
+[26/54] salehipour_n0500_i01|strict_i300|3           cost=1822811 restarts=8
+[27/54] salehipour_n0500_i01|strict_i100|3           cost=1828853 restarts=13
+[28/54] salehipour_n0500_i01|loose_i300|4            cost=1822780 restarts=6
+[29/54] salehipour_n0500_i01|strict_i300|4           cost=1815887 restarts=6
+[30/54] salehipour_n0500_i01|strict_i100|4           cost=1830058 restarts=13
+[31/54] salehipour_n0500_i01|loose_i300|5            cost=1817596 restarts=5
+[32/54] salehipour_n0500_i01|strict_i300|5           cost=1817224 restarts=8
+[33/54] salehipour_n0500_i01|strict_i100|5           cost=1827385 restarts=11
+[34/54] salehipour_n0500_i01|loose_i300|6            cost=1825434 restarts=5
+[35/54] salehipour_n0500_i01|strict_i300|6           cost=1824997 restarts=6
+[36/54] salehipour_n0500_i01|strict_i100|6           cost=1825558 restarts=15
+[37/54] salehipour_n0500_i02|loose_i300|1            cost=1741407 restarts=5
+[38/54] salehipour_n0500_i02|strict_i300|1           cost=1741070 restarts=6
+[39/54] salehipour_n0500_i02|strict_i100|1           cost=1743596 restarts=12
+[40/54] salehipour_n0500_i02|loose_i300|2            cost=1745451 restarts=5
+[41/54] salehipour_n0500_i02|strict_i300|2           cost=1743670 restarts=10
+[42/54] salehipour_n0500_i02|strict_i100|2           cost=1742618 restarts=12
+[43/54] salehipour_n0500_i02|loose_i300|3            cost=1745330 restarts=4
+[44/54] salehipour_n0500_i02|strict_i300|3           cost=1747681 restarts=8
+[45/54] salehipour_n0500_i02|strict_i100|3           cost=1743907 restarts=10
+[46/54] salehipour_n0500_i02|loose_i300|4            cost=1745781 restarts=5
+[47/54] salehipour_n0500_i02|strict_i300|4           cost=1742626 restarts=7
+[48/54] salehipour_n0500_i02|strict_i100|4           cost=1742184 restarts=16
+[49/54] salehipour_n0500_i02|loose_i300|5            cost=1744746 restarts=4
+[50/54] salehipour_n0500_i02|strict_i300|5           cost=1738193 restarts=6
+[51/54] salehipour_n0500_i02|strict_i100|5           cost=1741643 restarts=18
+[52/54] salehipour_n0500_i02|loose_i300|6            cost=1744926 restarts=4
+[53/54] salehipour_n0500_i02|strict_i300|6           cost=1740503 restarts=5
+[54/54] salehipour_n0500_i02|strict_i100|6           cost=1740029 restarts=15
+
+finished in 18.0 min
+
+baseline: loose_i300
+
+--- strict_i300 vs loose_i300 ---
+instancia         mean_rel%      W/T/L        p  restarts
+att532               +0.029      2/0/4   0.6875         8
+salehipour_n0500_i01     +0.111      4/0/2   0.6875         7
+salehipour_n0500_i02     -0.133      5/0/1   0.2188         7
+AGREGADO             +0.003     11/0/7   0.4807
+
+--- strict_i100 vs loose_i300 ---
+instancia         mean_rel%      W/T/L        p  restarts
+att532               +0.138      1/0/5   0.2188        18
+salehipour_n0500_i01     +0.518      0/0/6   0.0312        14
+salehipour_n0500_i02     -0.130      5/0/1   0.2188        14
+AGREGADO             +0.175     6/0/12   0.2379
+

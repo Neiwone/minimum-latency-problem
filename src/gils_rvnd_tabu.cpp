@@ -6,16 +6,8 @@
 
 using namespace std;
 
-/**
- * GILS-RVND with RVND tabu list
- *
- *   A short tabu list is used inside RVND to avoid immediately reusing
- *   a neighborhood that just produced a modification.
- *
- * Flow per restart:
- *   construction → [ RVND (tabu) → perturbation → ]^I_ILS
- *
- */
+/* GILS-RVND with a short tabu list inside RVND, so a neighborhood that just
+   fired is not immediately reused. Per restart: construction, then ILS. */
 
 void perturb(Solution& sol, mt19937& gen) {
     int n = sol.fN;
