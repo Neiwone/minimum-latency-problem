@@ -37,6 +37,14 @@ seção 6.
 **-1,249% vs `mdm_gils_rvnd`, 60 vitórias / 10 empates / 0 derrotas, p < 1e-6**
 (detalhes em [`experiments/h19-dlb-fast-regime.md`](experiments/h19-dlb-fast-regime.md)).
 
+**De onde vem o ganho.** Todas as mudanças desta tabela são de busca local e de
+calibração; nenhuma é de estratégia de busca. Portar a mesma busca local para o
+`mdm_gils_rvnd` e para o `gils_rvnd` puro faz os três **empatarem** (N=30 por par,
+todo p > 0,5, seção 7 do documento acima). Ou seja: a vantagem sobre o MDM é real e
+medida contra ele como publicado, mas a explicação não é "a estratégia é melhor" — é
+que, sob uma busca local rápida o bastante, os mecanismos de memória publicados para o
+MLP deixam de fazer diferença.
+
 ---
 
 ## 2. Busca local: as quatro mudanças que carregam o resultado

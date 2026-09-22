@@ -7,7 +7,8 @@ node 0 and the objective is the sum of arrival times along a Hamiltonian path.
 The project is built around GILS-RVND (Silva, Subramanian, Vidal & Ochi, *EJOR* 221,
 2012) and a line of experiments on top of it. The current best configuration beats
 MDM-GILS-RVND at 100 s/run on every instance with n >= 200 (-1.249%, 60 wins / 10 ties
-/ 0 losses over 70 paired seeds) -- see
+/ 0 losses over 70 paired seeds). Giving MDM-GILS-RVND the same local search makes the
+two tie, so the gain is local search and calibration, not search strategy -- see
 [docs/experiments/h19-dlb-fast-regime.md](docs/experiments/h19-dlb-fast-regime.md).
 
 ## Layout

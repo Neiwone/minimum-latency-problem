@@ -101,6 +101,25 @@ SOLVERS_RAW = {
                               ["--rvnd-mode", "candidate-dlb", "--cand-k", "12", "--iils", "100"]),
     "gils_am_rvnd_cand_i300": ("./bin/gils_am_rvnd",
                                ["--rvnd-mode", "candidate", "--cand-k", "12", "--iils", "300"]),
+    # The fairness control: mdm_gils_rvnd given the SAME local search as
+    # the H19 winner, so what is left between them is only the strategy
+    # (pattern mining vs adaptive memory).
+    "mdm_gils_rvnd_dlb": ("./bin/mdm_gils_rvnd",
+                          ["--rvnd-mode", "candidate-dlb", "--cand-k", "12", "--iils", "300"]),
+
+    # Fairness controls: the same local search as the H19 winner, so what is
+    # left between the three is only the memory strategy -- pattern mining
+    # (mdm), adaptive memory (gils_am), or none at all (gils_rvnd).
+    "mdm_gils_rvnd_dlb": ("./bin/mdm_gils_rvnd",
+                          ["--rvnd-mode", "candidate-dlb", "--cand-k", "12", "--iils", "300"]),
+    "gils_rvnd_dlb": ("./bin/gils_rvnd",
+                      ["--rvnd-mode", "candidate-dlb", "--cand-k", "12", "--iils", "300"]),
+    # Same, at the I_ILS where mdm's mining is exercised with room to spare
+    # (~4x the calls of --iils 300), so the control cannot be dismissed as
+    # "their mechanism barely ran".
+    "mdm_gils_rvnd_dlb_i100": ("./bin/mdm_gils_rvnd",
+                               ["--rvnd-mode", "candidate-dlb", "--cand-k", "12", "--iils", "100"]),
+
     # Baselines at their own best I_ILS, so it is best config vs best
     # config rather than everyone at the protocol default.
     "mdm_gils_rvnd_i100": ("./bin/mdm_gils_rvnd", ["--iils", "100"]),

@@ -440,6 +440,35 @@ método encontra o ótimo conhecido de `lin318` e de `pr439` dentro dos 100 segu
 `att532` produziu uma solução $0{,}28\%$ melhor do que a melhor até então registrada no
 projeto.
 
+### 10.1 De onde vem o ganho: um controle
+
+A comparação acima é entre os algoritmos **como estão implementados**, e o
+MDM-GILS-RVND varre $O(n^2)$ sem listas de candidatos nem *don't-look bits*. Para
+separar "busca local melhor" de "estratégia melhor", a busca local das seções 5 a 8 foi
+portada para os outros dois algoritmos e os três foram medidos no mesmo protocolo. O
+que resta entre eles é apenas o mecanismo de memória: nenhum, mineração de padrões, ou
+memória adaptativa por frequência de arestas.
+
+| par comparado | diferença média | V/E/D | $p$ |
+|---|---:|---:|---:|
+| memória adaptativa vs **sem memória** | $-0{,}017\%$ | 14/6/10 | 0,54 |
+| mineração de padrões vs **sem memória** | $+0{,}003\%$ | 10/13/7 | 0,63 |
+| memória adaptativa vs mineração de padrões | $-0{,}020\%$ | 10/9/11 | 1,00 |
+
+Os três **empatam**, e nenhuma instância isolada é significativa em nenhum dos pares.
+A conclusão correta, portanto, não é que a estratégia proposta seja melhor, e sim:
+
+> Sob uma busca local suficientemente rápida, os dois mecanismos de memória publicados
+> para o MLP — mineração de padrões e memória adaptativa — são indistinguíveis de não
+> ter mecanismo nenhum. O que decide a qualidade dentro de um orçamento de tempo fixo é
+> a busca local e a calibração de $I_{ILS}$.
+
+Um efeito colateral do porte vale registro: a busca local rápida **reativa** o mecanismo
+do MDM-GILS-RVND. Antes dela, o $I_{ILS}$ que maximizava a qualidade dele era justamente
+aquele em que a mineração disparava zero vezes; com ela, no mesmo $I_{ILS}$, o algoritmo
+completa dezenas de reinícios e a mineração ocorre normalmente — e ainda assim não
+altera o resultado.
+
 ---
 
 ## 11. O que foi testado e rejeitado

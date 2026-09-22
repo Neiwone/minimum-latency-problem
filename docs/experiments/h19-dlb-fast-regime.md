@@ -13,6 +13,12 @@ médio de BKS nas três instâncias cai de 1,26% (MDM) para **0,0%** — em `att
 gap médio fica **negativo** (-0,120%), isto é, a média das 10 seeds já está abaixo da
 melhor solução registrada até aqui.
 
+**O ganho é da busca local, não da estratégia** (seção 7): portada a mesma busca local
+para o `mdm_gils_rvnd` e para o `gils_rvnd` puro, os três **empatam** (N=30 por par,
+todo p > 0,5) -- ou seja, sob uma busca local suficientemente rápida os dois
+mecanismos de memória publicados para o MLP são indistinguíveis de não ter mecanismo
+nenhum.
+
 Duas mudanças, uma de engenharia de busca local e outra de parametrização, em cima
 do vencedor de [[h16-candidate-neighborhoods]]:
 
@@ -391,15 +397,82 @@ então grava pelo mesmo caminho que o `run_experiments.py` usa
 | `att532` | 5 589 568 | **5 573 783** (-0,2824%) | todas as 5 abaixo do valor antigo |
 | `a280` | (sem registro) | **340 998** | as 5 acham o mesmo valor |
 
-## 7. Ressalvas
+## 7. O controle de justiça: a mesma busca local nos três algoritmos
 
-1. **A poda continua portável para o MDM.** Como em
-   [[h16-candidate-neighborhoods]] seção 8.1, a comparação é entre os algoritmos
-   como estão implementados: `mdm_gils_rvnd` segue com varredura O(n²) completa e
-   sem don't-look bits. Parte da vantagem é engenharia de busca local, não
-   estratégia. O que a seção 3.6 acrescenta é que **o `I_ILS`, esse sim, foi
-   corrigido para os dois lados**: o MDM foi medido na calibração que maximiza a
-   qualidade dele, e ainda perde.
+A ressalva óbvia do resultado acima é que ele compara **implementações**, não
+estratégias: o `mdm_gils_rvnd` ainda varria O(n²) sem don't-look bits. Para separar as
+duas coisas, a busca local desta hipótese (`--rvnd-mode candidate-dlb --cand-k 12`,
+`I_ILS = 300`) foi portada para os outros dois binários, e os três foram medidos no
+mesmo protocolo. O que sobra entre eles passa a ser **só o mecanismo de memória**:
+
+| braço | mecanismo de memória |
+|---|---|
+| `gils_rvnd_dlb` | **nenhum** |
+| `mdm_gils_rvnd_dlb` | mineração de padrões (FPMax* sobre o elite set) |
+| `gils_am_rvnd_dlb` | memória adaptativa (frequência de arestas do elite set) |
+
+```bash
+python3 run_experiments.py --mode fixed-time --time-limit 100 --runs 10 \
+    --instances lin318 pr439 att532 \
+    --solvers gils_rvnd_dlb mdm_gils_rvnd_dlb gils_am_rvnd_dlb \
+    --checkpoint scripts/fixed_time_100s_threearm.json
+```
+
+Todos os 90 runs foram **refeitos do zero** neste lote (nenhum reaproveitado), porque
+aqui a hipótese testada é uma nula e não convém arrastar diferenças de binário.
+
+### 7.1 Resultado: empate triplo (N=30 por par)
+
+| par | mean_rel% | W/T/L | p (sinais) |
+|---|---:|---:|---:|
+| memória adaptativa vs **sem memória** | -0.017 | 14/6/10 | 0.54 |
+| mineração de padrões vs **sem memória** | +0.003 | 10/13/7 | 0.63 |
+| memória adaptativa vs mineração de padrões | -0.020 | 10/9/11 | 1.00 |
+
+Nenhuma instância isolada é significativa em nenhum dos três pares. Os custos ficam
+em cima uns dos outros:
+
+| instância | sem memória | mineração | memória adaptativa |
+|---|---:|---:|---:|
+| `lin318` | 5 562 426.6 | 5 561 993.1 | 5 562 974.9 |
+| `pr439` | 17 697 481.9 | 17 697 849.8 | 17 695 903.8 |
+| `att532` | 5 589 760.3 | 5 590 593.1 | 5 586 769.7 |
+
+Os três acham o BKS de `lin318` e de `pr439` dentro do orçamento, e os três terminam
+abaixo do valor de `att532` que o projeto tinha registrado.
+
+### 7.2 Leitura
+
+**A vantagem medida na seção 6 é inteiramente da busca local e da calibração de
+`I_ILS`, não da estratégia de memória.** Portada para o MDM, ela leva o MDM ao mesmo
+patamar; portada para o GILS-RVND puro, leva o GILS-RVND puro ao mesmo patamar.
+
+Isso é um resultado por si só, e mais forte que o da seção 6:
+
+> Sob uma busca local suficientemente rápida, os dois mecanismos de memória publicados
+> para o MLP — mineração de padrões (MDM-GILS-RVND) e memória adaptativa por
+> frequência de arestas — são indistinguíveis de **não ter mecanismo nenhum**.
+
+É a mesma conclusão que [[h1-adaptive-diversification]], [[h2-elite-path-relinking]],
+[[h8-dbmea-population]] e [[h9-ruin-recreate]] vinham desenhando por dentro do
+projeto, agora verificada contra dois mecanismos **publicados** e não contra ideias
+próprias.
+
+Uma observação de processo que o port trouxe junto: a busca local rápida
+**ressuscita o mecanismo do MDM**. Antes do port, o `I_ILS` que maximizava a qualidade
+dele (300) era exatamente aquele em que a mineração disparava **zero** vezes
+(seção 3.6); com a busca local nova, no mesmo `I_ILS = 300` ele completa 25 reinícios
+em `lin318` e a mineração dispara. O mecanismo passou a existir de verdade — e mesmo
+assim não muda o resultado.
+
+## 8. Ressalvas
+
+1. **O resultado da seção 6 é sobre implementações; o da seção 7 é sobre
+   estratégias.** Os dois são verdadeiros e dizem coisas diferentes: a configuração
+   proposta bate o `mdm_gils_rvnd` **como publicado e implementado** (-1,249%,
+   60/10/0), e com a mesma busca local os dois **empatam** (-0,020%, 10/9/11,
+   p = 1,00). A afirmação defensável é "a busca local e a calibração explicam o
+   ganho", não "a estratégia é melhor".
 2. **O `I_ILS` ótimo depende do orçamento e do `n`.** 300 foi calibrado a 45-60 s em
    `att532`/Salehipour n=500. Em instâncias menores a busca satura muito antes
    (`lin318` acha o BKS em 30 s), e em n=1000 o valor provavelmente muda de novo.

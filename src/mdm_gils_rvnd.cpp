@@ -5,6 +5,7 @@
 #include "evaluator.h"
 #include "construction.h"
 #include "rvnd.h"
+#include "neighborhoods_cand.h"
 #include "fpmax_mining.h"
 
 using namespace std;
@@ -17,9 +18,11 @@ using namespace std;
 /* Two-phase: the first half of the budget fills the elite pool, the second
    re-mines it every time it changes. */
 
-void double_bridge_once(Solution& sol, mt19937& gen) {
+/* Returns the position range the perturbation disturbed, so the don't-look
+   bit search can re-arm just that span ({-1,-1} = no-op). */
+pair<int,int> double_bridge_once(Solution& sol, mt19937& gen) {
     int n = sol.fN;
-    if (n < 8) return;
+    if (n < 8) return {-1, -1};
 
     vector<int> cuts;
     uniform_int_distribution<int> dist(1, n - 2);
@@ -39,11 +42,29 @@ void double_bridge_once(Solution& sol, mt19937& gen) {
     for (int i = p1; i < p2; i++) newTour.push_back(sol.fTour[i]);
     for (int i = p3; i < n;  i++) newTour.push_back(sol.fTour[i]);
     for (int i = 0; i < n; i++) sol.fTour[i] = newTour[i];
+
+    return {p1, p3 - 1};
 }
 
-void perturb(Solution& sol, mt19937& gen) {
-    double_bridge_once(sol, gen);
+pair<int,int> perturb(Solution& sol, mt19937& gen) {
+    auto range = double_bridge_once(sol, gen);
     sol.calculateStructures();
+    return range;
+}
+
+/* Local search shared with gils_am_rvnd, so an equal-time comparison between
+   the two is about search strategy and not about scan engineering. */
+enum class RvndMode { Single, CandidateDLB };
+static RvndMode g_rvndMode = RvndMode::Single;
+static CandList g_cand;
+static int  g_candMaxLen  = 6;
+static bool g_candReversed = true;
+
+void run_rvnd(Solution& sol, mt19937& gen, DlbState& dlb) {
+    if (g_rvndMode == RvndMode::CandidateDLB)
+        RVND_CandidateDLB(sol, g_cand, g_candMaxLen, g_candReversed, gen, dlb);
+    else
+        RVND(sol, gen);
 }
 
 struct EliteSet {
@@ -161,6 +182,7 @@ void mdm_gils_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
                     int maxPatterns, mt19937& gen, double maxTimeSec) {
     int fStar = INT_MAX;
     EliteSet elite(poolSize);
+    DlbState dlb;
     unordered_map<int, Segment> segStarts; // empty until phase 2 mines something
 
     int phase1Iters = max(1, I_max / 2);
@@ -200,11 +222,15 @@ void mdm_gils_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
         if (usePatterns) { construction_mdm(s, eval, alpha, segStarts, gen); g_patternRestarts++; }
         else construction(s, eval, alpha, gen);
 
+        /* A fresh construction is nowhere near a local optimum: arm
+           everything. Only perturbations get the cheap partial re-arm. */
+        dlb.reset(s.fN);
+
         Solution sPrime(s);
 
         int iterILS = 0;
         while (iterILS < I_ILS) {
-            RVND(s, gen);
+            run_rvnd(s, gen, dlb);
 
             /* Algorithm 4 updates the elite set HERE, on every RVND result
                -- not once per restart, or short runs never mine. */
@@ -218,7 +244,9 @@ void mdm_gils_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
             if (outOfTime()) break;
 
             s = sPrime;
-            perturb(s, gen);
+            auto hit = perturb(s, gen);
+            if (hit.first >= 0) dlb.arm_range(s, hit.first - 1, hit.second + 1);
+            else dlb.reset(s.fN);
             iterILS++;
         }
 
@@ -236,6 +264,7 @@ int main(int argc, char** argv) {
         cerr << "Usage:\n";
         cerr << "  ./mdm_gils_rvnd <instance.tsp> [--imax 10] [--iils 100] [--pool 10]\n";
         cerr << "    [--sup-min 0.70] [--max-patterns 5] [--max-time SECONDS] [--seed N]\n";
+        cerr << "    [--rvnd-mode single|candidate-dlb] [--cand-k 12] [--cand-maxlen 6] [--cand-no-rev]\n";
         return 1;
     }
 
@@ -248,6 +277,7 @@ int main(int argc, char** argv) {
     double maxTimeSec = -1.0;   /* <=0 disables the time limit */
     bool imaxExplicit = false;
     long seed = -1;
+    int candK = 12;
 
     for (int i = 2; i < argc; i++) {
         string a = argv[i];
@@ -258,6 +288,15 @@ int main(int argc, char** argv) {
         else if (a == "--max-patterns" && i + 1 < argc) maxPatterns = stoi(argv[++i]);
         else if (a == "--max-time" && i + 1 < argc) maxTimeSec = stod(argv[++i]);
         else if (a == "--seed" && i + 1 < argc) seed = stol(argv[++i]);
+        else if (a == "--cand-k" && i + 1 < argc) candK = stoi(argv[++i]);
+        else if (a == "--cand-maxlen" && i + 1 < argc) g_candMaxLen = stoi(argv[++i]);
+        else if (a == "--cand-no-rev") g_candReversed = false;
+        else if (a == "--rvnd-mode" && i + 1 < argc) {
+            string m = argv[++i];
+            if (m == "single") g_rvndMode = RvndMode::Single;
+            else if (m == "candidate-dlb") g_rvndMode = RvndMode::CandidateDLB;
+            else { cerr << "Unknown --rvnd-mode: " << m << "\n"; return 1; }
+        }
     }
 
     /* Under a time limit, time is the binding constraint -- not I_max,
@@ -272,6 +311,8 @@ int main(int argc, char** argv) {
 
     Evaluator eval;
     eval.SetInstance((char*)filepath.c_str());
+
+    g_cand = make_candidate_list(eval, candK);
 
     vector<double> R;
     for (double r = 0.0; r <= 0.25; r += 0.01) R.push_back(r);
@@ -290,6 +331,9 @@ int main(int argc, char** argv) {
     cout << "INSTANCE " << instanceFile << "\n";
     cout << "NODES " << bestSol.fN << "\n";
     cout << "COST " << bestSol.fEvaluationValue << "\n";
+    cout << "RVND_MODE " << (g_rvndMode == RvndMode::CandidateDLB ? "candidate-dlb" : "single") << "\n";
+    if (g_rvndMode == RvndMode::CandidateDLB)
+        cout << "CAND_K " << g_cand.K << "  CAND_MAXLEN " << g_candMaxLen << "\n";
     cout << "IMAX " << I_max << "\n";
     cout << "IILS " << I_ILS << "\n";
     cout << "POOL " << poolSize << "\n";
