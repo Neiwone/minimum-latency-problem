@@ -4,12 +4,15 @@
 #include "construction.h"
 #include "rvnd.h"
 #include "rvnd_adaptive.h"
+#include "neighborhoods_cand.h"
 
 using namespace std;
 
-void double_bridge_once(Solution& sol, mt19937& gen) {
+/* Returns the position range the kick disturbed, so a don't-look-bit search
+   can re-arm just that span ({-1,-1} = no-op). */
+pair<int,int> double_bridge_once(Solution& sol, mt19937& gen) {
     int n = sol.fN;
-    if (n < 8) return;
+    if (n < 8) return {-1, -1};
 
     vector<int> cuts;
     uniform_int_distribution<int> dist(1, n - 2);
@@ -36,16 +39,30 @@ void double_bridge_once(Solution& sol, mt19937& gen) {
 
     for (int i = 0; i < n; i++)
         sol.fTour[i] = newTour[i];
+
+    return {p1, p3 - 1};
 }
 
-/* Applies `strength` independent double-bridge kicks in sequence. strength=1
-   reproduces the original fixed-intensity perturbation. */
-void perturb(Solution& sol, mt19937& gen, int strength) {
-    for (int k = 0; k < strength; k++)
-        double_bridge_once(sol, gen);
+/* Applies `strength` kicks in sequence, returning the union of the ranges
+   they disturbed. strength=1 is the original fixed-intensity perturbation. */
+pair<int,int> perturb(Solution& sol, mt19937& gen, int strength) {
+    int lo = INT_MAX, hi = -1;
+    for (int k = 0; k < strength; k++) {
+        auto r = double_bridge_once(sol, gen);
+        if (r.first < 0) continue;
+        lo = min(lo, r.first);
+        hi = max(hi, r.second);
+    }
 
     sol.calculateStructures();
+    return hi < 0 ? make_pair(-1, -1) : make_pair(lo, hi);
 }
+
+/* Local search shared with gils_am_rvnd and mdm_gils_rvnd, so an equal-time
+   comparison between the three is about strategy, not scan engineering. */
+static CandList g_cand;
+static int  g_candMaxLen  = 6;
+static bool g_candReversed = true;
 
 void print_trace(int outer, int step, const Solution& sol) {
     cout << "TRACE OUTER=" << outer << " STEP=" << step << " COST=" << sol.fEvaluationValue << " ROUTE=";
@@ -56,10 +73,8 @@ void print_trace(int outer, int step, const Solution& sol) {
 
 enum class PertMode { Fixed, Stagnation, Distance };
 
-/* Number of nodes whose successor differs between two tours over the same
-   n customers -- a cheap O(n) proxy for edge-set symmetric difference
-   (Máximo & Nascimento's d(s, s_ref) = |E^s Delta E^s_ref|), since each node
-   contributes at most one outgoing edge to a Hamiltonian path. */
+/* Nodes whose successor differs between two tours: an O(n) proxy for
+   edge-set symmetric difference (Máximo & Nascimento's d(s, s_ref)). */
 int edge_distance(const int* tourA, const int* tourB, int n) {
     vector<int> succA(n, -1), succB(n, -1);
     for (int i = 0; i + 1 < n; i++) succA[tourA[i]] = tourA[i + 1];
@@ -71,24 +86,15 @@ int edge_distance(const int* tourA, const int* tourB, int n) {
     return diff;
 }
 
-/* Perturbation strength schedule for H1 (adaptive diversification),
-   "stagnation" variant: strength starts at 1 and increases by 1 every
-   `stagnationStep` consecutive non-improving iterations (iterILS), capped
-   at `maxStrength`. Tested against fixed double-bridge and rejected (see
-   docs/experiments/h1-adaptive-diversification.md, secs 4-6): ties on
-   easy instances at higher time cost, loses on the one instance with real
-   optimization headroom -- it escalates blindly on elapsed time without
-   checking whether the extra strength is actually producing useful
-   diversity. */
+/* H1 "stagnation": strength grows every `stagnationStep` non-improving
+   iterations. Rejected -- escalates blindly, without checking diversity. */
 int stagnation_strength(int iterILS, int stagnationStep, int maxStrength) {
     int strength = 1 + iterILS / stagnationStep;
     return min(strength, maxStrength);
 }
 
-/* H2 (path relinking between elites): a pool of the best distinct restart
-   solutions found so far, kept sorted ascending by cost. Only the tour is
-   kept (not the O(n^2) re-optimization matrices) since idle pool members
-   are never RVND'd directly -- see algorithms/grasp_am.md's AddElite. */
+/* H2: pool of the best distinct restart solutions, sorted by cost. Only
+   the tour is kept; idle members are never RVND'd directly. */
 struct EliteEntry { int cost; vector<int> tour; };
 
 void add_elite(vector<EliteEntry>& elite, const Solution& sol, int maxSize) {
@@ -104,12 +110,8 @@ void add_elite(vector<EliteEntry>& elite, const Solution& sol, int maxSize) {
     if ((int)elite.size() > maxSize) elite.pop_back();
 }
 
-/* Classic swap-based path relinking (Glover): moves `start` one position at
-   a time towards `guide` (each step swaps whichever element currently sits
-   where `guide` wants a given customer), evaluating cost along the way.
-   Returns the best solution found anywhere on the path, including the
-   endpoints. O(n) steps, O(n^2) re-optimization per step -> O(n^3) total,
-   but called only once per outer restart, not inside the ILS loop. */
+/* Path relinking (Glover): walk `start` towards `guide` one swap at a time,
+   returning the best tour on the path. O(n^3), so once per restart only. */
 Solution path_relink(const Solution& start, const vector<int>& guideTour) {
     Solution current(start);
     int n = current.fN;
@@ -137,16 +139,17 @@ Solution path_relink(const Solution& start, const vector<int>& guideTour) {
     return best;
 }
 
-/* H4: which RVND implementation to call -- Single is the original,
-   untouched first-improvement RVND; Multi batches non-conflicting
-   improving moves per scan (see neighborhoods.cpp / rvnd.cpp). Both are
-   available side by side; Single remains the default. */
-enum class RvndMode { Single, Multi, ExtendedOrOpt, ExtendedOrOptWide, ExtendedOrOpt3Opt, AdaptiveOrOpt };
+/* H4: Single is the original first-improvement RVND; Multi batches
+   non-conflicting moves per scan. Single is the default. */
+enum class RvndMode { Single, Multi, ExtendedOrOpt, ExtendedOrOptWide, ExtendedOrOpt3Opt,
+                      AdaptiveOrOpt, CandidateDLB };
 
 /* `adaptState` carries the adaptive-or-opt learning across every RVND
    call of the run (see include/rvnd_adaptive.h); ignored by other modes. */
-void run_rvnd(RvndMode mode, Solution& sol, mt19937& gen, AdaptiveOrOptState& adaptState) {
-    if (mode == RvndMode::Multi) RVND_Multi(sol, gen);
+void run_rvnd(RvndMode mode, Solution& sol, mt19937& gen, AdaptiveOrOptState& adaptState,
+              DlbState& dlb) {
+    if (mode == RvndMode::CandidateDLB) RVND_CandidateDLB(sol, g_cand, g_candMaxLen, g_candReversed, gen, dlb);
+    else if (mode == RvndMode::Multi) RVND_Multi(sol, gen);
     else if (mode == RvndMode::ExtendedOrOpt) RVND_ExtendedOrOpt(sol, gen);
     else if (mode == RvndMode::ExtendedOrOptWide) RVND_ExtendedOrOptWide(sol, gen);
     else if (mode == RvndMode::ExtendedOrOpt3Opt) RVND_ExtendedOrOpt3Opt(sol, gen);
@@ -154,10 +157,8 @@ void run_rvnd(RvndMode mode, Solution& sol, mt19937& gen, AdaptiveOrOptState& ad
     else RVND(sol, gen);
 }
 
-/* H6: which constructive procedure to use -- Greedy is the original,
-   untouched construction(); Lookahead scores candidates by a k-step
-   greedy rollout instead of just dist(r,c). See construction_impl.cpp /
-   docs/experiments/h6-lookahead-construction.md. */
+/* H6: Greedy is the original construction(); Lookahead scores candidates
+   by a k-step greedy rollout instead of dist(r,c). */
 enum class ConstructionMode { Greedy, Lookahead };
 
 /* Completed restarts, reported so a fixed-time protocol can verify
@@ -173,11 +174,10 @@ void gils_rvnd(Solution& bestSol, Evaluator& eval,
                AdaptiveOrOptState& adaptState, double maxTimeSec) {
     int fStar = INT_MAX;
     vector<EliteEntry> elite;
+    DlbState dlb;
 
-    /* Wall-clock stopping criterion for equal-time comparisons (see
-       run_experiments.py --mode fixed-time). Checked between ILS iterations and
-       between restarts, never inside an RVND convergence, so the budget
-       can be overshot by at most one convergence. */
+    /* Wall-clock stop, checked between ILS iterations and restarts, so
+       the budget can overshoot by at most one RVND convergence. */
     using SteadyClock = chrono::steady_clock;
     const auto tStart = SteadyClock::now();
     const bool timed = maxTimeSec > 0.0;
@@ -199,6 +199,10 @@ void gils_rvnd(Solution& bestSol, Evaluator& eval,
         else
             construction(s, eval, alpha, gen);
 
+        /* A fresh construction is nowhere near a local optimum: arm
+           everything. Only perturbations get the cheap partial re-arm. */
+        dlb.reset(s.fN);
+
         Solution sPrime(s);
 
         int n = s.fN;
@@ -208,13 +212,12 @@ void gils_rvnd(Solution& bestSol, Evaluator& eval,
         int iterILS = 0;
         int step = 0;
         int strength = 1;
-        /* Reference tour perturb() was applied to, snapshotted each time a
-           new perturbation is issued -- used by "distance" mode to measure
-           how much diversity the last kick+RVND cycle actually achieved. */
+        /* Tour the last perturbation started from -- "distance" mode
+           measures against it how much diversity that cycle achieved. */
         vector<int> referenceTour(sPrime.fTour, sPrime.fTour + n);
 
         while (iterILS < I_ILS) {
-            run_rvnd(rvndMode, s, gen, adaptState);
+            run_rvnd(rvndMode, s, gen, adaptState, dlb);
 
             if (pertMode == PertMode::Distance) {
                 int d = edge_distance(s.fTour, referenceTour.data(), n);
@@ -239,7 +242,9 @@ void gils_rvnd(Solution& bestSol, Evaluator& eval,
             else if (pertMode == PertMode::Distance)
                 thisStrength = strength;
 
-            perturb(s, gen, thisStrength);
+            auto hit = perturb(s, gen, thisStrength);
+            if (hit.first >= 0) dlb.arm_range(s, hit.first - 1, hit.second + 1);
+            else dlb.reset(s.fN);
 
             iterILS++;
             step++;
@@ -250,7 +255,8 @@ void gils_rvnd(Solution& bestSol, Evaluator& eval,
             const vector<int>& guide = elite[eliteDist(gen)].tour;
 
             Solution prResult = path_relink(sPrime, guide);
-            run_rvnd(rvndMode, prResult, gen, adaptState);
+            dlb.reset(prResult.fN);
+            run_rvnd(rvndMode, prResult, gen, adaptState, dlb);
 
             if (prResult.fEvaluationValue < sPrime.fEvaluationValue) {
                 sPrime = prResult;
@@ -284,6 +290,7 @@ int main(int argc, char** argv) {
     string instanceFile = argv[1];
     int I_max = 10;
     int I_ILS = 100;
+    int candK = 12;
     bool verbose = false;
     PertMode pertMode = PertMode::Fixed;
     int stagnationStep = 5;
@@ -346,8 +353,12 @@ int main(int argc, char** argv) {
             else if (m == "extended-oropt-wide") rvndMode = RvndMode::ExtendedOrOptWide;
             else if (m == "extended-oropt-3opt") rvndMode = RvndMode::ExtendedOrOpt3Opt;
             else if (m == "adaptive-oropt") rvndMode = RvndMode::AdaptiveOrOpt;
+            else if (m == "candidate-dlb") rvndMode = RvndMode::CandidateDLB;
             else { cerr << "Unknown --rvnd-mode: " << m << "\n"; return 1; }
         }
+        else if (a == "--cand-k" && i + 1 < argc) candK = stoi(argv[++i]);
+        else if (a == "--cand-maxlen" && i + 1 < argc) g_candMaxLen = stoi(argv[++i]);
+        else if (a == "--cand-no-rev") g_candReversed = false;
         else if (a == "--construction-mode" && i + 1 < argc) {
             string m = argv[++i];
             if (m == "greedy") constructionMode = ConstructionMode::Greedy;
@@ -385,6 +396,8 @@ int main(int argc, char** argv) {
     Evaluator eval;
     eval.SetInstance((char*)filepath.c_str());
 
+    g_cand = make_candidate_list(eval, candK);
+
     vector<double> R;
     for (double r = 0.0; r <= 0.25; r += 0.01)
         R.push_back(r);
@@ -397,9 +410,8 @@ int main(int argc, char** argv) {
 
     auto t0 = Clock::now();
 
-    /* One state for the whole run: the adaptive-or-opt policy needs to
-       pool statistics across every RVND convergence to learn anything.
-       The knobs are CLI-exposed so they can be tuned (see irace/). */
+    /* One state for the whole run: the policy pools statistics across
+       every RVND convergence to learn anything. */
     AdaptiveOrOptState adaptState;
     adaptState.kMax = max(AdaptiveOrOptState::K_FLOOR,
                           min(adaptKStart, (int)AdaptiveOrOptState::K_CAP));
@@ -437,7 +449,10 @@ int main(int argc, char** argv) {
                               : rvndMode == RvndMode::ExtendedOrOpt ? "extended-oropt"
                               : rvndMode == RvndMode::ExtendedOrOptWide ? "extended-oropt-wide"
                               : rvndMode == RvndMode::ExtendedOrOpt3Opt ? "extended-oropt-3opt"
-                              : rvndMode == RvndMode::AdaptiveOrOpt ? "adaptive-oropt" : "single") << "\n";
+                              : rvndMode == RvndMode::AdaptiveOrOpt ? "adaptive-oropt"
+                              : rvndMode == RvndMode::CandidateDLB ? "candidate-dlb" : "single") << "\n";
+    if (rvndMode == RvndMode::CandidateDLB)
+        cout << "CAND_K " << g_cand.K << "  CAND_MAXLEN " << g_candMaxLen << "\n";
     if (rvndMode == RvndMode::AdaptiveOrOpt) {
         cout << "ADAPT_KMAX_FINAL " << adaptState.kMax << "\n";
         cout << "ADAPT_KMAX_RANGE " << adaptState.kMaxMinSeen << "-" << adaptState.kMaxMaxSeen << "\n";

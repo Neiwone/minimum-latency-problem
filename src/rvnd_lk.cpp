@@ -4,9 +4,8 @@
 
 using namespace std;
 
-/* Mirrors Solution::evaluate2Opt's computation, returns the signed
-   delta instead of a boolean. See diag_lk.cpp for the derivation of the
-   chain mechanics this is used in. */
+/* Solution::evaluate2Opt's computation, returning the signed delta
+   instead of a boolean. */
 static int delta_2opt(const Solution& sol, int i, int j) {
     if (i > j) swap(i, j);
     int t = 0, c = 0;
@@ -15,8 +14,8 @@ static int delta_2opt(const Solution& sol, int i, int j) {
 
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = sol.T[u][v];
-        int Cu = sol.C[u][v];
+        int Tu = sol.getT(u, v);
+        int Cu = sol.getC(u, v);
         int Wu = sol.getW(u, v);
         int firstNode = sol.fTour[u];
         int lastNode  = sol.fTour[v];
@@ -29,8 +28,8 @@ static int delta_2opt(const Solution& sol, int i, int j) {
 
     auto appendReversed = [&](int u, int v) {
         if (u > v) return;
-        int Tu = sol.T[u][v];
-        int Cu = sol.Cr[u][v];
+        int Tu = sol.getT(u, v);
+        int Cu = sol.getCr(u, v);
         int Wu = sol.getW(u, v);
         int firstNode = sol.fTour[v];
         int lastNode  = sol.fTour[u];
@@ -48,9 +47,8 @@ static int delta_2opt(const Solution& sol, int i, int j) {
     return c - sol.fEvaluationValue;
 }
 
-/* Runs one chain in place on `s` (caller passes a throwaway copy),
-   returning the tour at the best point visited (which may be the
-   starting tour itself, if no step ever improved on it). */
+/* Runs one chain in place on a throwaway copy, returning the tour at the
+   best point visited (possibly the starting tour). */
 static pair<int, vector<int>> run_chain(Solution& s, Evaluator& eval, int startPos,
                                          int maxDepth, int candK) {
     int n = s.fN;

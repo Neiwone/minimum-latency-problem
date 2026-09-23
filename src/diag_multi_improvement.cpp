@@ -6,13 +6,8 @@
 
 using namespace std;
 
-/* Read-only diagnostic for H4 (multi-improvement local search). Does NOT
-   touch neighborhoods.cpp/rvnd.cpp/solution.cpp -- only calls the existing
-   (unmodified) evaluate* boolean methods to find which candidate moves
-   improve, then measures how many of them could be applied together in a
-   single pass (mutually non-overlapping index footprints), via a
-   count-only greedy interval scheduling (sort by footprint end, greedy
-   pick). No moves are applied; this never mutates the solution. */
+/* Read-only probe for H4: how many improving moves of one scan have disjoint
+   footprints, i.e. could be batched into a single pass? */
 
 void double_bridge_once(Solution& sol, mt19937& gen) {
     int n = sol.fN;
@@ -41,15 +36,8 @@ void double_bridge_once(Solution& sol, mt19937& gen) {
 
 struct Interval { int lo, hi; };
 
-/* Greedy max count of mutually disjoint intervals (classic activity
-   selection) -- a lower bound on true batching opportunity, since a
-   gain-weighted selection could sometimes do at least as well by count
-   and better by total gain; good enough to decide go/no-go.
-   Requires a 1-position buffer between footprints, matching the real
-   implementation in neighborhoods.cpp -- evaluate*() reads one position
-   just outside its own footprint to price the boundary edge, so a
-   neighboring move must not touch it either (see that file for details;
-   found by an actual bug where 0-gap batches sometimes increased cost). */
+/* Greedy activity selection. The 1-position buffer is required: evaluate*()
+   prices a boundary edge just outside its own footprint. */
 int max_disjoint_count(vector<Interval> ivs) {
     sort(ivs.begin(), ivs.end(), [](const Interval& a, const Interval& b) {
         return a.hi < b.hi;

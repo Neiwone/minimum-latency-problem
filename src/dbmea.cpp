@@ -6,30 +6,8 @@
 
 using namespace std;
 
-/* H8: DBMEA-lite -- a population-based memetic algorithm inspired by
-   Tuu-Szabo, Foldesi & Koczy's Discrete Bacterial Memetic Evolutionary
-   Algorithm for the Traveling Repairman Problem (2020), scoped down to
-   what's practical to test here. See
-   docs/experiments/h8-dbmea-population.md.
-
-   Three operators per generation:
-     1. Bacterial mutation: for each individual, walk fixed-length segments
-        left to right; for each segment, try several clones (random
-        shuffles of just that segment, plus one deterministic reversal),
-        keep whichever version of the segment produced the lowest full
-        tour cost, then move to the next segment.
-     2. Gene transfer: sort the population by cost, split into a superior
-        and an inferior half; repeatedly splice a random segment from a
-        superior individual into a random position of an inferior one,
-        repairing the resulting duplicate customers by deleting their
-        earlier occurrence.
-     3. Memetic step: run the existing (unmodified) RVND on the current
-        best few individuals.
-
-   Unlike RVND's O(1)-per-move evaluator, mutation/transfer only need the
-   cost of a FULL candidate tour, which is O(n) directly (no need to build
-   the O(n^2) T/C/Cr tables) -- individuals are kept as plain vector<int>
-   tours + cost, converted to a Solution only for the memetic RVND step. */
+/* H8: DBMEA-lite (Tuu-Szabo, Foldesi & Koczy, 2020). Per generation:
+   bacterial mutation, gene transfer between halves, then RVND. */
 
 struct Individual {
     vector<int> tour;
@@ -149,18 +127,8 @@ void dbmea(Solution& bestSol, Evaluator& eval, int popSize, int generations,
             return a.cost < b.cost;
         });
 
-        /* Applying RVND only to the top few individuals leaves the rest of
-           the population permanently uncompetitive: bacterial mutation and
-           gene transfer are much weaker (cruder, random) operators than
-           RVND, so an un-polished individual essentially never catches up
-           to an already-RVND-optimal one. Confirmed empirically: with
-           memeticTopK < popSize, the whole population stalls after the
-           first generation and never improves again. RVND on everyone
-           costs more per generation but is the only way to keep the
-           population usefully evolving -- memeticTopK defaults to
-           popSize (main() below), but is kept as a knob to trade
-           quality for speed if needed. See
-           docs/experiments/h8-dbmea-population.md. */
+        /* memeticTopK < popSize stalls the population after one generation:
+           an unpolished individual never catches an RVND'd one. */
         int topK = min(memeticTopK, (int)pop.size());
         for (int i = 0; i < topK; i++) {
             Solution s;

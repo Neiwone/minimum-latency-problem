@@ -15,6 +15,10 @@ public:
 
     void calculateStructures();
 
+    /* Same, from position `lo` on: nothing below the first position a
+       move disturbed changes. lo <= 0 rebuilds everything. */
+    void calculateStructuresFrom(int lo);
+
     /* W(i,j) = number of customers in subsequence [i..j].
        Depot is always at position 0 */
     inline int getW(int i, int j) const {
@@ -28,14 +32,12 @@ public:
     bool evaluateReinsertion(int i, int j);
     bool evaluateOrOpt(int i, int j, int k);
 
-    /* H12b: genuine 3-opt reconnection not reachable by any single
-       existing move. 3 cuts (i<j<k) split the tour into A=[0,i],
-       B=[i+1,j], C=[j+1,k], D=[k+1,n-1]; this reverses B and C
-       INDEPENDENTLY, keeping their order (A + rev(B) + rev(C) + D).
-       Reversing the merged B+C span (which swaps their order too, giving
-       rev(C)+rev(B)) is already reachable via evaluate2Opt -- this move
-       is the one classic "type-7" 3-opt reconnection that isn't. See
-       docs/experiments/h12-extended-oropt.md section 12. */
+    /* Same as evaluateOrOpt with [i..j] REVERSED -- under a latency
+       objective a different move */
+    bool evaluateOrOptReversed(int i, int j, int k);
+
+    /* H12b: cuts i<j<k give A|B|C|D -> A + rev(B) + rev(C) + D. The one
+       3-opt reconnection no single existing move reaches. */
     bool evaluateThreeOptDoubleReversal(int i, int j, int k);
     
     int fN;
@@ -46,9 +48,24 @@ public:
     double* y; 
     int** fDist;
 
-    int** T;    /* Duration */
-    int** C;    /* Latency cost */
-    int** Cr;   /* Reversed cost */
+    /* P[j] = edge lengths up to position j, SP = prefix sum of P. Every
+       entry of the old O(n^2) T/C/Cr tables is O(1) on them (see below). */
+    long long* P;
+    long long* SP;
+
+    /* posOf[city] = its position in fTour. Candidate-list scans need to
+       go from "c is geometrically near d" to "where is d in the tour". */
+    int* posOf;
+
+    inline int getT(int i, int j) const { return (int)(P[j] - P[i]); }
+
+    inline int getC(int i, int j) const {
+        return (int)((SP[j] - SP[i]) - (long long)(j - i) * P[i]);
+    }
+
+    inline int getCr(int i, int j) const {
+        return (int)((long long)(j - i + 1) * P[j] - (SP[j] - SP[i] + P[i]));
+    }
 };
 
 #endif

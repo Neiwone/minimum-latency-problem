@@ -1,0 +1,148 @@
+[1/108] lin318|iils10|1                              cost=5586909 restarts=147
+[2/108] lin318|iils3|1                               cost=5586101 restarts=811
+[3/108] lin318|iils30|1                              cost=5568154 restarts=39
+[4/108] lin318|iils100|1                             cost=5585190 restarts=14
+[5/108] lin318|fb2|1                                 cost=5586909 restarts=133
+[6/108] lin318|db10|1                                cost=5588039 restarts=186
+[7/108] lin318|iils10|2                              cost=5581188 restarts=127
+[8/108] lin318|iils3|2                               cost=5603820 restarts=805
+[9/108] lin318|iils30|2                              cost=5585856 restarts=39
+[10/108] lin318|iils100|2                             cost=5575129 restarts=9
+[11/108] lin318|fb2|2                                 cost=5581188 restarts=127
+[12/108] lin318|db10|2                                cost=5593213 restarts=211
+[13/108] lin318|iils10|3                              cost=5583654 restarts=152
+[14/108] lin318|iils3|3                               cost=5602068 restarts=753
+[15/108] lin318|iils30|3                              cost=5587697 restarts=30
+[16/108] lin318|iils100|3                             cost=5560897 restarts=14
+[17/108] lin318|fb2|3                                 cost=5583654 restarts=150
+[18/108] lin318|db10|3                                cost=5590753 restarts=144
+[19/108] lin318|iils10|4                              cost=5584492 restarts=165
+[20/108] lin318|iils3|4                               cost=5586301 restarts=749
+[21/108] lin318|iils30|4                              cost=5584988 restarts=30
+[22/108] lin318|iils100|4                             cost=5560897 restarts=8
+[23/108] lin318|fb2|4                                 cost=5584492 restarts=166
+[24/108] lin318|db10|4                                cost=5605449 restarts=145
+[25/108] lin318|iils10|5                              cost=5593213 restarts=141
+[26/108] lin318|iils3|5                               cost=5591481 restarts=723
+[27/108] lin318|iils30|5                              cost=5588757 restarts=37
+[28/108] lin318|iils100|5                             cost=5569200 restarts=12
+[29/108] lin318|fb2|5                                 cost=5593213 restarts=135
+[30/108] lin318|db10|5                                cost=5597003 restarts=140
+[31/108] lin318|iils10|6                              cost=5572669 restarts=117
+[32/108] lin318|iils3|6                               cost=5594005 restarts=763
+[33/108] lin318|iils30|6                              cost=5582747 restarts=40
+[34/108] lin318|iils100|6                             cost=5567913 restarts=10
+[35/108] lin318|fb2|6                                 cost=5572669 restarts=115
+[36/108] lin318|db10|6                                cost=5586181 restarts=201
+[37/108] pr439|iils10|1                               cost=17921177 restarts=80
+[38/108] pr439|iils3|1                                cost=17978520 restarts=345
+[39/108] pr439|iils30|1                               cost=17798693 restarts=16
+[40/108] pr439|iils100|1                              cost=17790801 restarts=7
+[41/108] pr439|fb2|1                                  cost=17921177 restarts=80
+[42/108] pr439|db10|1                                 cost=17857427 restarts=82
+[43/108] pr439|iils10|2                               cost=17915721 restarts=71
+[44/108] pr439|iils3|2                                cost=18021164 restarts=356
+[45/108] pr439|iils30|2                               cost=17854946 restarts=23
+[46/108] pr439|iils100|2                              cost=17724277 restarts=6
+[47/108] pr439|fb2|2                                  cost=17915721 restarts=71
+[48/108] pr439|db10|2                                 cost=17825574 restarts=89
+[49/108] pr439|iils10|3                               cost=17906826 restarts=70
+[50/108] pr439|iils3|3                                cost=17960622 restarts=394
+[51/108] pr439|iils30|3                               cost=17797123 restarts=20
+[52/108] pr439|iils100|3                              cost=17742763 restarts=6
+[53/108] pr439|fb2|3                                  cost=17906826 restarts=68
+[54/108] pr439|db10|3                                 cost=17891796 restarts=77
+[55/108] pr439|iils10|4                               cost=17858263 restarts=72
+[56/108] pr439|iils3|4                                cost=17928950 restarts=385
+[57/108] pr439|iils30|4                               cost=17837161 restarts=19
+[58/108] pr439|iils100|4                              cost=17708874 restarts=8
+[59/108] pr439|fb2|4                                  cost=17858263 restarts=72
+[60/108] pr439|db10|4                                 cost=17853417 restarts=88
+[61/108] pr439|iils10|5                               cost=17821673 restarts=76
+[62/108] pr439|iils3|5                                cost=17922426 restarts=397
+[63/108] pr439|iils30|5                               cost=17863311 restarts=20
+[64/108] pr439|iils100|5                              cost=17799620 restarts=5
+[65/108] pr439|fb2|5                                  cost=17821673 restarts=76
+[66/108] pr439|db10|5                                 cost=17820518 restarts=87
+[67/108] pr439|iils10|6                               cost=17936036 restarts=68
+[68/108] pr439|iils3|6                                cost=17938572 restarts=380
+[69/108] pr439|iils30|6                               cost=17779270 restarts=19
+[70/108] pr439|iils100|6                              cost=17795960 restarts=5
+[71/108] pr439|fb2|6                                  cost=17936036 restarts=68
+[72/108] pr439|db10|6                                 cost=17884889 restarts=90
+[73/108] att532|iils10|1                              cost=5690124 restarts=57
+[74/108] att532|iils3|1                               cost=5662579 restarts=298
+[75/108] att532|iils30|1                              cost=5634321 restarts=11
+[76/108] att532|iils100|1                             cost=5608508 restarts=3
+[77/108] att532|fb2|1                                 cost=5690124 restarts=57
+[78/108] att532|db10|1                                cost=5658552 restarts=57
+[79/108] att532|iils10|2                              cost=5643015 restarts=45
+[80/108] att532|iils3|2                               cost=5657720 restarts=243
+[81/108] att532|iils30|2                              cost=5627099 restarts=15
+[82/108] att532|iils100|2                             cost=5625880 restarts=4
+[83/108] att532|fb2|2                                 cost=5662531 restarts=44
+[84/108] att532|db10|2                                cost=5620543 restarts=52
+[85/108] att532|iils10|3                              cost=5685393 restarts=44
+[86/108] att532|iils3|3                               cost=5665744 restarts=246
+[87/108] att532|iils30|3                              cost=5634299 restarts=14
+[88/108] att532|iils100|3                             cost=5614647 restarts=5
+[89/108] att532|fb2|3                                 cost=5685393 restarts=45
+[90/108] att532|db10|3                                cost=5654572 restarts=57
+[91/108] att532|iils10|4                              cost=5653806 restarts=44
+[92/108] att532|iils3|4                               cost=5700489 restarts=223
+[93/108] att532|iils30|4                              cost=5628538 restarts=12
+[94/108] att532|iils100|4                             cost=5598357 restarts=3
+[95/108] att532|fb2|4                                 cost=5653806 restarts=46
+[96/108] att532|db10|4                                cost=5656196 restarts=66
+[97/108] att532|iils10|5                              cost=5670875 restarts=47
+[98/108] att532|iils3|5                               cost=5667691 restarts=257
+[99/108] att532|iils30|5                              cost=5632732 restarts=14
+[100/108] att532|iils100|5                             cost=5636218 restarts=7
+[101/108] att532|fb2|5                                 cost=5670875 restarts=47
+[102/108] att532|db10|5                                cost=5650649 restarts=52
+[103/108] att532|iils10|6                              cost=5680770 restarts=50
+[104/108] att532|iils3|6                               cost=5679964 restarts=224
+[105/108] att532|iils30|6                              cost=5611812 restarts=16
+[106/108] att532|iils100|6                             cost=5610696 restarts=4
+[107/108] att532|fb2|6                                 cost=5680770 restarts=49
+[108/108] att532|db10|6                                cost=5667706 restarts=47
+
+finished in 18.0 min
+
+baseline: iils10
+
+--- iils3 vs iils10 ---
+instancia         mean_rel%      W/T/L        p  restarts
+lin318               +0.184      2/0/4   0.6875       767
+pr439                +0.364      0/0/6   0.0312       376
+att532               +0.031      4/0/2   0.6875       248
+AGREGADO             +0.193     6/0/12   0.2379
+
+--- iils30 vs iils10 ---
+instancia         mean_rel%      W/T/L        p  restarts
+lin318               -0.012      2/0/4   0.6875        36
+pr439                -0.399      5/0/1   0.2188        20
+att532               -0.749      6/0/0   0.0312        14
+AGREGADO             -0.387     13/0/5   0.0963
+
+--- iils100 vs iils10 ---
+instancia         mean_rel%      W/T/L        p  restarts
+lin318               -0.247      6/0/0   0.0312        11
+pr439                -0.742      6/0/0   0.0312         6
+att532               -0.968      6/0/0   0.0312         4
+AGREGADO             -0.653     18/0/0   0.0000
+
+--- fb2 vs iils10 ---
+instancia         mean_rel%      W/T/L        p  restarts
+lin318               +0.000      0/6/0   1.0000       138
+pr439                +0.000      0/6/0   1.0000        72
+att532               +0.058      0/5/1   1.0000        48
+AGREGADO             +0.019     0/17/1   1.0000
+
+--- db10 vs iils10 ---
+instancia         mean_rel%      W/T/L        p  restarts
+lin318               +0.175      0/0/6   0.0312       171
+pr439                -0.210      6/0/0   0.0312        86
+att532               -0.340      5/0/1   0.2188        55
+AGREGADO             -0.125     11/0/7   0.4807
+

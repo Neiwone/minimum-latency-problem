@@ -7,10 +7,8 @@
 
 using namespace std;
 
-/* Fixed structures always in the list, in the same order as RVND(): they
-   keep weight 1.0 and are never adapted -- only the or-opt ceiling and
-   the per-length or-opt weights are learned. Reinsertion is or-opt of
-   length 1, so the adaptive part covers lengths 2..kMax. */
+/* Always in the list at weight 1.0, never adapted. Reinsertion is or-opt
+   of length 1, so only lengths 2..kMax are learned. */
 namespace {
 
 enum FixedKind { FIX_SWAP = 0, FIX_2OPT = 1, FIX_REINSERTION = 2, FIX_COUNT = 3 };
@@ -44,16 +42,13 @@ AdaptiveOrOptState::AdaptiveOrOptState() {
     kMaxMaxSeen = kMax;
 }
 
-/* Rebalance weights toward observed reward and move the ceiling. Called
-   every `period` scans, so it sees statistics pooled over many RVND
-   convergences rather than a single one (a single convergence gives far
-   too few scans per length to estimate anything). */
+/* Rebalance weights and move the ceiling, every `period` scans -- pooled
+   over many convergences, since one gives far too few scans to estimate. */
 static void adapt(AdaptiveOrOptState& st) {
     st.adaptations++;
 
-    /* reward_L = credit_L / attempts_L, normalized by the best length so
-       the smoothing target is scale-free. Lengths with no attempts this
-       period keep their current weight. */
+    /* reward = credit/attempts, normalized by the best length. Lengths
+       with no attempts this period keep their weight. */
     double bestReward = 0.0;
     vector<double> reward(st.weight.size(), -1.0);
     for (int L = 2; L <= st.kMax; L++) {
@@ -71,11 +66,8 @@ static void adapt(AdaptiveOrOptState& st) {
         }
     }
 
-    /* Ceiling move, driven by the frontier: the two largest enabled
-       lengths (or just the largest when the window is tiny). Using the
-       frontier rather than the average is the point -- what decides
-       whether it is worth paying for longer segments is whether the
-       longest ones currently enabled are still finding anything. */
+    /* Driven by the frontier (the largest enabled lengths), not the
+       average: what matters is whether the longest still find anything. */
     int frontierLo = max(2, st.kMax - 1);
     long fAttempts = 0, fHits = 0;
     for (int L = frontierLo; L <= st.kMax; L++) {
@@ -160,10 +152,8 @@ void RVND_AdaptiveOrOpt(Solution& sol, mt19937& gen, AdaptiveOrOptState& st) {
                rebuild() also picks up a kMax that adapt() just changed. */
             rebuild();
         } else {
-            /* The chosen structure failed on the current solution. If
-               adapt() shrank kMax in this same iteration, the list may
-               still contain a length above the new ceiling -- drop those
-               too, so we never keep scanning a disabled length. */
+            /* Also drop lengths above the ceiling, in case adapt() just
+               shrank kMax and left disabled lengths in the list. */
             NL.erase(NL.begin() + idx);
             NL.erase(remove_if(NL.begin(), NL.end(), [&](const Entry& e) {
                          return e.isOrOpt && e.value > st.kMax;

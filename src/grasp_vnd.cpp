@@ -4,39 +4,21 @@
 
 using namespace std;
 
-/* H_Salehipour: GRASP+VND and GRASP+VNS for the TRP (Salehipour, Sorensen,
-   Goos & Braysy, "Efficient GRASP+VND and GRASP+VNS metaheuristics for
-   the traveling repairman problem", 4OR 9:189-209, 2011). See
-   docs/experiments/h-salehipour-grasp-vnd.md.
+/* GRASP+VND / GRASP+VNS for the TRP (Salehipour, Sorensen, Goos & Braysy,
+   4OR 9:189-209, 2011), "setting 1". */
 
-   Distinct from the Silva et al. (2012) GILS-RVND this project is based
-   on: fixed-COUNT RCL (alpha closest candidates, not alpha% of the
-   greedy range), and 5 DIFFERENT neighborhoods (swap, swap-adjacent,
-   2-opt, or-opt [lengths 1-3, single neighborhood], remove-insert [per
-   vertex, relocate the vertex farthest from it to the end of the tour]
-   -- this last one is unique to this paper, not present in GILS-RVND).
+/* Differs from GILS-RVND in the RCL and in its 5 neighborhoods, of which
+   remove-insert is unique to this paper. */
 
-   Implements "setting 1" from the paper (NoFix, Full proximity -- no
-   neighborhood-size reduction): the most literal, unreduced
-   reproduction of Algorithms 1-4. The Fix/Half neighborhood-reduction
-   schemes (Sect. 2.3.2) are documented as not implemented (pure 2011-
-   hardware speed optimizations, not required for a faithful quality
-   comparison on modern hardware).
-
-   Reuses this project's Solution class (T/C/Cr tables, same O(1) move
-   evaluation trick -- the objective f(x) = sum (n-i+1)*w(x_{i-1},x_i) is
-   identical to GILS-RVND's cumulative latency). Move delta functions
-   below mirror Solution::evaluate{Swap,2Opt,Reinsertion,OrOpt}'s exact
-   internal logic (see src/solution.cpp) but return the signed delta
-   instead of a boolean, since VND/VNS here need the single BEST move in
-   a neighborhood (arg min), not just the first improving one. */
+/* The delta functions below mirror Solution::evaluate*() but return signed
+   deltas: VND/VNS need the BEST move, not the first improving one. */
 
 int delta_swap(const Solution& s, int i, int j) {
     if (i > j) swap(i, j);
     int t = 0, c = 0; bool first = true; int last = -1;
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = s.T[u][v], Cu = s.C[u][v], Wu = s.getW(u, v);
+        int Tu = s.getT(u, v), Cu = s.getC(u, v), Wu = s.getW(u, v);
         int firstNode = s.fTour[u], lastNode = s.fTour[v];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
         int e = s.fDist[last][firstNode];
@@ -51,7 +33,7 @@ int delta_2opt(const Solution& s, int i, int j) {
     int t = 0, c = 0; bool first = true; int last = -1;
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = s.T[u][v], Cu = s.C[u][v], Wu = s.getW(u, v);
+        int Tu = s.getT(u, v), Cu = s.getC(u, v), Wu = s.getW(u, v);
         int firstNode = s.fTour[u], lastNode = s.fTour[v];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
         int e = s.fDist[last][firstNode];
@@ -59,7 +41,7 @@ int delta_2opt(const Solution& s, int i, int j) {
     };
     auto appendReversed = [&](int u, int v) {
         if (u > v) return;
-        int Tu = s.T[u][v], Cu = s.Cr[u][v], Wu = s.getW(u, v);
+        int Tu = s.getT(u, v), Cu = s.getCr(u, v), Wu = s.getW(u, v);
         int firstNode = s.fTour[v], lastNode = s.fTour[u];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
         int e = s.fDist[last][firstNode];
@@ -74,7 +56,7 @@ int delta_reinsertion(const Solution& s, int i, int j) {
     int t = 0, c = 0; bool first = true; int last = -1;
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = s.T[u][v], Cu = s.C[u][v], Wu = s.getW(u, v);
+        int Tu = s.getT(u, v), Cu = s.getC(u, v), Wu = s.getW(u, v);
         int firstNode = s.fTour[u], lastNode = s.fTour[v];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
         int e = s.fDist[last][firstNode];
@@ -90,7 +72,7 @@ int delta_oropt(const Solution& s, int i, int j, int k) {
     int t = 0, c = 0; bool first = true; int last = -1;
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = s.T[u][v], Cu = s.C[u][v], Wu = s.getW(u, v);
+        int Tu = s.getT(u, v), Cu = s.getC(u, v), Wu = s.getW(u, v);
         int firstNode = s.fTour[u], lastNode = s.fTour[v];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
         int e = s.fDist[last][firstNode];
@@ -101,9 +83,7 @@ int delta_oropt(const Solution& s, int i, int j, int k) {
     return c - s.fEvaluationValue;
 }
 
-/* apply reinsertion: move the element at position i to right after
-   position j (both interpretations of Reinsertion and of Or-opt's
-   segment relocation collapse to the same index arithmetic). */
+/* Move the element at position i to right after position j. */
 void apply_reinsertion(vector<int>& tour, int i, int j) {
     int val = tour[i];
     tour.erase(tour.begin() + i);
@@ -119,9 +99,8 @@ void apply_oropt(vector<int>& tour, int i, int j, int k) {
     tour.insert(tour.begin() + insertPos, seg.begin(), seg.end());
 }
 
-/* Precomputed once: farthest[v] = vertex geometrically farthest from v
-   (static property of the distance matrix, independent of tour order --
-   see Sect 2.3.1, "remove-insert" neighborhood). */
+/* farthest[v] = vertex geometrically farthest from v; a property of the
+   distance matrix, so precomputed once. */
 vector<int> compute_farthest(int n, int** dist) {
     vector<int> farthest(n);
     for (int i = 0; i < n; i++) {
@@ -142,10 +121,8 @@ vector<int> compute_farthest(int n, int** dist) {
 
 enum Neighborhood { SWAP_ADJACENT, REMOVE_INSERT, SWAP, TWO_OPT, OR_OPT, N_NEIGHBORHOODS };
 
-/* Refreshes T/C/Cr from the current tour, then scans neighborhood `nb`
-   in full (best-improvement: finds the single best move, arg min Nk),
-   applies it if it improves, and reports whether it did -- Algorithm 3's
-   "local search: x' <- arg min Nk(x)" step. */
+/* Scans neighborhood `nb` in full, applies its single best move if it
+   improves, and reports whether it did. */
 bool best_move_in_neighborhood(int nb, vector<int>& tour, Solution& sol,
                                 const vector<int>& farthest, int orOptMaxLen) {
     int n = sol.fN;
@@ -259,12 +236,8 @@ vector<int> construction_salehipour(Evaluator& eval, int alpha, mt19937& gen) {
     return route;
 }
 
-/* "local search: x' <- arg min Nk(x)" (Algorithms 3 and 4) means a full
-   descent within Nk -- repeatedly apply the best move in Nk until none
-   improves -- not a single move. A single move can't be compared
-   meaningfully against a solution that was just heavily perturbed (see
-   run_vns): only a full descent gives x'' a fair chance to recover past
-   the pre-shake cost. Returns whether ANY move was applied. */
+/* "x' <- arg min Nk(x)" means a full descent within Nk, not one move: a
+   single move cannot recover from a shake. Returns whether any applied. */
 bool local_search_in_neighborhood(int nb, vector<int>& tour, Solution& sol,
                                    const vector<int>& farthest, int orOptMaxLen) {
     bool any = false;
@@ -272,18 +245,8 @@ bool local_search_in_neighborhood(int nb, vector<int>& tour, Solution& sol,
     return any;
 }
 
-/* Algorithm 3: VND -- deterministic descent, resets to the first
-   neighborhood (in the paper's order: swap-adjacent, remove-insert,
-   swap, 2-opt, or-opt) whenever a full descent within the current
-   neighborhood found any improvement, stops when kmax consecutive
-   non-improving neighborhoods are seen.
-
-   orOptMaxLen defaults to 3 (the paper's original Or-opt, segment
-   lengths 1-3). Passing a larger value (e.g. 6) additively extends the
-   or-opt neighborhood to the longer segments this project confirmed as
-   a real, statistically significant quality gain on top of GILS-RVND
-   (H12a, docs/experiments/h12-extended-oropt.md) -- testing whether the
-   same extension helps this different algorithm too. */
+/* Algorithm 3: descent resetting to the first neighborhood on any
+   improvement. orOptMaxLen 3 is the paper's; larger tests H12a here. */
 void run_vnd(vector<int>& tour, Evaluator& eval, const vector<int>& farthest, int orOptMaxLen) {
     int n = eval.Ncity;
     Solution sol; sol.Define(n); sol.fDist = eval.fEdgeDis;
@@ -317,10 +280,8 @@ void shake(vector<int>& tour, double pct, mt19937& gen) {
     }
 }
 
-/* Algorithm 4: VNS -- same control flow as VND, but each neighborhood
-   visit first shakes x (not x''), then runs a full descent in Nk from
-   the shaken solution; only accepted if better than the pre-shake x.
-   Does not require the reduction schemes. */
+/* Algorithm 4: as VND, but each visit shakes x first and descends from
+   the shaken solution, accepting only if better than the pre-shake x. */
 void run_vns(vector<int>& tour, Evaluator& eval, const vector<int>& farthest,
              double shakePct, int orOptMaxLen, mt19937& gen) {
     int n = eval.Ncity;

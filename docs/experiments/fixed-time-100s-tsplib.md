@@ -21,7 +21,10 @@ python3 run_experiments.py --mode fixed-time --time-limit 100 --runs 10 \
 - **Pareado por seed**: seeds 1..10, as mesmas para os três algoritmos em cada
   instância. Baseline = `gils_rvnd`.
 - 10 instâncias TSPLIB na variante *Hamiltonian Path* (n = 70..532).
-- Dados brutos: `scripts/fixed_time_100s.json` (300 execuções, checkpoint do modo).
+- Dados brutos: `scripts/fixed_time_100s_prespeedup.json` (300 execuções). O nome
+  carrega o `prespeedup` porque estes números são de binários anteriores a
+  [[h16-candidate-neighborhoods]] seção 2.1 (prefix sums), que acelerou os tres
+  binarios em 2,4-2,9x. Eles nao sao comparaveis com lotes de 100 s posteriores.
 
 > O checkpoint não registra o `--iils` usado; os números de restarts abaixo são
 > compatíveis com o default do modo (`--iils 10`).

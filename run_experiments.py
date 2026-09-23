@@ -21,12 +21,12 @@ INSTANCES = [
     # "kroA100.tsp",
     # "eil101.tsp",
 
-    "st70.tsp",
-    "rat99.tsp",
-    "kroD100.tsp",
-    "lin105.tsp",
-    "pr107.tsp",
-    "rat195.tsp",
+    # "st70.tsp",
+    # "rat99.tsp",
+    # "kroD100.tsp",
+    # "lin105.tsp",
+    # "pr107.tsp",
+    # "rat195.tsp",
     "pr226.tsp",
     "lin318.tsp",
     "pr439.tsp",
@@ -77,6 +77,58 @@ SOLVERS_RAW = {
     "gils_am_rvnd_pair": ("./bin/gils_am_rvnd", ["--parent-mode", "pair"]),
     "gils_am_rvnd_extended_oropt": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt"]),
     "gils_am_rvnd_extended_oropt_wide": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt-wide"]),
+    # H16 WINNER -- the configuration to use. GILS-AM-RVND with
+    # candidate-list pruned neighborhoods (K=12): swap, 2-opt, or-opt
+    # forward 1-6 and or-opt REVERSED 2-6, all scanned only against each
+    # city's 12 nearest neighbours. Beats mdm_gils_rvnd at 100s/run on
+    # lin318/pr439/att532: -0.649% aggregate, 27/0/3 over 30 paired
+    # seeds, p < 0.0001, winning on all three instances.
+    # See docs/experiments/h16-candidate-neighborhoods.md.
+    "gils_am_rvnd_cand": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "12"]),
+
+    # H16/H17 variants kept for reproducing the screening table in that
+    # doc: the reversed or-opt and the size-capped double bridge on their
+    # own, and other K values.
+    "gils_am_rvnd_cand12": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "12"]),
+    "gils_am_rvnd_cand8": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "8"]),
+    "gils_am_rvnd_cand20": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "20"]),
+    "gils_am_rvnd_cand12_db10": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "12", "--db-maxseg-div", "10"]),
+    # H19 WINNER -- pruned RVND + don't-look bits, I_ILS retuned. Beats
+    # mdm_gils_rvnd at 100s/run for n >= 200: -1.249%, 60/10/0 of 70 pairs.
+    "gils_am_rvnd_dlb": ("./bin/gils_am_rvnd",
+                         ["--rvnd-mode", "candidate-dlb", "--cand-k", "12", "--iils", "300"]),
+    "gils_am_rvnd_dlb_i100": ("./bin/gils_am_rvnd",
+                              ["--rvnd-mode", "candidate-dlb", "--cand-k", "12", "--iils", "100"]),
+    "gils_am_rvnd_cand_i300": ("./bin/gils_am_rvnd",
+                               ["--rvnd-mode", "candidate", "--cand-k", "12", "--iils", "300"]),
+    # The fairness control: mdm_gils_rvnd given the SAME local search as
+    # the H19 winner, so what is left between them is only the strategy
+    # (pattern mining vs adaptive memory).
+    "mdm_gils_rvnd_dlb": ("./bin/mdm_gils_rvnd",
+                          ["--rvnd-mode", "candidate-dlb", "--cand-k", "12", "--iils", "300"]),
+
+    # Fairness controls: the same local search as the H19 winner, so what is
+    # left between the three is only the memory strategy -- pattern mining
+    # (mdm), adaptive memory (gils_am), or none at all (gils_rvnd).
+    "mdm_gils_rvnd_dlb": ("./bin/mdm_gils_rvnd",
+                          ["--rvnd-mode", "candidate-dlb", "--cand-k", "12", "--iils", "300"]),
+    "gils_rvnd_dlb": ("./bin/gils_rvnd",
+                      ["--rvnd-mode", "candidate-dlb", "--cand-k", "12", "--iils", "300"]),
+    # Same, at the I_ILS where mdm's mining is exercised with room to spare
+    # (~4x the calls of --iils 300), so the control cannot be dismissed as
+    # "their mechanism barely ran".
+    "mdm_gils_rvnd_dlb_i100": ("./bin/mdm_gils_rvnd",
+                               ["--rvnd-mode", "candidate-dlb", "--cand-k", "12", "--iils", "100"]),
+
+    # Baselines at their own best I_ILS, so it is best config vs best
+    # config rather than everyone at the protocol default.
+    "mdm_gils_rvnd_i100": ("./bin/mdm_gils_rvnd", ["--iils", "100"]),
+    "mdm_gils_rvnd_i300": ("./bin/mdm_gils_rvnd", ["--iils", "300"]),
+    "gils_rvnd_i100": ("./bin/gils_rvnd", ["--iils", "100"]),
+    "gils_am_rvnd_oropt_rev": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt-rev"]),
+    "gils_am_rvnd_ext_db10": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt", "--db-maxseg-div", "10"]),
+    "gils_am_rvnd_ext_db20": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt", "--db-maxseg-div", "20"]),
+    "gils_am_rvnd_rev_db10": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt-rev", "--db-maxseg-div", "10"]),
     "gils_rvnd": "./bin/gils_rvnd",
     "gils_rvnd_extended_oropt": ("./bin/gils_rvnd", ["--rvnd-mode", "extended-oropt"]),
     "gils_rvnd_extended_oropt_wide": ("./bin/gils_rvnd", ["--rvnd-mode", "extended-oropt-wide"]),
@@ -274,6 +326,12 @@ Examples:
   # Equal-time comparison: same wall-clock budget for every solver
   python run_experiments.py --mode fixed-time --time-limit 60 --runs 10 \\
       --solvers gils_rvnd gils_am_rvnd_extended_oropt mdm_gils_rvnd
+
+  # H16 result: the candidate-list solver vs MDM-GILS-RVND at 100s/run on
+  # the three instances with n > 200 (docs/experiments/h16-candidate-neighborhoods.md)
+  python run_experiments.py --mode fixed-time --time-limit 100 --runs 10 \\
+      --instances lin318 pr439 att532 \\
+      --solvers mdm_gils_rvnd gils_am_rvnd_cand
         """
     )
 
@@ -396,11 +454,14 @@ Examples:
         type=str,
         default=None,
         help=(
-            "salehipour-benchmark (--solvers) only: JSON file to save per-instance "
-            "results incrementally (flushed after every instance) and resume from "
-            "if it already exists. Default: scripts/salehipour_<a>_vs_<b>.json. "
-            "Long runs (n=500/1000) should always use this -- an interrupted run "
-            "resumes instead of losing hours of work."
+            "JSON file to save results incrementally and RESUME FROM. Giving this "
+            "flag means 'continue that batch': runs already in the file are reused "
+            "and only the missing ones are executed. Omitting it means 'start a new "
+            "batch': the default file for this run (scripts/fixed_time_<T>s.json, "
+            "or scripts/salehipour_<a>_vs_<b>.json) is DELETED and rewritten from "
+            "scratch. Long runs (n=500/1000, or a big fixed-time batch) should "
+            "always pass it -- an interrupted run then resumes instead of losing "
+            "hours of work."
         )
     )
 
@@ -922,15 +983,24 @@ def run_salehipour_benchmark_mode(args):
         solver_a = SOLVERS[solver_a_name]
         solver_b = SOLVERS[solver_b_name]
 
-        checkpoint_path = Path(args.checkpoint) if args.checkpoint else \
+        resuming = args.checkpoint is not None
+        checkpoint_path = Path(args.checkpoint) if resuming else \
             Path("scripts") / f"salehipour_{solver_a_name}_vs_{solver_b_name}.json"
 
         all_rows = []
         done = set()
-        if checkpoint_path.exists():
-            all_rows = json.loads(checkpoint_path.read_text())
-            done = {r["instance"] for r in all_rows}
-            print(f"Resuming from {checkpoint_path} ({len(all_rows)} instances already done)")
+        if resuming:
+            if checkpoint_path.exists():
+                all_rows = json.loads(checkpoint_path.read_text())
+                done = {r["instance"] for r in all_rows}
+                print(f"Resuming from {checkpoint_path} ({len(all_rows)} instances already done)")
+            else:
+                print(f"No checkpoint at {checkpoint_path} yet -- starting a new one")
+        elif checkpoint_path.exists():
+            discarded = len(json.loads(checkpoint_path.read_text()))
+            checkpoint_path.unlink()
+            print(f"Starting fresh: DISCARDED {checkpoint_path} ({discarded} instances). "
+                  f"Pass --checkpoint {checkpoint_path} to resume one instead.")
 
         print(f"\n{'='*90}")
         print(f"Salehipour benchmark: {solver_a_name.upper()} vs {solver_b_name.upper()}")
@@ -1080,13 +1150,22 @@ def run_fixed_time_mode(args):
     baseline = args.solvers[0]
     time_limit = args.time_limit
 
-    checkpoint_path = Path(args.checkpoint) if args.checkpoint else \
+    resuming = args.checkpoint is not None
+    checkpoint_path = Path(args.checkpoint) if resuming else \
         Path("scripts") / f"fixed_time_{int(time_limit)}s.json"
 
     results = {}
-    if checkpoint_path.exists():
-        results = json.loads(checkpoint_path.read_text())
-        print(f"Resuming from {checkpoint_path} ({len(results)} runs already done)")
+    if resuming:
+        if checkpoint_path.exists():
+            results = json.loads(checkpoint_path.read_text())
+            print(f"Resuming from {checkpoint_path} ({len(results)} runs already done)")
+        else:
+            print(f"No checkpoint at {checkpoint_path} yet -- starting a new one")
+    elif checkpoint_path.exists():
+        discarded = len(json.loads(checkpoint_path.read_text()))
+        checkpoint_path.unlink()
+        print(f"Starting fresh: DISCARDED {checkpoint_path} ({discarded} runs). "
+              f"Pass --checkpoint {checkpoint_path} to resume one instead.")
 
     print(f"\n{'='*104}")
     print(f"Fixed-time comparison: {time_limit:.0f}s per run, --iils {args.iils}, "
@@ -1108,9 +1187,12 @@ def run_fixed_time_mode(args):
                     done += 1
                     continue
 
-                solver = (binary, extra + ["--max-time", str(time_limit),
-                                           "--iils", str(args.iils),
-                                           "--seed", str(seed)])
+                # A solver that pins its own --iils keeps it: one value for
+                # everyone compares each at someone else's tuning.
+                flags = ["--max-time", str(time_limit), "--seed", str(seed)]
+                if "--iils" not in extra:
+                    flags += ["--iils", str(args.iils)]
+                solver = (binary, extra + flags)
                 try:
                     sol = run_solver(solver, inst_path, verbose=args.vb)
                 except RuntimeError as e:

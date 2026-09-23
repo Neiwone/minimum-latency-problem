@@ -12,21 +12,15 @@ Solution::Solution() {
     fDist = NULL;
     x = NULL;
     y = NULL;
-    T = C = Cr = NULL;
+    P = SP = NULL;
+    posOf = NULL;
 }
 
 Solution::~Solution() {
     delete[] fTour;
-    if (T != NULL) {
-        for (int i = 0; i < fN; i++) {
-            delete[] T[i];
-            delete[] C[i];
-            delete[] Cr[i];
-        }
-        delete[] T;
-        delete[] C;
-        delete[] Cr;
-    }
+    delete[] P;
+    delete[] SP;
+    delete[] posOf;
 }
 
 void Solution::Define(int N) {
@@ -40,13 +34,14 @@ Solution::Solution(const Solution& src) {
     fDist = src.fDist;
     x = NULL;
     y = NULL;
-    T = C = Cr = NULL;
+    P = SP = NULL;
+    posOf = NULL;
 
     if (fN > 0) {
         fTour = new int[fN];
         memcpy(fTour, src.fTour, fN * sizeof(int));
 
-        if (src.T != NULL)
+        if (src.P != NULL)
             calculateStructures();
     } else {
         fTour = NULL;
@@ -58,15 +53,9 @@ Solution& Solution::operator = (const Solution& src) {
 
     if (fN != src.fN) {
         delete[] fTour;
-        if (T != NULL) {
-            for (int i = 0; i < fN; i++) {
-                delete[] T[i];
-                delete[] C[i];
-                delete[] Cr[i];
-            }
-            delete[] T;  delete[] C;  delete[] Cr;
-            T = C = Cr = NULL;
-        }
+        delete[] P;   P  = NULL;
+        delete[] SP;  SP = NULL;
+        delete[] posOf; posOf = NULL;
         fN = src.fN;
         fTour = new int[fN];
     }
@@ -75,7 +64,7 @@ Solution& Solution::operator = (const Solution& src) {
     fEvaluationValue = src.fEvaluationValue;
     fDist = src.fDist;
 
-    if (src.T != NULL)
+    if (src.P != NULL)
         calculateStructures();
 
     return *this;
@@ -93,46 +82,41 @@ void Solution::calculateStructures() {
     assert(fTour != NULL);
     assert(fDist != NULL);
 
-    // Allocate matrices on first call
-    if (T == NULL) {
-        T  = new int*[fN];
-        C  = new int*[fN];
-        Cr = new int*[fN];
-        for (int i = 0; i < fN; i++) {
-            T[i]  = new int[fN];
-            C[i]  = new int[fN];
-            Cr[i] = new int[fN];
-        }
+    if (P == NULL) {
+        P     = new long long[fN];
+        SP    = new long long[fN];
+        posOf = new int[fN];
     }
 
-    int edge[fN];
-    edge[0] = 0;
-    for (int j = 1; j < fN; j++)
-        edge[j] = fDist[fTour[j - 1]][fTour[j]];
-
-    for (int i = 0; i < fN; i++) {
-        T[i][i] = 0;
-        C[i][i] = 0;
-
-        for (int j = i + 1; j < fN; j++) {
-            T[i][j] = T[i][j - 1] + edge[j];
-            C[i][j] = C[i][j - 1] + T[i][j];
-        }
+    P[0]  = 0;
+    SP[0] = 0;
+    posOf[fTour[0]] = 0;
+    for (int j = 1; j < fN; j++) {
+        P[j]  = P[j - 1] + fDist[fTour[j - 1]][fTour[j]];
+        SP[j] = SP[j - 1] + P[j];
+        posOf[fTour[j]] = j;
     }
 
-    for (int j = 0; j < fN; j++) {
-        Cr[j][j] = 0;
-        for (int i = j - 1; i >= 0; i--) {
-            Cr[i][j] = Cr[i + 1][j] + T[i][j];
-        }
+    fEvaluationValue = getC(0, fN - 1);
+}
+
+
+void Solution::calculateStructuresFrom(int lo) {
+    if (P == NULL || lo <= 0) { calculateStructures(); return; }
+    if (lo >= fN) { fEvaluationValue = getC(0, fN - 1); return; }
+
+    for (int j = lo; j < fN; j++) {
+        P[j]  = P[j - 1] + fDist[fTour[j - 1]][fTour[j]];
+        SP[j] = SP[j - 1] + P[j];
+        posOf[fTour[j]] = j;
     }
 
-    fEvaluationValue = C[0][fN - 1];
+    fEvaluationValue = getC(0, fN - 1);
 }
 
 
 void Solution::printAllSubsequences() {
-    assert(T != NULL && C != NULL);
+    assert(P != NULL && SP != NULL);
 
     if (fN > 15) {
         cout << "Too many subsequences to print\n";
@@ -159,8 +143,8 @@ void Solution::printAllSubsequences() {
 
             cout << left
                  << setw(20) << seq
-                 << setw(10) << T[i][j]
-                 << setw(10) << C[i][j]
+                 << setw(10) << getT(i, j)
+                 << setw(10) << getC(i, j)
                  << setw(10) << getW(i, j)
                  << "\n";
         }
@@ -178,8 +162,8 @@ bool Solution::evaluateSwap(int i, int j) {
 
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = T[u][v];
-        int Cu = C[u][v];
+        int Tu = getT(u, v);
+        int Cu = getC(u, v);
         int Wu = getW(u, v);
         int firstNode = fTour[u];
         int lastNode  = fTour[v];
@@ -213,8 +197,8 @@ bool Solution::evaluate2Opt(int i, int j) {
 
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = T[u][v];
-        int Cu = C[u][v];
+        int Tu = getT(u, v);
+        int Cu = getC(u, v);
         int Wu = getW(u, v);
         int firstNode = fTour[u];
         int lastNode  = fTour[v];
@@ -232,8 +216,8 @@ bool Solution::evaluate2Opt(int i, int j) {
 
     auto appendReversed = [&](int u, int v) {
         if (u > v) return;
-        int Tu = T[u][v];
-        int Cu = Cr[u][v];
+        int Tu = getT(u, v);
+        int Cu = getCr(u, v);
         int Wu = getW(u, v);
         int firstNode = fTour[v];   /* reversed: first is tour[v] */
         int lastNode  = fTour[u];   /* reversed: last  is tour[u] */
@@ -265,8 +249,8 @@ bool Solution::evaluateReinsertion(int i, int j) {
 
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = T[u][v];
-        int Cu = C[u][v];
+        int Tu = getT(u, v);
+        int Cu = getC(u, v);
         int Wu = getW(u, v);
         int firstNode = fTour[u];
         int lastNode  = fTour[v];
@@ -304,8 +288,8 @@ bool Solution::evaluateThreeOptDoubleReversal(int i, int j, int k) {
 
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = T[u][v];
-        int Cu = C[u][v];
+        int Tu = getT(u, v);
+        int Cu = getC(u, v);
         int Wu = getW(u, v);
         int firstNode = fTour[u];
         int lastNode  = fTour[v];
@@ -318,8 +302,8 @@ bool Solution::evaluateThreeOptDoubleReversal(int i, int j, int k) {
 
     auto appendReversed = [&](int u, int v) {
         if (u > v) return;
-        int Tu = T[u][v];
-        int Cu = Cr[u][v];
+        int Tu = getT(u, v);
+        int Cu = getCr(u, v);
         int Wu = getW(u, v);
         int firstNode = fTour[v];
         int lastNode  = fTour[u];
@@ -348,8 +332,8 @@ bool Solution::evaluateOrOpt(int i, int j, int k) {
 
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = T[u][v];
-        int Cu = C[u][v];
+        int Tu = getT(u, v);
+        int Cu = getC(u, v);
         int Wu = getW(u, v);
         int firstNode = fTour[u];
         int lastNode  = fTour[v];
@@ -374,6 +358,68 @@ bool Solution::evaluateOrOpt(int i, int j, int k) {
         append(0, i - 1);
         append(j + 1, k);
         append(i, j);
+        append(k + 1, fN - 1);
+    }
+
+    return c < fEvaluationValue;
+}
+
+
+bool Solution::evaluateOrOptReversed(int i, int j, int k) {
+    if (i > j) swap(i, j);
+    if (k >= i && k <= j) return false;
+
+    int t = 0, c = 0;
+    bool first = true;
+    int last = -1;
+
+    auto append = [&](int u, int v) {
+        if (u > v) return;
+        int Tu = getT(u, v);
+        int Cu = getC(u, v);
+        int Wu = getW(u, v);
+        int firstNode = fTour[u];
+        int lastNode  = fTour[v];
+
+        if (first) {
+            t = Tu; c = Cu;
+            last = lastNode; first = false;
+            return;
+        }
+        int e = fDist[last][firstNode];
+        c += Wu * (t + e) + Cu;
+        t += e + Tu;
+        last = lastNode;
+    };
+
+    auto appendReversed = [&](int u, int v) {
+        if (u > v) return;
+        int Tu = getT(u, v);
+        int Cu = getCr(u, v);
+        int Wu = getW(u, v);
+        int firstNode = fTour[v];
+        int lastNode  = fTour[u];
+
+        if (first) {
+            t = Tu; c = Cu;
+            last = lastNode; first = false;
+            return;
+        }
+        int e = fDist[last][firstNode];
+        c += Wu * (t + e) + Cu;
+        t += e + Tu;
+        last = lastNode;
+    };
+
+    if (k < i) {
+        append(0, k);
+        appendReversed(i, j);
+        append(k + 1, i - 1);
+        append(j + 1, fN - 1);
+    } else {
+        append(0, i - 1);
+        append(j + 1, k);
+        appendReversed(i, j);
         append(k + 1, fN - 1);
     }
 

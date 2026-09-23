@@ -12,8 +12,8 @@ class Evaluator {
 public:
     Evaluator();
     ~Evaluator();
-    void SetInstance(char filename[]);                                    /* Set the instance */
-    void DoIt(Solution& sol);                                             /* Set the value of sol.fEvaluationValue */
+    void SetInstance(char filename[]);   /* Set the instance */
+    void DoIt(Solution& sol);            /* Set the value of sol.fEvaluationValue */
 
     int fNearNumMax;    /* Maximum number of k (see below) */
     int **fNearCity;    /* NearCity[i][k]: k-th nearest city from i */

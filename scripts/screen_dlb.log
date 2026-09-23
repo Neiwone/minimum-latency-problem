@@ -1,0 +1,148 @@
+[1/108] lin318|c_i100|1                              cost=5585190 restarts=14
+[2/108] lin318|c_i300|1                              cost=5560897 restarts=5
+[3/108] lin318|c_i1000|1                             cost=5560679 restarts=2
+[4/108] lin318|d_i100|1                              cost=5572669 restarts=20
+[5/108] lin318|d_i300|1                              cost=5572669 restarts=11
+[6/108] lin318|d_i1000|1                             cost=5578879 restarts=4
+[7/108] lin318|c_i100|2                              cost=5575129 restarts=9
+[8/108] lin318|c_i300|2                              cost=5578925 restarts=6
+[9/108] lin318|c_i1000|2                             cost=5578947 restarts=3
+[10/108] lin318|d_i100|2                              cost=5563834 restarts=22
+[11/108] lin318|d_i300|2                              cost=5560679 restarts=7
+[12/108] lin318|d_i1000|2                             cost=5592609 restarts=4
+[13/108] lin318|c_i100|3                              cost=5560897 restarts=14
+[14/108] lin318|c_i300|3                              cost=5562148 restarts=5
+[15/108] lin318|c_i1000|3                             cost=5560679 restarts=2
+[16/108] lin318|d_i100|3                              cost=5576958 restarts=18
+[17/108] lin318|d_i300|3                              cost=5562148 restarts=9
+[18/108] lin318|d_i1000|3                             cost=5562148 restarts=5
+[19/108] lin318|c_i100|4                              cost=5560897 restarts=8
+[20/108] lin318|c_i300|4                              cost=5563635 restarts=4
+[21/108] lin318|c_i1000|4                             cost=5560679 restarts=2
+[22/108] lin318|d_i100|4                              cost=5585419 restarts=20
+[23/108] lin318|d_i300|4                              cost=5565321 restarts=5
+[24/108] lin318|d_i1000|4                             cost=5560679 restarts=2
+[25/108] lin318|c_i100|5                              cost=5569200 restarts=13
+[26/108] lin318|c_i300|5                              cost=5578644 restarts=6
+[27/108] lin318|c_i1000|5                             cost=5590791 restarts=3
+[28/108] lin318|d_i100|5                              cost=5578358 restarts=18
+[29/108] lin318|d_i300|5                              cost=5578358 restarts=7
+[30/108] lin318|d_i1000|5                             cost=5578358 restarts=5
+[31/108] lin318|c_i100|6                              cost=5567913 restarts=10
+[32/108] lin318|c_i300|6                              cost=5589488 restarts=5
+[33/108] lin318|c_i1000|6                             cost=5590791 restarts=3
+[34/108] lin318|d_i100|6                              cost=5562314 restarts=16
+[35/108] lin318|d_i300|6                              cost=5572669 restarts=6
+[36/108] lin318|d_i1000|6                             cost=5573312 restarts=4
+[37/108] pr439|c_i100|1                               cost=17790801 restarts=7
+[38/108] pr439|c_i300|1                               cost=17753177 restarts=5
+[39/108] pr439|c_i1000|1                              cost=17753177 restarts=1
+[40/108] pr439|d_i100|1                               cost=17721447 restarts=12
+[41/108] pr439|d_i300|1                               cost=17715106 restarts=4
+[42/108] pr439|d_i1000|1                              cost=17693137 restarts=2
+[43/108] pr439|c_i100|2                               cost=17724277 restarts=6
+[44/108] pr439|c_i300|2                               cost=17714374 restarts=3
+[45/108] pr439|c_i1000|2                              cost=17755732 restarts=1
+[46/108] pr439|d_i100|2                               cost=17742546 restarts=11
+[47/108] pr439|d_i300|2                               cost=17741328 restarts=3
+[48/108] pr439|d_i1000|2                              cost=17741328 restarts=2
+[49/108] pr439|c_i100|3                               cost=17742763 restarts=7
+[50/108] pr439|c_i300|3                               cost=17713962 restarts=3
+[51/108] pr439|c_i1000|3                              cost=17713962 restarts=1
+[52/108] pr439|d_i100|3                               cost=17696954 restarts=9
+[53/108] pr439|d_i300|3                               cost=17734473 restarts=5
+[54/108] pr439|d_i1000|3                              cost=17730100 restarts=2
+[55/108] pr439|c_i100|4                               cost=17708874 restarts=8
+[56/108] pr439|c_i300|4                               cost=17713252 restarts=3
+[57/108] pr439|c_i1000|4                              cost=17714476 restarts=1
+[58/108] pr439|d_i100|4                               cost=17753423 restarts=8
+[59/108] pr439|d_i300|4                               cost=17771058 restarts=5
+[60/108] pr439|d_i1000|4                              cost=17771058 restarts=3
+[61/108] pr439|c_i100|5                               cost=17799620 restarts=5
+[62/108] pr439|c_i300|5                               cost=17771085 restarts=3
+[63/108] pr439|c_i1000|5                              cost=17720342 restarts=1
+[64/108] pr439|d_i100|5                               cost=17742441 restarts=12
+[65/108] pr439|d_i300|5                               cost=17767396 restarts=4
+[66/108] pr439|d_i1000|5                              cost=17779522 restarts=3
+[67/108] pr439|c_i100|6                               cost=17795960 restarts=5
+[68/108] pr439|c_i300|6                               cost=17753177 restarts=3
+[69/108] pr439|c_i1000|6                              cost=17753177 restarts=1
+[70/108] pr439|d_i100|6                               cost=17735474 restarts=10
+[71/108] pr439|d_i300|6                               cost=17725354 restarts=4
+[72/108] pr439|d_i1000|6                              cost=17819051 restarts=3
+[73/108] att532|c_i100|1                              cost=5608508 restarts=3
+[74/108] att532|c_i300|1                              cost=5601987 restarts=1
+[75/108] att532|c_i1000|1                             cost=5601987 restarts=1
+[76/108] att532|d_i100|1                              cost=5636744 restarts=6
+[77/108] att532|d_i300|1                              cost=5593284 restarts=3
+[78/108] att532|d_i1000|1                             cost=5611074 restarts=2
+[79/108] att532|c_i100|2                              cost=5625880 restarts=4
+[80/108] att532|c_i300|2                              cost=5600241 restarts=1
+[81/108] att532|c_i1000|2                             cost=5600241 restarts=1
+[82/108] att532|d_i100|2                              cost=5605428 restarts=6
+[83/108] att532|d_i300|2                              cost=5590278 restarts=3
+[84/108] att532|d_i1000|2                             cost=5590278 restarts=2
+[85/108] att532|c_i100|3                              cost=5614647 restarts=5
+[86/108] att532|c_i300|3                              cost=5613608 restarts=2
+[87/108] att532|c_i1000|3                             cost=5613608 restarts=1
+[88/108] att532|d_i100|3                              cost=5587411 restarts=8
+[89/108] att532|d_i300|3                              cost=5594443 restarts=2
+[90/108] att532|d_i1000|3                             cost=5593717 restarts=1
+[91/108] att532|c_i100|4                              cost=5598357 restarts=3
+[92/108] att532|c_i300|4                              cost=5596317 restarts=1
+[93/108] att532|c_i1000|4                             cost=5596317 restarts=1
+[94/108] att532|d_i100|4                              cost=5600008 restarts=6
+[95/108] att532|d_i300|4                              cost=5602207 restarts=2
+[96/108] att532|d_i1000|4                             cost=5612134 restarts=1
+[97/108] att532|c_i100|5                              cost=5636218 restarts=7
+[98/108] att532|c_i300|5                              cost=5618833 restarts=1
+[99/108] att532|c_i1000|5                             cost=5618833 restarts=1
+[100/108] att532|d_i100|5                              cost=5609455 restarts=8
+[101/108] att532|d_i300|5                              cost=5589297 restarts=2
+[102/108] att532|d_i1000|5                             cost=5609455 restarts=2
+[103/108] att532|c_i100|6                              cost=5610696 restarts=4
+[104/108] att532|c_i300|6                              cost=5600228 restarts=2
+[105/108] att532|c_i1000|6                             cost=5599483 restarts=1
+[106/108] att532|d_i100|6                              cost=5605305 restarts=6
+[107/108] att532|d_i300|6                              cost=5597395 restarts=3
+[108/108] att532|d_i1000|6                             cost=5594615 restarts=1
+
+finished in 18.0 min
+
+baseline: c_i100
+
+--- c_i300 vs c_i100 ---
+instancia         mean_rel%      W/T/L        p  restarts
+lin318               +0.044      1/0/5   0.2188         5
+pr439                -0.134      5/0/1   0.2188         3
+att532               -0.187      6/0/0   0.0312         1
+AGREGADO             -0.093     12/0/6   0.2379
+
+--- c_i1000 vs c_i100 ---
+instancia         mean_rel%      W/T/L        p  restarts
+lin318               +0.070      3/0/3   1.0000         2
+pr439                -0.142      4/0/2   0.6875         1
+att532               -0.189      6/0/0   0.0312         1
+AGREGADO             -0.087     13/0/5   0.0963
+
+--- d_i100 vs c_i100 ---
+instancia         mean_rel%      W/T/L        p  restarts
+lin318               +0.061      3/0/3   1.0000        19
+pr439                -0.159      4/0/2   0.6875        10
+att532               -0.148      4/0/2   0.6875         7
+AGREGADO             -0.082     11/0/7   0.4807
+
+--- d_i300 vs c_i100 ---
+instancia         mean_rel%      W/T/L        p  restarts
+lin318               -0.022      2/0/4   0.6875         8
+pr439                -0.100      4/0/2   0.6875         4
+att532               -0.377      5/0/1   0.2188         2
+AGREGADO             -0.167     11/0/7   0.4807
+
+--- d_i1000 vs c_i100 ---
+instancia         mean_rel%      W/T/L        p  restarts
+lin318               +0.080      2/0/4   0.6875         4
+pr439                -0.026      3/0/3   1.0000         2
+att532               -0.246      4/0/2   0.6875         2
+AGREGADO             -0.064      9/0/9   1.0000
+

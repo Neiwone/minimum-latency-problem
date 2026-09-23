@@ -1,9 +1,5 @@
-/* NOTE: "fpmax.h" must be the FIRST include here. fp_tree.h (pulled in by
-   it) declares a global `class stack` and also does `using namespace std;`,
-   so if <stack> has already been included (which <bits/stdc++.h> does),
-   the unqualified `stack` in fpmax.h becomes ambiguous and the build
-   fails. Including it first, in this isolated translation unit, keeps the
-   vendored sources unmodified and the collision contained. */
+/* "fpmax.h" MUST be the first include: fp_tree.h declares a global
+   `class stack` under `using namespace std;`, ambiguous once <stack> is in. */
 #include "fpmax.h"
 
 #include "fpmax_mining.h"
@@ -23,9 +19,7 @@ std::vector<std::vector<int>> fpmax_mine_arc_paths(
     const int d = (int)tours.size();
     if (d == 0 || n <= 0) return result;
 
-    /* Each tour becomes a transaction of its arcs, an arc (u,v) being the
-       item u*n + v (convention of the reference integration, so decoding
-       is u = item / n, v = item % n). */
+    /* Each tour is a transaction of its arcs; arc (u,v) = item u*n + v. */
     Dataset dataset;
     for (const std::vector<int>& tour : tours) {
         std::set<int> transaction;
@@ -45,9 +39,8 @@ std::vector<std::vector<int>> fpmax_mine_arc_paths(
     std::set<std::vector<int>> seen;
 
     for (FISet::iterator it = itemsets->begin(); it != itemsets->end(); ++it) {
-        /* Chain the itemset's arcs into maximal paths: each new arc (u,v)
-           either extends one end of an open path, bridges two of them, or
-           starts a new one. */
+        /* Chain the arcs into maximal paths: each (u,v) extends an open
+           path, bridges two, or starts a new one. */
         std::list<std::vector<int>*> paths;
 
         for (std::set<int>::iterator a = it->begin(); a != it->end(); ++a) {

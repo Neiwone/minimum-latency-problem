@@ -1,5 +1,9 @@
 import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
+import numpy as np
 import argparse
+import json
+import math
 import os
 
 
@@ -7,8 +11,9 @@ def load_instance(filename, inst_dir="instances"):
     coords = []
     reading_coords = False
     n = None
+    edge_type = "EUC_2D"
 
-    path = os.path.join(inst_dir, filename)
+    path = filename if os.path.sep in filename else os.path.join(inst_dir, filename)
 
     with open(path, "r") as f:
         for line in f:
@@ -19,6 +24,9 @@ def load_instance(filename, inst_dir="instances"):
 
             if line.startswith("DIMENSION"):
                 n = int(line.split(":")[1])
+
+            elif line.startswith("EDGE_WEIGHT_TYPE"):
+                edge_type = line.split(":")[1].strip()
 
             elif line == "NODE_COORD_SECTION":
                 reading_coords = True
@@ -35,8 +43,77 @@ def load_instance(filename, inst_dir="instances"):
 
     return {
         "coords": coords,
-        "depot": 0
+        "depot": 0,
+        "edge_type": edge_type,
+        "name": os.path.basename(path),
     }
+
+
+def edge_dist(instance):
+    """The Evaluator's rounding, so the latency shown matches what the solvers
+       report: truncation for EUC_2D, ceiling for ATT."""
+    etype = instance.get("edge_type", "EUC_2D")
+
+    def euc(a, b):
+        return int(math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2))
+
+    def att(a, b):
+        return int(math.ceil(math.sqrt(((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) / 10.0)))
+
+    return att if etype == "ATT" else euc
+
+
+def arrival_times(instance, route):
+    """arrival[k] = when the client at route position k is served; the MLP cost
+       is their sum."""
+    d = edge_dist(instance)
+    coords = instance["coords"]
+    arrival = [0]
+    walked = 0
+    for k in range(1, len(route)):
+        walked += d(coords[route[k - 1]], coords[route[k]])
+        arrival.append(walked)
+    return arrival, sum(arrival)
+
+
+def load_route(instance, route_arg=None, tour_file=None, from_best=False):
+    """A route from --route, from a TSPLIB .tour file, or from the tracked best
+       solution of this instance."""
+    n = len(instance["coords"])
+
+    if route_arg:
+        route = [int(x) for x in route_arg.replace(" ", "").split(",") if x != ""]
+    elif tour_file:
+        # Two layouts live in instances/solutions/: one node per line (1-based,
+        # TSPLIB) and the whole route on one comma-separated line (0-based).
+        tokens = []
+        reading = False
+        for line in open(tour_file):
+            line = line.strip()
+            if line == "TOUR_SECTION":
+                reading = True
+            elif reading:
+                if line in ("-1", "EOF", ""):
+                    break
+                tokens += [t for t in line.split(",") if t.strip()]
+        route = [int(t) for t in tokens]
+        if min(route) == 1 and max(route) == n:
+            route = [c - 1 for c in route]
+    elif from_best:
+        best = json.loads(open("instances/solutions/best_solutions.json").read())
+        stem = os.path.splitext(instance["name"])[0]
+        if stem not in best:
+            raise SystemExit(f"no tracked solution for {stem}")
+        return load_route(instance, tour_file=os.path.join(
+            "instances", "solutions", best[stem]["tour_file"]))
+    else:
+        raise SystemExit("give one of --route, --tour or --best")
+
+    if sorted(route) != list(range(n)):
+        raise SystemExit(f"route is not a permutation of 0..{n-1}")
+    if route[0] != instance["depot"]:
+        raise SystemExit("route must start at the depot")
+    return route
 
 
 def plot_instance(instance):
@@ -73,20 +150,18 @@ def plot_route(instance, route, verbose=False):
 
     plt.figure(figsize=(12, 8))
 
-    # Calculate distances and cumulative cost (MLP style)
-    total_distance = 0.0
-    cumulative_cost = 0.0
+    # Same rounding as the Evaluator, so this matches what the solvers report
+    dist_fn = edge_dist(instance)
+    total_distance = 0
+    cumulative_cost = 0
     edge_distances = []
-    
+
     for i in range(len(route) - 1):
         a = coords[route[i]]
         b = coords[route[i + 1]]
-        
-        # Euclidean distance
-        dx = b[0] - a[0]
-        dy = b[1] - a[1]
-        dist = (dx*dx + dy*dy) ** 0.5
-        
+
+        dist = dist_fn(a, b)
+
         total_distance += dist
         cumulative_cost += total_distance
         edge_distances.append((i, route[i], route[i+1], dist, total_distance, cumulative_cost))
@@ -95,7 +170,7 @@ def plot_route(instance, route, verbose=False):
         mid_x = (a[0] + b[0]) / 2
         mid_y = (a[1] + b[1]) / 2
         plt.plot([a[0], b[0]], [a[1], b[1]], 'b-', alpha=0.6)
-        plt.text(mid_x, mid_y, f"{dist:.1f}", fontsize=8, bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+        plt.text(mid_x, mid_y, f"{dist}", fontsize=8, bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
     x = [c[0] for c in coords]
     y = [c[1] for c in coords]
@@ -127,7 +202,7 @@ def plot_route(instance, route, verbose=False):
 
     plt.xlabel("X")
     plt.ylabel("Y")
-    plt.title(f"Route Visualization\nTotal Distance: {total_distance:.2f}, MLP Cost: {cumulative_cost:.2f}")
+    plt.title(f"Route Visualization\nTotal Distance: {total_distance}, MLP Cost: {cumulative_cost}")
     plt.legend()
     plt.grid(True, alpha=0.3)
     
@@ -139,20 +214,16 @@ def plot_route(instance, route, verbose=False):
         print(f"{'Step':<5} {'From':<6} {'To':<6} {'Edge Dist':<12} {'Walked':<12} {'MLP Cost':<12}")
         print("-"*80)
         
-        walked = 0.0
-        cost = 0.0
+        walked = 0
+        cost = 0
         for i in range(len(route) - 1):
-            a = coords[route[i]]
-            b = coords[route[i + 1]]
-            dx = b[0] - a[0]
-            dy = b[1] - a[1]
-            dist = (dx*dx + dy*dy) ** 0.5
+            dist = dist_fn(coords[route[i]], coords[route[i + 1]])
             walked += dist
             cost += walked
-            print(f"{i:<5} {route[i]:<6} {route[i+1]:<6} {dist:<12.2f} {walked:<12.2f} {cost:<12.2f}")
-        
+            print(f"{i:<5} {route[i]:<6} {route[i+1]:<6} {dist:<12} {walked:<12} {cost:<12}")
+
         print("-"*80)
-        print(f"{'TOTAL':<5} {'':<6} {'':<6} {walked:<12.2f} {'':<12} {cost:<12.2f}")
+        print(f"{'TOTAL':<5} {'':<6} {'':<6} {walked:<12} {'':<12} {cost:<12}")
         print("="*80 + "\n")
     
     plt.tight_layout()
@@ -253,6 +324,220 @@ def inspect_instance(instance):
 
 
 
+class RouteEditor:
+    """Show a route, edit it by clicking, and recompute the latency live.
+
+       Hovering a client shows when it is served; the route is coloured by
+       visiting order, which is what makes an MLP solution readable."""
+
+    HELP = ("clique: pegar/soltar   |   m mover  s trocar  r inverter trecho\n"
+            "u desfazer   z voltar ao original   w salvar   p imprimir   q sair")
+
+    def __init__(self, instance, route):
+        self.inst = instance
+        self.coords = instance["coords"]
+        self.route = list(route)
+        self.original = list(route)
+        self.history = []
+        self.mode = "m"          # m = mover, s = trocar, r = inverter
+        self.picked = None       # first city of a pending edit
+        self.dist = edge_dist(instance)
+
+        self.fig, self.ax = plt.subplots(figsize=(12, 9))
+        xs = [c[0] for c in self.coords]
+        ys = [c[1] for c in self.coords]
+
+        self.edges = LineCollection([], cmap="viridis", linewidths=1.6, alpha=0.85)
+        self.ax.add_collection(self.edges)
+        self.nodes = self.ax.scatter(xs, ys, s=26, c="#3b3b3b", zorder=3)
+        self.mark = self.ax.scatter([], [], s=220, facecolors="none",
+                                    edgecolors="crimson", linewidths=2.2, zorder=5)
+        d = self.coords[instance["depot"]]
+        self.ax.scatter([d[0]], [d[1]], marker="s", s=160, c="crimson",
+                        zorder=6, label="depósito")
+
+        self.tip = self.ax.annotate(
+            "", xy=(0, 0), xytext=(14, 14), textcoords="offset points",
+            bbox=dict(boxstyle="round", fc="lightyellow", ec="0.4"),
+            arrowprops=dict(arrowstyle="->"), fontsize=9, zorder=10)
+        self.tip.set_visible(False)
+
+        # Hover redraws only the tooltip over a cached background. A full redraw
+        # costs ~54 ms at n=532 and ~116 ms at n=1000, which the mouse outruns.
+        self.tip.set_animated(True)
+        self.mark.set_animated(True)
+        self.bg = None
+
+        self.ax.legend(loc="upper right", fontsize=8)
+        self.ax.grid(True, alpha=0.2)
+
+        # Drop matplotlib's own key bindings for this figure: 's' saves a png,
+        # 'r' resets the view and 'p' enters pan mode, which would swallow the
+        # clicks. 'q' is handled below instead.
+        mgr = getattr(self.fig.canvas, "manager", None)
+        if mgr is not None and getattr(mgr, "key_press_handler_id", None) is not None:
+            self.fig.canvas.mpl_disconnect(mgr.key_press_handler_id)
+
+        self.fig.canvas.mpl_connect("draw_event", self.on_draw)
+        self.fig.canvas.mpl_connect("motion_notify_event", self.on_hover)
+        self.fig.canvas.mpl_connect("button_press_event", self.on_click)
+        self.fig.canvas.mpl_connect("key_press_event", self.on_key)
+        self.redraw()
+
+    # ---------------- state ----------------
+
+    def pos_of(self, city):
+        return self.route.index(city)
+
+    def push(self):
+        self.history.append(list(self.route))
+        if len(self.history) > 200:
+            self.history.pop(0)
+
+    def apply(self, a, b):
+        """Edit joining the two picked cities, per the current mode."""
+        pa, pb = self.pos_of(a), self.pos_of(b)
+        if pa == 0 or pb == 0:
+            print("o depósito não pode ser movido")
+            return
+        self.push()
+        if self.mode == "s":
+            self.route[pa], self.route[pb] = self.route[pb], self.route[pa]
+        elif self.mode == "r":
+            lo, hi = sorted((pa, pb))
+            self.route[lo:hi + 1] = reversed(self.route[lo:hi + 1])
+        else:
+            city = self.route.pop(pa)
+            self.route.insert(self.pos_of(b) + 1, city)
+
+    # ---------------- drawing ----------------
+
+    def redraw(self):
+        arrival, total = arrival_times(self.inst, self.route)
+        self.arrival = arrival
+        pts = [self.coords[c] for c in self.route]
+        self.edges.set_segments([[pts[i], pts[i + 1]] for i in range(len(pts) - 1)])
+        self.edges.set_array(range(len(pts) - 1))
+
+        base, delta = arrival_times(self.inst, self.original)[1], None
+        delta = total - base
+        head = f"{self.inst['name']}   latência = {total:,}".replace(",", " ")
+        if delta:
+            head += f"   ({delta:+,} vs original)".replace(",", " ")
+        modes = {"m": "mover", "s": "trocar", "r": "inverter trecho"}
+        picked = f"   [segurando {self.picked}]" if self.picked is not None else ""
+        self.ax.set_title(f"{head}\nmodo: {modes[self.mode]}{picked}\n{self.HELP}",
+                          fontsize=9, loc="left")
+        self.mark.set_offsets(np.array([self.coords[self.picked]]) if self.picked
+                              is not None else np.empty((0, 2)))
+        self.ax.relim(); self.ax.autoscale_view()
+        self.bg = None
+        self.fig.canvas.draw_idle()
+
+    # ---------------- events ----------------
+
+    def on_draw(self, _event):
+        """Cache everything but the tooltip, so hovering can blit over it."""
+        self.bg = self.fig.canvas.copy_from_bbox(self.ax.bbox)
+        self.ax.draw_artist(self.mark)
+        self.ax.draw_artist(self.tip)
+
+    def blit(self):
+        if self.bg is None:
+            self.fig.canvas.draw()
+            return
+        self.fig.canvas.restore_region(self.bg)
+        self.ax.draw_artist(self.mark)
+        self.ax.draw_artist(self.tip)
+        self.fig.canvas.blit(self.ax.bbox)
+
+    def nearest(self, event):
+        if event.inaxes != self.ax or event.xdata is None:
+            return None
+        best, bd = None, float("inf")
+        for i, c in enumerate(self.coords):
+            d = (c[0] - event.xdata) ** 2 + (c[1] - event.ydata) ** 2
+            if d < bd:
+                bd, best = d, i
+        span = max(self.ax.get_xlim()[1] - self.ax.get_xlim()[0], 1e-9)
+        return best if bd ** 0.5 < span * 0.02 else None
+
+    def on_hover(self, event):
+        city = self.nearest(event)
+        if city is None:
+            if self.tip.get_visible():
+                self.tip.set_visible(False)
+                self.blit()
+            return
+        k = self.pos_of(city)
+        total = self.arrival[-1] and sum(self.arrival)
+        share = 100 * self.arrival[k] / sum(self.arrival) if sum(self.arrival) else 0
+        self.tip.xy = self.coords[city]
+        self.tip.set_text(
+            f"cidade {city}\n"
+            f"posição {k} de {len(self.route) - 1}\n"
+            f"atendida em {self.arrival[k]:,}".replace(",", " ") +
+            f"\n{share:.2f}% da latência total")
+        self.tip.set_visible(True)
+        self.blit()
+
+    def on_click(self, event):
+        city = self.nearest(event)
+        if city is None:
+            return
+        if self.picked is None:
+            self.picked = city
+        elif city == self.picked:
+            self.picked = None
+        else:
+            self.apply(self.picked, city)
+            self.picked = None
+        self.redraw()
+
+    def on_key(self, event):
+        if event.key in ("m", "s", "r"):
+            self.mode = event.key
+        elif event.key == "u" and self.history:
+            self.route = self.history.pop()
+        elif event.key == "z":
+            self.push()
+            self.route = list(self.original)
+        elif event.key == "p":
+            print(",".join(map(str, self.route)))
+        elif event.key == "w":
+            self.save()
+        elif event.key == "q":
+            plt.close(self.fig)
+            return
+        else:
+            return
+        self.picked = None
+        self.redraw()
+
+    def save(self):
+        stem = os.path.splitext(self.inst["name"])[0]
+        out = f"{stem}_edited.tour"
+        total = arrival_times(self.inst, self.route)[1]
+        with open(out, "w") as f:
+            f.write(f"NAME : {out}\n")
+            f.write(f"COMMENT : MLP solution (cost={total}, edited by hand)\n")
+            f.write("TYPE : TOUR\n")
+            f.write(f"DIMENSION : {len(self.route)}\n")
+            f.write("TOUR_SECTION\n")
+            for c in self.route:
+                f.write(f"{c + 1}\n")
+            f.write("-1\nEOF\n")
+        print(f"gravado em {out}  (latência {total})")
+
+
+def edit_route(instance, route):
+    # The canvas keeps only a WEAK reference to the callbacks, so the editor has
+    # to stay referenced or the garbage collector silently kills every handler.
+    editor = RouteEditor(instance, route)
+    plt.show()
+    return editor
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="DMP / TSP instance visualizer"
@@ -283,6 +568,16 @@ def parse_args():
     )
     inspect.add_argument("file", type=str, help=".tsp file")
 
+    ed = subparsers.add_parser(
+        "edit-route",
+        help="View a solution, edit it by clicking, and see the latency update"
+    )
+    ed.add_argument("file", type=str, help=".tsp file")
+    ed.add_argument("--route", type=str, help="route as a comma-separated list")
+    ed.add_argument("--tour", type=str, help="TSPLIB .tour file")
+    ed.add_argument("--best", action="store_true",
+                    help="load the tracked best solution for this instance")
+
     return parser.parse_args()
 
 
@@ -301,3 +596,8 @@ if __name__ == "__main__":
     elif args.command == "inspect-instance":
         instance = load_instance(args.file)
         inspect_instance(instance)
+
+    elif args.command == "edit-route":
+        instance = load_instance(args.file)
+        route = load_route(instance, args.route, args.tour, args.best)
+        edit_route(instance, route)
