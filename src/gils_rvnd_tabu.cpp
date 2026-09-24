@@ -59,7 +59,7 @@ void gils_rvnd_tabu(Solution& bestSol, Evaluator& eval,
     mt19937 gen(rd());
     using Clock = chrono::high_resolution_clock;
 
-    int fStar = INT_MAX;
+    Cost fStar = LLONG_MAX;
     int bestIter = -1;
     double total_construction_ms = 0, total_rvnd_ms = 0;
 

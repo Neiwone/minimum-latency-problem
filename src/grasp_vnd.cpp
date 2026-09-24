@@ -13,53 +13,57 @@ using namespace std;
 /* The delta functions below mirror Solution::evaluate*() but return signed
    deltas: VND/VNS need the BEST move, not the first improving one. */
 
-int delta_swap(const Solution& s, int i, int j) {
+Cost delta_swap(const Solution& s, int i, int j) {
     if (i > j) swap(i, j);
-    int t = 0, c = 0; bool first = true; int last = -1;
+    Cost t = 0, c = 0; bool first = true; int last = -1;
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = s.getT(u, v), Cu = s.getC(u, v), Wu = s.getW(u, v);
+        Cost Tu = s.getT(u, v), Cu = s.getC(u, v);
+    int Wu = s.getW(u, v);
         int firstNode = s.fTour[u], lastNode = s.fTour[v];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
-        int e = s.fDist[last][firstNode];
+        Cost e = s.fDist[last][firstNode];
         c += Wu * (t + e) + Cu; t += e + Tu; last = lastNode;
     };
     append(0, i - 1); append(j, j); append(i + 1, j - 1); append(i, i); append(j + 1, s.fN - 1);
     return c - s.fEvaluationValue;
 }
 
-int delta_2opt(const Solution& s, int i, int j) {
+Cost delta_2opt(const Solution& s, int i, int j) {
     if (i > j) swap(i, j);
-    int t = 0, c = 0; bool first = true; int last = -1;
+    Cost t = 0, c = 0; bool first = true; int last = -1;
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = s.getT(u, v), Cu = s.getC(u, v), Wu = s.getW(u, v);
+        Cost Tu = s.getT(u, v), Cu = s.getC(u, v);
+    int Wu = s.getW(u, v);
         int firstNode = s.fTour[u], lastNode = s.fTour[v];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
-        int e = s.fDist[last][firstNode];
+        Cost e = s.fDist[last][firstNode];
         c += Wu * (t + e) + Cu; t += e + Tu; last = lastNode;
     };
     auto appendReversed = [&](int u, int v) {
         if (u > v) return;
-        int Tu = s.getT(u, v), Cu = s.getCr(u, v), Wu = s.getW(u, v);
+        Cost Tu = s.getT(u, v), Cu = s.getCr(u, v);
+    int Wu = s.getW(u, v);
         int firstNode = s.fTour[v], lastNode = s.fTour[u];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
-        int e = s.fDist[last][firstNode];
+        Cost e = s.fDist[last][firstNode];
         c += Wu * (t + e) + Cu; t += e + Tu; last = lastNode;
     };
     append(0, i - 1); appendReversed(i, j); append(j + 1, s.fN - 1);
     return c - s.fEvaluationValue;
 }
 
-int delta_reinsertion(const Solution& s, int i, int j) {
+Cost delta_reinsertion(const Solution& s, int i, int j) {
     if (i == j) return 0;
-    int t = 0, c = 0; bool first = true; int last = -1;
+    Cost t = 0, c = 0; bool first = true; int last = -1;
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = s.getT(u, v), Cu = s.getC(u, v), Wu = s.getW(u, v);
+        Cost Tu = s.getT(u, v), Cu = s.getC(u, v);
+    int Wu = s.getW(u, v);
         int firstNode = s.fTour[u], lastNode = s.fTour[v];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
-        int e = s.fDist[last][firstNode];
+        Cost e = s.fDist[last][firstNode];
         c += Wu * (t + e) + Cu; t += e + Tu; last = lastNode;
     };
     if (i < j) { append(0, i - 1); append(i + 1, j); append(i, i); append(j + 1, s.fN - 1); }
@@ -67,15 +71,16 @@ int delta_reinsertion(const Solution& s, int i, int j) {
     return c - s.fEvaluationValue;
 }
 
-int delta_oropt(const Solution& s, int i, int j, int k) {
-    if (k >= i && k <= j) return INT_MAX;
-    int t = 0, c = 0; bool first = true; int last = -1;
+Cost delta_oropt(const Solution& s, int i, int j, int k) {
+    if (k >= i && k <= j) return LLONG_MAX;
+    Cost t = 0, c = 0; bool first = true; int last = -1;
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = s.getT(u, v), Cu = s.getC(u, v), Wu = s.getW(u, v);
+        Cost Tu = s.getT(u, v), Cu = s.getC(u, v);
+    int Wu = s.getW(u, v);
         int firstNode = s.fTour[u], lastNode = s.fTour[v];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
-        int e = s.fDist[last][firstNode];
+        Cost e = s.fDist[last][firstNode];
         c += Wu * (t + e) + Cu; t += e + Tu; last = lastNode;
     };
     if (k < i) { append(0, k); append(i, j); append(k + 1, i - 1); append(j + 1, s.fN - 1); }
@@ -129,13 +134,13 @@ bool best_move_in_neighborhood(int nb, vector<int>& tour, Solution& sol,
     for (int i = 0; i < n; i++) sol.fTour[i] = tour[i];
     sol.calculateStructures();
 
-    int bestDelta = 0; // must be < 0 to accept -- track strictly best found
+    Cost bestDelta = 0; // must be < 0 to accept -- track strictly best found
     int bi = -1, bj = -1, bk = -1;
 
     switch (nb) {
         case SWAP_ADJACENT: {
             for (int i = 1; i < n - 1; i++) {
-                int d = delta_swap(sol, i, i + 1);
+                Cost d = delta_swap(sol, i, i + 1);
                 if (d < bestDelta) { bestDelta = d; bi = i; bj = i + 1; }
             }
             break;
@@ -143,7 +148,7 @@ bool best_move_in_neighborhood(int nb, vector<int>& tour, Solution& sol,
         case SWAP: {
             for (int i = 1; i < n; i++)
                 for (int j = i + 1; j < n; j++) {
-                    int d = delta_swap(sol, i, j);
+                    Cost d = delta_swap(sol, i, j);
                     if (d < bestDelta) { bestDelta = d; bi = i; bj = j; }
                 }
             break;
@@ -151,7 +156,7 @@ bool best_move_in_neighborhood(int nb, vector<int>& tour, Solution& sol,
         case TWO_OPT: {
             for (int i = 1; i < n; i++)
                 for (int j = i + 1; j < n; j++) {
-                    int d = delta_2opt(sol, i, j);
+                    Cost d = delta_2opt(sol, i, j);
                     if (d < bestDelta) { bestDelta = d; bi = i; bj = j; }
                 }
             break;
@@ -162,7 +167,7 @@ bool best_move_in_neighborhood(int nb, vector<int>& tour, Solution& sol,
                     int j = i + segLen - 1;
                     for (int k = 0; k < n; k++) {
                         if (k >= i && k <= j) continue;
-                        int d = delta_oropt(sol, i, j, k);
+                        Cost d = delta_oropt(sol, i, j, k);
                         if (d < bestDelta) { bestDelta = d; bi = i; bj = j; bk = k; }
                     }
                 }
@@ -177,7 +182,7 @@ bool best_move_in_neighborhood(int nb, vector<int>& tour, Solution& sol,
                 int f = farthest[v];
                 int fp = posOf[f];
                 if (fp == n - 1) continue; // already at the end
-                int d = delta_reinsertion(sol, fp, n - 1);
+                Cost d = delta_reinsertion(sol, fp, n - 1);
                 if (d < bestDelta) { bestDelta = d; bi = fp; bj = n - 1; }
             }
             break;
@@ -204,8 +209,8 @@ bool best_move_in_neighborhood(int nb, vector<int>& tour, Solution& sol,
     return true;
 }
 
-int tour_cost(const vector<int>& tour, int** dist) {
-    int t = 0, total = 0;
+Cost tour_cost(const vector<int>& tour, int** dist) {
+    Cost t = 0, total = 0;
     for (size_t i = 1; i < tour.size(); i++) {
         t += dist[tour[i - 1]][tour[i]];
         total += t;
@@ -288,13 +293,13 @@ void run_vns(vector<int>& tour, Evaluator& eval, const vector<int>& farthest,
     Solution sol; sol.Define(n); sol.fDist = eval.fEdgeDis;
     static const int order[N_NEIGHBORHOODS] = { SWAP_ADJACENT, REMOVE_INSERT, SWAP, TWO_OPT, OR_OPT };
 
-    int xCost = tour_cost(tour, eval.fEdgeDis);
+    Cost xCost = tour_cost(tour, eval.fEdgeDis);
     int k = 0;
     while (k < N_NEIGHBORHOODS) {
         vector<int> xPrime = tour;
         shake(xPrime, shakePct, gen);
         local_search_in_neighborhood(order[k], xPrime, sol, farthest, orOptMaxLen); // x'' regardless of accept
-        int xppCost = tour_cost(xPrime, eval.fEdgeDis);
+        Cost xppCost = tour_cost(xPrime, eval.fEdgeDis);
         if (xppCost < xCost) {
             tour = xPrime; xCost = xppCost; k = 0;
         } else {
@@ -342,7 +347,7 @@ int main(int argc, char** argv) {
     using Clock = chrono::high_resolution_clock;
     auto t0 = Clock::now();
 
-    int bestCost = INT_MAX;
+    Cost bestCost = LLONG_MAX;
     vector<int> bestTour;
 
     for (int r = 0; r < restarts; r++) {
@@ -350,7 +355,7 @@ int main(int argc, char** argv) {
         if (localSearch == "vns") run_vns(tour, eval, farthest, shakePct, orOptMaxLen, gen);
         else run_vnd(tour, eval, farthest, orOptMaxLen);
 
-        int cost = tour_cost(tour, eval.fEdgeDis);
+        Cost cost = tour_cost(tour, eval.fEdgeDis);
         if (cost < bestCost) { bestCost = cost; bestTour = tour; }
     }
 

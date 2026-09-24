@@ -27,7 +27,7 @@ void RVND(Solution& sol, mt19937& gen) {
         // get a random neighborhood from the list
         int eta = NL[idx];
 
-        int oldCost = sol.fEvaluationValue;
+        Cost oldCost = sol.fEvaluationValue;
 
         // Find the best neighbor of s in neighborhood eta
         allNeighborhoods[eta](sol);
@@ -63,7 +63,7 @@ void RVND_Multi(Solution& sol, mt19937& gen) {
         int idx = dist(gen);
         int eta = NL[idx];
 
-        int oldCost = sol.fEvaluationValue;
+        Cost oldCost = sol.fEvaluationValue;
         allNeighborhoods[eta](sol);
 
         if (sol.fEvaluationValue < oldCost) {
@@ -98,7 +98,7 @@ void RVND_ExtendedOrOpt(Solution& sol, mt19937& gen) {
         int idx = dist(gen);
         int eta = NL[idx];
 
-        int oldCost = sol.fEvaluationValue;
+        Cost oldCost = sol.fEvaluationValue;
         allNeighborhoods[eta](sol);
 
         if (sol.fEvaluationValue < oldCost) {
@@ -135,7 +135,7 @@ void RVND_ExtendedOrOptWide(Solution& sol, mt19937& gen) {
         int idx = dist(gen);
         int eta = NL[idx];
 
-        int oldCost = sol.fEvaluationValue;
+        Cost oldCost = sol.fEvaluationValue;
         allNeighborhoods[eta](sol);
 
         if (sol.fEvaluationValue < oldCost) {
@@ -171,7 +171,7 @@ void RVND_ExtendedOrOpt3Opt(Solution& sol, mt19937& gen) {
         int idx = dist(gen);
         int eta = NL[idx];
 
-        int oldCost = sol.fEvaluationValue;
+        Cost oldCost = sol.fEvaluationValue;
         allNeighborhoods[eta](sol);
 
         if (sol.fEvaluationValue < oldCost) {
@@ -204,7 +204,7 @@ void RVND_Tabu(Solution& sol, mt19937& gen, int tenure) {
         int idx = dist(gen);
         int eta = NL[idx];
 
-        int oldCost = sol.fEvaluationValue;
+        Cost oldCost = sol.fEvaluationValue;
         allNeighborhoods[eta](sol);
 
         if (sol.fEvaluationValue < oldCost) {
@@ -244,7 +244,7 @@ void RVND_ExtendedOrOptRev(Solution& sol, mt19937& gen) {
         int idx = dist(gen);
         int eta = NL[idx];
 
-        int oldCost = sol.fEvaluationValue;
+        Cost oldCost = sol.fEvaluationValue;
         allNeighborhoods[eta](sol);
 
         if (sol.fEvaluationValue < oldCost) {

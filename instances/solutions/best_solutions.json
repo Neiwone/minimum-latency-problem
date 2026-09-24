@@ -94,5 +94,35 @@
     "solver": "gils_am_rvnd candidate-dlb k12 iils300 maxtime100s",
     "timestamp": "2026-09-11T13:02:05.283737",
     "tour_file": "a280.tour"
+  },
+  "si1032": {
+    "cost": 46803428.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-09-23T14:11:00.320081",
+    "tour_file": "si1032.tour"
+  },
+  "gr120": {
+    "cost": 355068.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-09-23T14:12:56.146533",
+    "tour_file": "gr120.tour"
+  },
+  "dantzig42": {
+    "cost": 11684.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-09-23T14:15:05.835329",
+    "tour_file": "dantzig42.tour"
+  },
+  "gr96": {
+    "cost": 2031344.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-09-23T14:15:09.341668",
+    "tour_file": "gr96.tour"
+  },
+  "att48": {
+    "cost": 197866.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-09-23T14:15:17.961563",
+    "tour_file": "att48.tour"
   }
 }

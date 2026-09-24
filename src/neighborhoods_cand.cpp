@@ -137,7 +137,7 @@ void RVND_Candidate(Solution& sol, const CandList& cl, int maxLen,
         int idx = dist(gen);
         int eta = NL[idx];
 
-        int oldCost = sol.fEvaluationValue;
+        Cost oldCost = sol.fEvaluationValue;
 
         if (eta == 0) {
             while (pass_swap(sol, cl) > 0) {}

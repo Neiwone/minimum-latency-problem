@@ -1,8 +1,8 @@
 # Minimum Latency Problem (MLP) Solvers in C++
 
 Implementations of exact and heuristic algorithms for the Minimum Latency Problem
-(a.k.a. Traveling Repairman Problem) on TSPLIB-style Euclidean instances. The depot is
-node 0 and the objective is the sum of arrival times along a Hamiltonian path.
+(a.k.a. Traveling Repairman Problem) on TSPLIB-style instances. The depot is node 0
+and the objective is the sum of arrival times along a Hamiltonian path.
 
 The project is built around GILS-RVND (Silva, Subramanian, Vidal & Ochi, *EJOR* 221,
 2012) and a line of experiments on top of it. The current best configuration beats
@@ -79,6 +79,11 @@ degenerate. See
 - [docs/proposta-vs-gils-rvnd.md](docs/proposta-vs-gils-rvnd.md) — component-by-
   component diff against the published GILS-RVND.
 - [docs/mlp-overview.md](docs/mlp-overview.md) — the problem and the reference paper.
+- [docs/tipos-de-distancia.md](docs/tipos-de-distancia.md) — the five supported
+  `EDGE_WEIGHT_TYPE`s and where they differ from the TSPLIB spec.
+- [docs/custo-64-bits.md](docs/custo-64-bits.md) — why the cost type is 64-bit.
+- [docs/volta-ao-deposito.md](docs/volta-ao-deposito.md) — the `--closed` flag:
+  latency with or without the return to the depot.
 - [docs/experiments/](docs/experiments/) — one write-up per hypothesis, including the
   many that were refuted.
 

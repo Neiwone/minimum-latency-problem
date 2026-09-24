@@ -11,12 +11,12 @@ using namespace std;
 
 struct Individual {
     vector<int> tour;
-    int cost;
+    Cost cost;
 };
 
-int full_route_cost(const vector<int>& tour, int** dist) {
+Cost full_route_cost(const vector<int>& tour, int** dist) {
     int n = (int)tour.size();
-    int t = 0, total = 0;
+    Cost t = 0, total = 0;
     for (int i = 1; i < n; i++) {
         t += dist[tour[i - 1]][tour[i]];
         total += t;
@@ -30,7 +30,7 @@ void bacterial_mutation(Individual& ind, int** dist, int n, int nClones, int seg
         if (end - start < 2) break;
 
         vector<int> bestSeg(ind.tour.begin() + start, ind.tour.begin() + end);
-        int bestCost = ind.cost;
+        Cost bestCost = ind.cost;
 
         for (int c = 0; c < nClones; c++) {
             vector<int> candidate = ind.tour;
@@ -39,7 +39,7 @@ void bacterial_mutation(Individual& ind, int** dist, int n, int nClones, int seg
             } else {
                 shuffle(candidate.begin() + start, candidate.begin() + end, gen);
             }
-            int cost = full_route_cost(candidate, dist);
+            Cost cost = full_route_cost(candidate, dist);
             if (cost < bestCost) {
                 bestCost = cost;
                 bestSeg.assign(candidate.begin() + start, candidate.begin() + end);
@@ -112,7 +112,7 @@ void dbmea(Solution& bestSol, Evaluator& eval, int popSize, int generations,
         ind.cost = s.fEvaluationValue;
     }
 
-    int bestCost = INT_MAX;
+    Cost bestCost = LLONG_MAX;
     vector<int> bestTour;
     for (const auto& ind : pop)
         if (ind.cost < bestCost) { bestCost = ind.cost; bestTour = ind.tour; }

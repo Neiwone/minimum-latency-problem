@@ -209,7 +209,7 @@ void grasp_am(
     for (double r = 0.00; r <= 0.25; r += 0.01) R.push_back(r);
 
     int bestIter = -1;
-    int bestCost = INT_MAX;
+    Cost bestCost = LLONG_MAX;
     double totalConstructionMs = 0.0;
     double totalRvndMs = 0.0;
 

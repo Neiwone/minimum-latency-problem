@@ -6,21 +6,21 @@ using namespace std;
 
 /* Solution::evaluate2Opt's computation, returning the signed delta
    instead of a boolean. */
-static int delta_2opt(const Solution& sol, int i, int j) {
+static Cost delta_2opt(const Solution& sol, int i, int j) {
     if (i > j) swap(i, j);
-    int t = 0, c = 0;
+    Cost t = 0, c = 0;
     bool first = true;
     int last = -1;
 
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = sol.getT(u, v);
-        int Cu = sol.getC(u, v);
+        Cost Tu = sol.getT(u, v);
+        Cost Cu = sol.getC(u, v);
         int Wu = sol.getW(u, v);
         int firstNode = sol.fTour[u];
         int lastNode  = sol.fTour[v];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
-        int e = sol.fDist[last][firstNode];
+        Cost e = sol.fDist[last][firstNode];
         c += Wu * (t + e) + Cu;
         t += e + Tu;
         last = lastNode;
@@ -28,13 +28,13 @@ static int delta_2opt(const Solution& sol, int i, int j) {
 
     auto appendReversed = [&](int u, int v) {
         if (u > v) return;
-        int Tu = sol.getT(u, v);
-        int Cu = sol.getCr(u, v);
+        Cost Tu = sol.getT(u, v);
+        Cost Cu = sol.getCr(u, v);
         int Wu = sol.getW(u, v);
         int firstNode = sol.fTour[v];
         int lastNode  = sol.fTour[u];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
-        int e = sol.fDist[last][firstNode];
+        Cost e = sol.fDist[last][firstNode];
         c += Wu * (t + e) + Cu;
         t += e + Tu;
         last = lastNode;
@@ -52,8 +52,8 @@ static int delta_2opt(const Solution& sol, int i, int j) {
 static pair<int, vector<int>> run_chain(Solution& s, Evaluator& eval, int startPos,
                                          int maxDepth, int candK) {
     int n = s.fN;
-    int baseCost = s.fEvaluationValue;
-    int bestCost = baseCost;
+    Cost baseCost = s.fEvaluationValue;
+    Cost bestCost = baseCost;
     vector<int> bestTour(s.fTour, s.fTour + n);
 
     int freeEnd = startPos;
@@ -63,7 +63,7 @@ static pair<int, vector<int>> run_chain(Solution& s, Evaluator& eval, int startP
         for (int k = 0; k < n; k++) pos[s.fTour[k]] = k;
 
         int c1 = s.fTour[freeEnd];
-        int bestDeltaStep = INT_MAX;
+        Cost bestDeltaStep = LLONG_MAX;
         int bestI = -1, bestJ = -1, bestPosC2 = -1;
 
         int kmax = min(candK, eval.fNearNumMax);
@@ -78,7 +78,7 @@ static pair<int, vector<int>> run_chain(Solution& s, Evaluator& eval, int startP
             else                 { i = posC2;       j = freeEnd - 1; }
             if (i >= j) continue;
 
-            int d = delta_2opt(s, i, j);
+            Cost d = delta_2opt(s, i, j);
             if (d < bestDeltaStep) {
                 bestDeltaStep = d;
                 bestI = i; bestJ = j; bestPosC2 = posC2;

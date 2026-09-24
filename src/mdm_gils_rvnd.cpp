@@ -180,7 +180,7 @@ long g_restarts = 0;
 void mdm_gils_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
                     const vector<double>& R, int poolSize, double supMin,
                     int maxPatterns, mt19937& gen, double maxTimeSec) {
-    int fStar = INT_MAX;
+    Cost fStar = LLONG_MAX;
     EliteSet elite(poolSize);
     DlbState dlb;
     unordered_map<int, Segment> segStarts; // empty until phase 2 mines something
@@ -264,6 +264,7 @@ int main(int argc, char** argv) {
         cerr << "Usage:\n";
         cerr << "  ./mdm_gils_rvnd <instance.tsp> [--imax 10] [--iils 100] [--pool 10]\n";
         cerr << "    [--sup-min 0.70] [--max-patterns 5] [--max-time SECONDS] [--seed N]\n";
+        cerr << "    [--closed]  pay the return to the depot (default: open path)\n";
         cerr << "    [--rvnd-mode single|candidate-dlb] [--cand-k 12] [--cand-maxlen 6] [--cand-no-rev]\n";
         return 1;
     }
@@ -287,6 +288,7 @@ int main(int argc, char** argv) {
         else if (a == "--sup-min" && i + 1 < argc) supMin = stod(argv[++i]);
         else if (a == "--max-patterns" && i + 1 < argc) maxPatterns = stoi(argv[++i]);
         else if (a == "--max-time" && i + 1 < argc) maxTimeSec = stod(argv[++i]);
+        else if (a == "--closed") set_closed_tour(true);
         else if (a == "--seed" && i + 1 < argc) seed = stol(argv[++i]);
         else if (a == "--cand-k" && i + 1 < argc) candK = stoi(argv[++i]);
         else if (a == "--cand-maxlen" && i + 1 < argc) g_candMaxLen = stoi(argv[++i]);
@@ -331,6 +333,7 @@ int main(int argc, char** argv) {
     cout << "INSTANCE " << instanceFile << "\n";
     cout << "NODES " << bestSol.fN << "\n";
     cout << "COST " << bestSol.fEvaluationValue << "\n";
+    cout << "CLOSED " << (closed_tour() ? 1 : 0) << "\n";
     cout << "RVND_MODE " << (g_rvndMode == RvndMode::CandidateDLB ? "candidate-dlb" : "single") << "\n";
     if (g_rvndMode == RvndMode::CandidateDLB)
         cout << "CAND_K " << g_cand.K << "  CAND_MAXLEN " << g_candMaxLen << "\n";

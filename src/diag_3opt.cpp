@@ -9,21 +9,21 @@ using namespace std;
 /* Read-only probe for H12b: does A + rev(B) + rev(C) + D -- the one 3-opt
    reconnection no single 2-opt or or-opt reaches -- ever improve? */
 
-int delta_double_reversal(const Solution& sol, int i, int j, int k) {
+Cost delta_double_reversal(const Solution& sol, int i, int j, int k) {
     int n = sol.fN;
-    int t = 0, c = 0;
+    Cost t = 0, c = 0;
     bool first = true;
     int last = -1;
 
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = sol.getT(u, v);
-        int Cu = sol.getC(u, v);
+        Cost Tu = sol.getT(u, v);
+        Cost Cu = sol.getC(u, v);
         int Wu = sol.getW(u, v);
         int firstNode = sol.fTour[u];
         int lastNode  = sol.fTour[v];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
-        int e = sol.fDist[last][firstNode];
+        Cost e = sol.fDist[last][firstNode];
         c += Wu * (t + e) + Cu;
         t += e + Tu;
         last = lastNode;
@@ -31,13 +31,13 @@ int delta_double_reversal(const Solution& sol, int i, int j, int k) {
 
     auto appendReversed = [&](int u, int v) {
         if (u > v) return;
-        int Tu = sol.getT(u, v);
-        int Cu = sol.getCr(u, v);
+        Cost Tu = sol.getT(u, v);
+        Cost Cu = sol.getCr(u, v);
         int Wu = sol.getW(u, v);
         int firstNode = sol.fTour[v];
         int lastNode  = sol.fTour[u];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
-        int e = sol.fDist[last][firstNode];
+        Cost e = sol.fDist[last][firstNode];
         c += Wu * (t + e) + Cu;
         t += e + Tu;
         last = lastNode;
@@ -54,7 +54,7 @@ int delta_double_reversal(const Solution& sol, int i, int j, int k) {
 struct ScanResult {
     long triplesTested = 0;
     long improving = 0;
-    int bestDelta = 0;
+    Cost bestDelta = 0;
 };
 
 ScanResult scan_double_reversal(const Solution& sol) {
@@ -63,7 +63,7 @@ ScanResult scan_double_reversal(const Solution& sol) {
     for (int i = 1; i < n - 2; i++) {
         for (int j = i + 1; j < n - 1; j++) {
             for (int k = j + 1; k < n; k++) {
-                int d = delta_double_reversal(sol, i, j, k);
+                Cost d = delta_double_reversal(sol, i, j, k);
                 res.triplesTested++;
                 if (d < 0) res.improving++;
                 if (d < res.bestDelta) res.bestDelta = d;

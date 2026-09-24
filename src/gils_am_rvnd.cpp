@@ -294,7 +294,7 @@ void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
                    double dbFrontBias, double acceptEps, bool polishOnBest,
                    double abxRate, int restartKick) {
     DlbState dlb;
-    int fStar = INT_MAX;
+    Cost fStar = LLONG_MAX;
     EliteSet memory(poolSize);
 
     /* Wall-clock stop, checked between ILS iterations and restarts, so
@@ -319,7 +319,7 @@ void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
         double alpha = R[rDist(gen)];
 
         Solution s;
-        if (restartKick > 0 && fStar < INT_MAX) {
+        if (restartKick > 0 && fStar < LLONG_MAX) {
             /* Soft restart: kick the incumbent instead of throwing it
                away for a fresh construction. Measured worse. */
             s = bestSol;
@@ -394,6 +394,7 @@ int main(int argc, char** argv) {
     cerr << "    [--db-front-bias B]  skew perturbation towards the tour front (1 = uniform)\n";
     cerr << "    [--db-maxseg K]  cap on each swapped double-bridge block (0 = unrestricted)\n";
         cerr << "    [--max-time SECONDS] [--seed N] [-v]\n";
+        cerr << "    [--closed]  pay the return to the depot (default: open path)\n";
         cerr << "    adaptive-oropt: [--adapt-kstart 6] [--adapt-period 400] [--adapt-rho 0.30]\n";
         cerr << "                    [--adapt-grow 0.10] [--adapt-shrink 0.02]\n";
         return 1;
@@ -480,6 +481,8 @@ int main(int argc, char** argv) {
             else if (m == "lk-escape") rvndMode = RvndMode::LKEscape;
             else if (m == "adaptive-oropt") rvndMode = RvndMode::AdaptiveOrOpt;
             else { cerr << "Unknown --rvnd-mode: " << m << "\n"; return 1; }
+        } else if (a == "--closed") {
+            set_closed_tour(true);
         } else if (a == "--seed" && i + 1 < argc) {
             seed = stol(argv[++i]);
         } else if (a == "--adapt-kstart" && i + 1 < argc) {
@@ -566,6 +569,7 @@ int main(int argc, char** argv) {
     if (rvndMode == RvndMode::Candidate || rvndMode == RvndMode::CandidateDLB)
         cout << "CAND_K " << g_cand.K << "  CAND_MAXLEN " << g_candMaxLen
              << "  CAND_REV " << (g_candReversed ? 1 : 0) << "\n";
+    cout << "CLOSED " << (closed_tour() ? 1 : 0) << "\n";
     cout << "RVND_MODE " << (rvndMode == RvndMode::ExtendedOrOpt ? "extended-oropt"
                               : rvndMode == RvndMode::ExtendedOrOptWide ? "extended-oropt-wide"
                               : rvndMode == RvndMode::ExtendedOrOptRev ? "extended-oropt-rev"

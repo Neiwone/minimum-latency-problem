@@ -123,7 +123,7 @@ void RVND_AdaptiveOrOpt(Solution& sol, mt19937& gen, AdaptiveOrOptState& st) {
         }
 
         Entry chosen = NL[idx];
-        int oldCost = sol.fEvaluationValue;
+        Cost oldCost = sol.fEvaluationValue;
 
         if (chosen.isOrOpt) neighborhood_oropt_len(sol, chosen.value);
         else run_fixed(chosen.value, sol);

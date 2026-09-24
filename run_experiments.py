@@ -27,11 +27,130 @@ INSTANCES = [
     # "lin105.tsp",
     # "pr107.tsp",
     # "rat195.tsp",
-    "pr226.tsp",
-    "lin318.tsp",
-    "pr439.tsp",
-    "att532.tsp",
+    # "pr226.tsp",
+    # "lin318.tsp",
+    # "pr439.tsp",
+    # "att532.tsp",
+
+    "gr120.tsp",
 ]
+
+def _n_of(name: str) -> int:
+    """n from the trailing digits of a TSPLIB name (kroA150 -> 150)."""
+    return int(re.search(r"(\d+)(?=\.tsp$)", name).group(1))
+
+
+# The 77 TSPLIB instances of the Santana (2018) MDM-GILS-RVND dissertation,
+# ordered by n. Every EDGE_WEIGHT_TYPE here is readable; see docs/tipos-de-distancia.md.
+SANTANA_TSPLIB = [
+    "dantzig42.tsp",         # 42  EXPLICIT
+    "swiss42.tsp",           # 42  EXPLICIT
+    "att48.tsp",             # 48  ATT
+    "gr48.tsp",              # 48  EXPLICIT
+    "hk48.tsp",              # 48  EXPLICIT
+    "eil51.tsp",             # 51
+    "berlin52.tsp",          # 52
+    "brazil58.tsp",          # 58  EXPLICIT
+    "st70.tsp",              # 70
+    "eil76.tsp",             # 76
+    "pr76.tsp",              # 76
+    "gr96.tsp",              # 96  GEO
+    "rat99.tsp",             # 99
+    "kroA100.tsp",           # 100
+    "kroB100.tsp",           # 100
+    "kroC100.tsp",           # 100
+    "kroD100.tsp",           # 100
+    "kroE100.tsp",           # 100
+    "rd100.tsp",             # 100
+    "eil101.tsp",            # 101
+    "lin105.tsp",            # 105
+    "pr107.tsp",             # 107
+    "gr120.tsp",             # 120  EXPLICIT
+    "pr124.tsp",             # 124
+    "bier127.tsp",           # 127
+    "ch130.tsp",             # 130
+    "pr136.tsp",             # 136
+    "gr137.tsp",             # 137  GEO
+    "pr144.tsp",             # 144
+    "ch150.tsp",             # 150
+    "kroA150.tsp",           # 150
+    "kroB150.tsp",           # 150
+    "pr152.tsp",             # 152
+    "u159.tsp",              # 159
+    "si175.tsp",             # 175  EXPLICIT
+    "brg180.tsp",            # 180  EXPLICIT
+    "rat195.tsp",            # 195
+    "d198.tsp",              # 198
+    "kroA200.tsp",           # 200
+    "kroB200.tsp",           # 200
+    "gr202.tsp",             # 202  GEO
+    "ts225.tsp",             # 225
+    "tsp225.tsp",            # 225
+    "pr226.tsp",             # 226
+    "gr229.tsp",             # 229  GEO
+    "gil262.tsp",            # 262
+    "pr264.tsp",             # 264
+    "a280.tsp",              # 280
+    "pr299.tsp",             # 299
+    "lin318.tsp",            # 318
+    "rd400.tsp",             # 400
+    "fl417.tsp",             # 417
+    "gr431.tsp",             # 431  GEO
+    "pr439.tsp",             # 439
+    "pcb442.tsp",            # 442
+    "d493.tsp",              # 493
+    "att532.tsp",            # 532  ATT
+    "ali535.tsp",            # 535  GEO
+    "si535.tsp",             # 535  EXPLICIT
+    "pa561.tsp",             # 561  EXPLICIT
+    "u574.tsp",              # 574
+    "rat575.tsp",            # 575
+    "p654.tsp",              # 654
+    "d657.tsp",              # 657
+    "gr666.tsp",             # 666  GEO
+    "u724.tsp",              # 724
+    "rat783.tsp",            # 783
+    "dsj1000.tsp",           # 1000  CEIL_2D
+    "pr1002.tsp",            # 1002
+    "si1032.tsp",            # 1032  EXPLICIT
+    "u1060.tsp",             # 1060
+    "vm1084.tsp",            # 1084
+    "pcb1173.tsp",           # 1173
+    "d1291.tsp",             # 1291
+    "rl1304.tsp",            # 1304
+    "rl1323.tsp",            # 1323
+    "nrw1379.tsp",           # 1379
+]
+
+# Named groups usable with --instances in every mode, e.g. --instances tsplib-200
+INSTANCE_GROUPS = {
+    "tsplib":     SANTANA_TSPLIB,
+    "tsplib-120": [i for i in SANTANA_TSPLIB if _n_of(i) >= 120],
+    "tsplib-200": [i for i in SANTANA_TSPLIB if _n_of(i) >= 200],
+    "tsplib-500": [i for i in SANTANA_TSPLIB if _n_of(i) >= 500],
+}
+
+
+def resolve_instances(names) -> List[str]:
+    """Expand group names into .tsp filenames; other names are taken literally.
+    None/empty means the tracked INSTANCES list."""
+    if not names:
+        return list(INSTANCES)
+    out = [n if n.endswith(".tsp") else n + ".tsp"
+           for name in names
+           for n in INSTANCE_GROUPS.get(name, [name])]
+    # Fail before launching the first solver, not after a typo burns the batch.
+    missing = [n for n in out if not os.path.exists(os.path.join(INST_DIR, n))]
+    if missing:
+        raise SystemExit(f"Error: instances not found: {', '.join(missing)}\n"
+                         f"Groups: {', '.join(INSTANCE_GROUPS)}")
+    return out
+
+
+# --closed only exists in these three; anywhere else it would be dropped and the
+# run would silently report open-path costs.
+CLOSED_CAPABLE = {"gils_am_rvnd", "mdm_gils_rvnd", "gils_rvnd"}
+CLOSED_TOUR = False
 
 INST_DIR = "instances"
 SOLUTIONS_DIR = Path(INST_DIR) / "solutions"
@@ -419,8 +538,18 @@ Examples:
         nargs="+",
         default=None,
         help=(
-            "fixed-time mode: instance names from instances/ (e.g. lin318 att532). "
+            "instance names from instances/ (e.g. lin318 att532), "
+            f"or a group: {', '.join(f'{k} ({len(v)})' for k, v in INSTANCE_GROUPS.items())}. "
             f"Default: the tracked list ({len(INSTANCES)} instances)."
+        )
+    )
+
+    parser.add_argument(
+        "--closed",
+        action="store_true",
+        help=(
+            "count the return to the depot in the latency (closed tour). "
+            "Default is the MLP definition: a Hamiltonian path, no return."
         )
     )
 
@@ -501,6 +630,13 @@ def run_solver(solver: SolverCmd, instance_path: str, route: Optional[str] = Non
 
     cmd += extra_args
 
+    if CLOSED_TOUR:
+        if os.path.basename(solver_path) not in CLOSED_CAPABLE:
+            raise RuntimeError(
+                f"{os.path.basename(solver_path)} has no --closed and would report "
+                f"open-path costs. Supported: {', '.join(sorted(CLOSED_CAPABLE))}")
+        cmd.append("--closed")
+
     proc = subprocess.run(cmd, capture_output=True, text=True)
 
     if proc.returncode != 0:
@@ -545,6 +681,7 @@ def run_solver(solver: SolverCmd, instance_path: str, route: Optional[str] = Non
     return {
         "nodes": int(data.get("NODES", 0)),
         "cost": float(data.get("COST", 0)),
+        "closed": data.get("CLOSED") == "1",
         "time": time_ms,
         # Restart-boundary mechanism counters (see fixed-time mode): -1 when
         # the solver does not report them.
@@ -674,7 +811,7 @@ def run_compare_best_mode(args, tracker: SolutionTracker):
     print(f"Comparing {args.solver.upper()} with Best Known Solutions ({n_runs} runs per instance)")
     print(f"{'='*100}\n")
 
-    for inst in INSTANCES:
+    for inst in resolve_instances(args.instances):
         path = os.path.join(INST_DIR, inst)
         name = inst.replace(".tsp", "")
 
@@ -693,7 +830,7 @@ def run_compare_best_mode(args, tracker: SolutionTracker):
             print(f"  Error: {e}")
             continue
 
-        best_known = tracker.get_best_cost(name)
+        best_known = None if CLOSED_TOUR else tracker.get_best_cost(name)
         best_gap = None
         avg_gap = None
         best_known_hit_rate = None
@@ -705,7 +842,7 @@ def run_compare_best_mode(args, tracker: SolutionTracker):
             best_known_hit_rate = (known_hits / n_runs) * 100.0
 
         # Check if this is a new best
-        is_new_best = tracker.is_better(name, agg["best_cost"])
+        is_new_best = (not CLOSED_TOUR) and tracker.is_better(name, agg["best_cost"])
 
         result_entry = {
             "instance": name,
@@ -782,7 +919,7 @@ def run_exact_mode(args, tracker: SolutionTracker):
     print(f"Comparing {args.solver.upper()} ({n_runs} runs) with Exact Solver (Backtracking)")
     print(f"{'='*110}\n")
 
-    for inst in INSTANCES:
+    for inst in resolve_instances(args.instances):
         path = os.path.join(INST_DIR, inst)
         name = inst.replace(".tsp", "")
 
@@ -864,7 +1001,7 @@ def run_compare_solvers_mode(args, tracker: SolutionTracker):
     print(f"Comparing Solvers: {solver_a.upper()} vs {solver_b.upper()} ({n_runs} runs each)")
     print(f"{'='*80}\n")
 
-    for inst in INSTANCES:
+    for inst in resolve_instances(args.instances):
         path = os.path.join(INST_DIR, inst)
         name = inst.replace(".tsp", "")
 
@@ -1134,12 +1271,9 @@ def run_fixed_time_mode(args):
             for rel in salehipour_instances(size):
                 inst_paths.append((Path(rel).stem, rel))
 
-    inst_names = args.instances
-    if inst_names is None and not inst_paths:
-        inst_names = [i.replace(".tsp", "") for i in INSTANCES]
-    for name in inst_names or []:
-        path = os.path.join(INST_DIR, name if name.endswith(".tsp") else name + ".tsp")
-        inst_paths.append((Path(name).stem, path))
+    if args.instances or not inst_paths:
+        for inst in resolve_instances(args.instances):
+            inst_paths.append((Path(inst).stem, os.path.join(INST_DIR, inst)))
 
     missing = [p for _, p in inst_paths if not os.path.exists(p)]
     if missing:
@@ -1300,7 +1434,13 @@ def _fixed_time_report(results, inst_paths, args, baseline):
 
 def main():
     """Main entry point."""
+    global CLOSED_TOUR
     args = parse_args()
+    CLOSED_TOUR = args.closed
+    if CLOSED_TOUR:
+        print("Latency counts the return to the depot (closed tour). "
+              "The tracked bests are open-path costs, so gaps against them are "
+              "suppressed and nothing is written to them.")
 
     # Initialize solution tracker
     tracker = SolutionTracker(SOLUTIONS_DIR)

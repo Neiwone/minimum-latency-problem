@@ -5,6 +5,13 @@
 #include <cstring>
 
 
+static bool gClosedTour = false;
+
+void set_closed_tour(bool on) { gClosedTour = on; }
+bool closed_tour() { return gClosedTour; }
+
+
+
 Solution::Solution() {
     fN = 0;
     fTour = NULL;
@@ -98,12 +105,13 @@ void Solution::calculateStructures() {
     }
 
     fEvaluationValue = getC(0, fN - 1);
+    if (gClosedTour) fEvaluationValue += closingTerm(getT(0, fN - 1), fTour[fN - 1]);
 }
 
 
 void Solution::calculateStructuresFrom(int lo) {
     if (P == NULL || lo <= 0) { calculateStructures(); return; }
-    if (lo >= fN) { fEvaluationValue = getC(0, fN - 1); return; }
+    if (lo >= fN) { calculateStructures(); return; }
 
     for (int j = lo; j < fN; j++) {
         P[j]  = P[j - 1] + fDist[fTour[j - 1]][fTour[j]];
@@ -112,6 +120,7 @@ void Solution::calculateStructuresFrom(int lo) {
     }
 
     fEvaluationValue = getC(0, fN - 1);
+    if (gClosedTour) fEvaluationValue += closingTerm(getT(0, fN - 1), fTour[fN - 1]);
 }
 
 
@@ -156,14 +165,14 @@ void Solution::printAllSubsequences() {
 bool Solution::evaluateSwap(int i, int j) {
     if (i > j) swap(i, j);
 
-    int t = 0, c = 0;
+    Cost t = 0, c = 0;
     bool first = true;
     int last = -1;
 
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = getT(u, v);
-        int Cu = getC(u, v);
+        Cost Tu = getT(u, v);
+        Cost Cu = getC(u, v);
         int Wu = getW(u, v);
         int firstNode = fTour[u];
         int lastNode  = fTour[v];
@@ -173,7 +182,7 @@ bool Solution::evaluateSwap(int i, int j) {
             last = lastNode; first = false;
             return;
         }
-        int e = fDist[last][firstNode];
+        Cost e = fDist[last][firstNode];
         c += Wu * (t + e) + Cu;
         t += e + Tu;
         last = lastNode;
@@ -185,20 +194,21 @@ bool Solution::evaluateSwap(int i, int j) {
     append(i, i);
     append(j + 1, fN - 1);
 
+    if (gClosedTour) c += closingTerm(t, last);
     return c < fEvaluationValue;
 }
 
 bool Solution::evaluate2Opt(int i, int j) {
     if (i > j) swap(i, j);
 
-    int t = 0, c = 0;
+    Cost t = 0, c = 0;
     bool first = true;
     int last = -1;
 
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = getT(u, v);
-        int Cu = getC(u, v);
+        Cost Tu = getT(u, v);
+        Cost Cu = getC(u, v);
         int Wu = getW(u, v);
         int firstNode = fTour[u];
         int lastNode  = fTour[v];
@@ -208,7 +218,7 @@ bool Solution::evaluate2Opt(int i, int j) {
             last = lastNode; first = false;
             return;
         }
-        int e = fDist[last][firstNode];
+        Cost e = fDist[last][firstNode];
         c += Wu * (t + e) + Cu;
         t += e + Tu;
         last = lastNode;
@@ -216,8 +226,8 @@ bool Solution::evaluate2Opt(int i, int j) {
 
     auto appendReversed = [&](int u, int v) {
         if (u > v) return;
-        int Tu = getT(u, v);
-        int Cu = getCr(u, v);
+        Cost Tu = getT(u, v);
+        Cost Cu = getCr(u, v);
         int Wu = getW(u, v);
         int firstNode = fTour[v];   /* reversed: first is tour[v] */
         int lastNode  = fTour[u];   /* reversed: last  is tour[u] */
@@ -227,7 +237,7 @@ bool Solution::evaluate2Opt(int i, int j) {
             last = lastNode; first = false;
             return;
         }
-        int e = fDist[last][firstNode];
+        Cost e = fDist[last][firstNode];
         c += Wu * (t + e) + Cu;
         t += e + Tu;
         last = lastNode;
@@ -237,20 +247,21 @@ bool Solution::evaluate2Opt(int i, int j) {
     appendReversed(i, j);
     append(j + 1, fN - 1);
 
+    if (gClosedTour) c += closingTerm(t, last);
     return c < fEvaluationValue;
 }
 
 bool Solution::evaluateReinsertion(int i, int j) {
     if (i == j) return false;
 
-    int t = 0, c = 0;
+    Cost t = 0, c = 0;
     bool first = true;
     int last = -1;
 
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = getT(u, v);
-        int Cu = getC(u, v);
+        Cost Tu = getT(u, v);
+        Cost Cu = getC(u, v);
         int Wu = getW(u, v);
         int firstNode = fTour[u];
         int lastNode  = fTour[v];
@@ -260,7 +271,7 @@ bool Solution::evaluateReinsertion(int i, int j) {
             last = lastNode; first = false;
             return;
         }
-        int e = fDist[last][firstNode];
+        Cost e = fDist[last][firstNode];
         c += Wu * (t + e) + Cu;
         t += e + Tu;
         last = lastNode;
@@ -278,23 +289,24 @@ bool Solution::evaluateReinsertion(int i, int j) {
         append(i + 1, fN - 1);
     }
 
+    if (gClosedTour) c += closingTerm(t, last);
     return c < fEvaluationValue;
 }
 
 bool Solution::evaluateThreeOptDoubleReversal(int i, int j, int k) {
-    int t = 0, c = 0;
+    Cost t = 0, c = 0;
     bool first = true;
     int last = -1;
 
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = getT(u, v);
-        int Cu = getC(u, v);
+        Cost Tu = getT(u, v);
+        Cost Cu = getC(u, v);
         int Wu = getW(u, v);
         int firstNode = fTour[u];
         int lastNode  = fTour[v];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
-        int e = fDist[last][firstNode];
+        Cost e = fDist[last][firstNode];
         c += Wu * (t + e) + Cu;
         t += e + Tu;
         last = lastNode;
@@ -302,13 +314,13 @@ bool Solution::evaluateThreeOptDoubleReversal(int i, int j, int k) {
 
     auto appendReversed = [&](int u, int v) {
         if (u > v) return;
-        int Tu = getT(u, v);
-        int Cu = getCr(u, v);
+        Cost Tu = getT(u, v);
+        Cost Cu = getCr(u, v);
         int Wu = getW(u, v);
         int firstNode = fTour[v];
         int lastNode  = fTour[u];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
-        int e = fDist[last][firstNode];
+        Cost e = fDist[last][firstNode];
         c += Wu * (t + e) + Cu;
         t += e + Tu;
         last = lastNode;
@@ -319,6 +331,7 @@ bool Solution::evaluateThreeOptDoubleReversal(int i, int j, int k) {
     appendReversed(j + 1, k);
     append(k + 1, fN - 1);
 
+    if (gClosedTour) c += closingTerm(t, last);
     return c < fEvaluationValue;
 }
 
@@ -326,14 +339,14 @@ bool Solution::evaluateOrOpt(int i, int j, int k) {
     if (i > j) swap(i, j);
     if (k >= i && k <= j) return false;
 
-    int t = 0, c = 0;
+    Cost t = 0, c = 0;
     bool first = true;
     int last = -1;
 
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = getT(u, v);
-        int Cu = getC(u, v);
+        Cost Tu = getT(u, v);
+        Cost Cu = getC(u, v);
         int Wu = getW(u, v);
         int firstNode = fTour[u];
         int lastNode  = fTour[v];
@@ -343,7 +356,7 @@ bool Solution::evaluateOrOpt(int i, int j, int k) {
             last = lastNode; first = false;
             return;
         }
-        int e = fDist[last][firstNode];
+        Cost e = fDist[last][firstNode];
         c += Wu * (t + e) + Cu;
         t += e + Tu;
         last = lastNode;
@@ -361,6 +374,7 @@ bool Solution::evaluateOrOpt(int i, int j, int k) {
         append(k + 1, fN - 1);
     }
 
+    if (gClosedTour) c += closingTerm(t, last);
     return c < fEvaluationValue;
 }
 
@@ -369,14 +383,14 @@ bool Solution::evaluateOrOptReversed(int i, int j, int k) {
     if (i > j) swap(i, j);
     if (k >= i && k <= j) return false;
 
-    int t = 0, c = 0;
+    Cost t = 0, c = 0;
     bool first = true;
     int last = -1;
 
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = getT(u, v);
-        int Cu = getC(u, v);
+        Cost Tu = getT(u, v);
+        Cost Cu = getC(u, v);
         int Wu = getW(u, v);
         int firstNode = fTour[u];
         int lastNode  = fTour[v];
@@ -386,7 +400,7 @@ bool Solution::evaluateOrOptReversed(int i, int j, int k) {
             last = lastNode; first = false;
             return;
         }
-        int e = fDist[last][firstNode];
+        Cost e = fDist[last][firstNode];
         c += Wu * (t + e) + Cu;
         t += e + Tu;
         last = lastNode;
@@ -394,8 +408,8 @@ bool Solution::evaluateOrOptReversed(int i, int j, int k) {
 
     auto appendReversed = [&](int u, int v) {
         if (u > v) return;
-        int Tu = getT(u, v);
-        int Cu = getCr(u, v);
+        Cost Tu = getT(u, v);
+        Cost Cu = getCr(u, v);
         int Wu = getW(u, v);
         int firstNode = fTour[v];
         int lastNode  = fTour[u];
@@ -405,7 +419,7 @@ bool Solution::evaluateOrOptReversed(int i, int j, int k) {
             last = lastNode; first = false;
             return;
         }
-        int e = fDist[last][firstNode];
+        Cost e = fDist[last][firstNode];
         c += Wu * (t + e) + Cu;
         t += e + Tu;
         last = lastNode;
@@ -423,5 +437,6 @@ bool Solution::evaluateOrOptReversed(int i, int j, int k) {
         append(k + 1, fN - 1);
     }
 
+    if (gClosedTour) c += closingTerm(t, last);
     return c < fEvaluationValue;
 }

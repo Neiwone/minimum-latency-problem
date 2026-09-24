@@ -11,8 +11,8 @@ using namespace std;
 
 /* True cost is tracked separately -- this only swaps Solution::fDist. */
 
-int full_route_cost(const int* tour, int n, int** dist) {
-    int t = 0, total = 0;
+Cost full_route_cost(const int* tour, int n, int** dist) {
+    Cost t = 0, total = 0;
     for (int i = 1; i < n; i++) {
         t += dist[tour[i - 1]][tour[i]];
         total += t;
@@ -98,7 +98,7 @@ int main(int argc, char** argv) {
     construction(s, eval, constructionAlpha, gen); // s.fDist = trueDist here
     RVND(s, gen);
 
-    int bestCost = s.fEvaluationValue; // real cost -- fDist was trueDist for this pass
+    Cost bestCost = s.fEvaluationValue; // real cost -- fDist was trueDist for this pass
     vector<int> bestTour(s.fTour, s.fTour + n);
 
     // classic GLS heuristic: lambda ~ fraction of the average edge's
@@ -119,7 +119,7 @@ int main(int argc, char** argv) {
         s.calculateStructures();
         RVND(s, gen);
 
-        int realCost = full_route_cost(s.fTour, n, trueDist);
+        Cost realCost = full_route_cost(s.fTour, n, trueDist);
         if (realCost < bestCost) {
             bestCost = realCost;
             bestTour.assign(s.fTour, s.fTour + n);

@@ -4,6 +4,15 @@
 #include <bits/stdc++.h>
 using namespace std;
 
+// Latency overflows int32 around n=4500 (fnl4461 reported INT_MIN), and the
+// wrap is silent: the search then hunts tours that wrap most negative.
+typedef long long Cost;
+
+// MLP is a Hamiltonian path: the return to the depot is not paid. Turning this
+// on adds the arrival back at the depot as one more term of the sum.
+void set_closed_tour(bool on);
+bool closed_tour();
+
 class Solution {
 public:
     Solution();
@@ -42,7 +51,7 @@ public:
     
     int fN;
     int* fTour;
-    int fEvaluationValue;
+    Cost fEvaluationValue;
 
     double* x;
     double* y; 
@@ -57,14 +66,19 @@ public:
        go from "c is geometrically near d" to "where is d in the tour". */
     int* posOf;
 
-    inline int getT(int i, int j) const { return (int)(P[j] - P[i]); }
-
-    inline int getC(int i, int j) const {
-        return (int)((SP[j] - SP[i]) - (long long)(j - i) * P[i]);
+    /* Cost of closing the tour, given a candidate walk and its last city. */
+    inline Cost closingTerm(Cost walk, int lastCity) const {
+        return walk + fDist[lastCity][fTour[0]];
     }
 
-    inline int getCr(int i, int j) const {
-        return (int)((long long)(j - i + 1) * P[j] - (SP[j] - SP[i] + P[i]));
+    inline Cost getT(int i, int j) const { return P[j] - P[i]; }
+
+    inline Cost getC(int i, int j) const {
+        return (SP[j] - SP[i]) - (Cost)(j - i) * P[i];
+    }
+
+    inline Cost getCr(int i, int j) const {
+        return (Cost)(j - i + 1) * P[j] - (SP[j] - SP[i] + P[i]);
     }
 };
 

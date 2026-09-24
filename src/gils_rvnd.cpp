@@ -95,7 +95,7 @@ int stagnation_strength(int iterILS, int stagnationStep, int maxStrength) {
 
 /* H2: pool of the best distinct restart solutions, sorted by cost. Only
    the tour is kept; idle members are never RVND'd directly. */
-struct EliteEntry { int cost; vector<int> tour; };
+struct EliteEntry { Cost cost; vector<int> tour; };
 
 void add_elite(vector<EliteEntry>& elite, const Solution& sol, int maxSize) {
     for (const auto& e : elite)
@@ -172,7 +172,7 @@ void gils_rvnd(Solution& bestSol, Evaluator& eval,
                bool pathRelinking, int eliteSize, RvndMode rvndMode,
                ConstructionMode constructionMode, int lookaheadK, mt19937& gen,
                AdaptiveOrOptState& adaptState, double maxTimeSec) {
-    int fStar = INT_MAX;
+    Cost fStar = LLONG_MAX;
     vector<EliteEntry> elite;
     DlbState dlb;
 
@@ -284,6 +284,7 @@ int main(int argc, char** argv) {
         cerr << "    [--rvnd-mode single|multi|extended-oropt|extended-oropt-wide|extended-oropt-3opt]\n";
         cerr << "    [--construction-mode greedy|lookahead] [--lookahead-k 3]\n";
         cerr << "    [--seed N] [-v]\n";
+        cerr << "    [--closed]  pay the return to the depot (default: open path)\n";
         return 1;
     }
 
@@ -368,6 +369,9 @@ int main(int argc, char** argv) {
         else if (a == "--lookahead-k" && i + 1 < argc) {
             lookaheadK = stoi(argv[++i]);
         }
+        else if (a == "--closed") {
+            set_closed_tour(true);
+        }
         else if (a == "--seed" && i + 1 < argc) {
             seed = stol(argv[++i]);
         }
@@ -445,6 +449,7 @@ int main(int argc, char** argv) {
         cout << "MAX_TIME_S " << fixed << setprecision(3) << maxTimeSec << "\n";
     cout << "PERT_MODE " << pertModeName << "\n";
     cout << "PATH_RELINKING " << (pathRelinking ? "on" : "off") << "\n";
+    cout << "CLOSED " << (closed_tour() ? 1 : 0) << "\n";
     cout << "RVND_MODE " << (rvndMode == RvndMode::Multi ? "multi"
                               : rvndMode == RvndMode::ExtendedOrOpt ? "extended-oropt"
                               : rvndMode == RvndMode::ExtendedOrOptWide ? "extended-oropt-wide"

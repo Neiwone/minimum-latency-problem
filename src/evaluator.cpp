@@ -39,8 +39,10 @@ void Evaluator::SetInstance(char filename[]) {
         exit(1);
     }
 
-    char word[128], type[128];
+    char word[128], type[128], fmt[128];
     Ncity = 0;
+    type[0] = fmt[0] = '\0';
+    bool explicitMatrix = false;
 
     // ---------- READ HEADER ----------
     while (fscanf(fp, "%s", word) != EOF) {
@@ -57,7 +59,18 @@ void Evaluator::SetInstance(char filename[]) {
             fscanf(fp, "%s", type);
         }
 
+        else if (strcmp(word, "EDGE_WEIGHT_FORMAT") == 0 || strcmp(word, "EDGE_WEIGHT_FORMAT:") == 0) {
+            if (word[strlen(word)-1] != ':')
+                fscanf(fp, "%s", word);
+            fscanf(fp, "%s", fmt);
+        }
+
         else if (strcmp(word, "NODE_COORD_SECTION") == 0) {
+            break;
+        }
+
+        else if (strcmp(word, "EDGE_WEIGHT_SECTION") == 0) {
+            explicitMatrix = true;
             break;
         }
     }
@@ -67,52 +80,106 @@ void Evaluator::SetInstance(char filename[]) {
         exit(1);
     }
 
-    // ---------- READ COORDS ----------
     x = new double[Ncity];
     y = new double[Ncity];
 
-    for (int i = 0; i < Ncity; ++i) {
-        int id;
-        fscanf(fp, "%d %lf %lf", &id, &x[i], &y[i]);
-    }
-
-    fclose(fp);
-
-    // ---------- DISTANCE MATRIX ----------
     fEdgeDis = new int*[Ncity];
     for (int i = 0; i < Ncity; ++i)
         fEdgeDis[i] = new int[Ncity];
 
-    if (strcmp(type, "EUC_2D") == 0) {
+    if (explicitMatrix) {
+        // ---------- EXPLICIT MATRIX ----------
         for (int i = 0; i < Ncity; ++i) {
-            for (int j = 0; j < Ncity; ++j) {
-                double dx = x[i] - x[j];
-                double dy = y[i] - y[j];
-                double d = sqrt(dx*dx + dy*dy);
-                fEdgeDis[i][j] = (int)(d);
+            x[i] = y[i] = 0.0;
+            for (int j = 0; j < Ncity; ++j) fEdgeDis[i][j] = 0;
+        }
+
+        // Each format lists a different triangle; read it then mirror.
+        int lo, hi;
+        for (int i = 0; i < Ncity; ++i) {
+            if      (strcmp(fmt, "FULL_MATRIX")    == 0) { lo = 0;     hi = Ncity - 1; }
+            else if (strcmp(fmt, "UPPER_ROW")      == 0) { lo = i + 1; hi = Ncity - 1; }
+            else if (strcmp(fmt, "UPPER_DIAG_ROW") == 0) { lo = i;     hi = Ncity - 1; }
+            else if (strcmp(fmt, "LOWER_ROW")      == 0) { lo = 0;     hi = i - 1; }
+            else if (strcmp(fmt, "LOWER_DIAG_ROW") == 0) { lo = 0;     hi = i; }
+            else {
+                printf("Unsupported EDGE_WEIGHT_FORMAT: %s\n", fmt);
+                exit(1);
+            }
+            for (int j = lo; j <= hi; ++j) {
+                int d;
+                if (fscanf(fp, "%d", &d) != 1) {
+                    printf("Truncated EDGE_WEIGHT_SECTION at (%d,%d)\n", i, j);
+                    exit(1);
+                }
+                fEdgeDis[i][j] = fEdgeDis[j][i] = d;
             }
         }
-    } 
-    else if (strcmp(type, "ATT") == 0) {
+    }
+    else {
+        // ---------- READ COORDS ----------
         for (int i = 0; i < Ncity; ++i) {
-            for (int j = 0; j < Ncity; ++j) {
-                double dx = x[i] - x[j];
-                double dy = y[i] - y[j];
-                double rij = sqrt((dx * dx + dy * dy) / 10.0);
-                int tij = (int)(rij);
-                
-                if (tij < rij) {
-                    fEdgeDis[i][j] = tij + 1;
-                } else {
-                    fEdgeDis[i][j] = tij;
+            int id;
+            fscanf(fp, "%d %lf %lf", &id, &x[i], &y[i]);
+        }
+
+        if (strcmp(type, "EUC_2D") == 0) {
+            for (int i = 0; i < Ncity; ++i) {
+                for (int j = 0; j < Ncity; ++j) {
+                    double dx = x[i] - x[j];
+                    double dy = y[i] - y[j];
+                    fEdgeDis[i][j] = (int)sqrt(dx*dx + dy*dy);
                 }
             }
         }
-    } 
-    else {
-        printf("Unsupported EDGE_WEIGHT_TYPE: %s\n", type);
-        exit(1);
+        else if (strcmp(type, "CEIL_2D") == 0) {
+            for (int i = 0; i < Ncity; ++i) {
+                for (int j = 0; j < Ncity; ++j) {
+                    double dx = x[i] - x[j];
+                    double dy = y[i] - y[j];
+                    fEdgeDis[i][j] = (int)ceil(sqrt(dx*dx + dy*dy));
+                }
+            }
+        }
+        else if (strcmp(type, "ATT") == 0) {
+            for (int i = 0; i < Ncity; ++i) {
+                for (int j = 0; j < Ncity; ++j) {
+                    double dx = x[i] - x[j];
+                    double dy = y[i] - y[j];
+                    double rij = sqrt((dx * dx + dy * dy) / 10.0);
+                    int tij = (int)(rij);
+                    fEdgeDis[i][j] = (tij < rij) ? tij + 1 : tij;
+                }
+            }
+        }
+        else if (strcmp(type, "GEO") == 0) {
+            // TSPLIB geographical: DDD.MM coordinates -> radians, great circle.
+            const double PI = 3.141592, RRR = 6378.388;
+            std::vector<double> lat(Ncity), lon(Ncity);
+            for (int i = 0; i < Ncity; ++i) {
+                double dg = (int)x[i], mn = x[i] - dg;
+                lat[i] = PI * (dg + 5.0 * mn / 3.0) / 180.0;
+                dg = (int)y[i]; mn = y[i] - dg;
+                lon[i] = PI * (dg + 5.0 * mn / 3.0) / 180.0;
+            }
+            for (int i = 0; i < Ncity; ++i) {
+                for (int j = 0; j < Ncity; ++j) {
+                    if (i == j) { fEdgeDis[i][j] = 0; continue; }  // formula would give 1
+                    double q1 = cos(lon[i] - lon[j]);
+                    double q2 = cos(lat[i] - lat[j]);
+                    double q3 = cos(lat[i] + lat[j]);
+                    fEdgeDis[i][j] =
+                        (int)(RRR * acos(0.5 * ((1.0 + q1) * q2 - (1.0 - q1) * q3)) + 1.0);
+                }
+            }
+        }
+        else {
+            printf("Unsupported EDGE_WEIGHT_TYPE: %s\n", type);
+            exit(1);
+        }
     }
+
+    fclose(fp);
 
     // ---------- NEAREST LIST ----------
     int kmax = std::min(fNearNumMax, Ncity-1);
@@ -147,8 +214,8 @@ void Evaluator::SetInstance(char filename[]) {
 
 void Evaluator::DoIt(Solution& sol) {
 
-    int walked = 0;
-    int cost = 0;
+    Cost walked = 0;
+    Cost cost = 0;
 
     for (int i = 0; i < sol.fN - 1; ++i) {
         int u = sol.fTour[i];
@@ -157,6 +224,9 @@ void Evaluator::DoIt(Solution& sol) {
         walked += fEdgeDis[u][v];
         cost += walked;
     }
+
+    if (closed_tour())
+        cost += walked + fEdgeDis[sol.fTour[sol.fN - 1]][sol.fTour[0]];
 
     sol.fEvaluationValue = cost;
 }

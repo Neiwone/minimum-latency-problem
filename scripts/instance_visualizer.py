@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
+from matplotlib.widgets import Button
 import numpy as np
 import argparse
 import json
@@ -8,10 +9,10 @@ import os
 
 
 def load_instance(filename, inst_dir="instances"):
-    coords = []
-    reading_coords = False
+    coords, weights = [], []
+    section = None
     n = None
-    edge_type = "EUC_2D"
+    edge_type, edge_format = "EUC_2D", None
 
     path = filename if os.path.sep in filename else os.path.join(inst_dir, filename)
 
@@ -28,51 +29,116 @@ def load_instance(filename, inst_dir="instances"):
             elif line.startswith("EDGE_WEIGHT_TYPE"):
                 edge_type = line.split(":")[1].strip()
 
-            elif line == "NODE_COORD_SECTION":
-                reading_coords = True
+            elif line.startswith("EDGE_WEIGHT_FORMAT"):
+                edge_format = line.split(":")[1].strip()
+
+            # DISPLAY_DATA only exists to draw the instance -- never to measure it.
+            elif line in ("NODE_COORD_SECTION", "DISPLAY_DATA_SECTION"):
+                section = "coords"
+
+            elif line == "EDGE_WEIGHT_SECTION":
+                section = "weights"
 
             elif line == "EOF":
                 break
 
-            elif reading_coords:
-                _, x, y = line.split()
+            elif section == "coords":
+                _, x, y = line.split()[:3]
                 coords.append((float(x), float(y)))
 
-    if n is None or len(coords) != n:
+            elif section == "weights":
+                weights += [int(float(v)) for v in line.split()]
+
+    if n is None:
+        raise ValueError(f"{os.path.basename(path)}: no DIMENSION")
+
+    matrix = build_matrix(weights, n, edge_format) if edge_type == "EXPLICIT" else None
+
+    if len(coords) != n:
+        if edge_type == "EXPLICIT":
+            raise ValueError(
+                f"{os.path.basename(path)} is EXPLICIT and carries no "
+                "DISPLAY_DATA_SECTION, so it has no coordinates to draw.")
         raise ValueError("Invalid or corrupted instance file")
 
     return {
         "coords": coords,
+        "matrix": matrix,
         "depot": 0,
         "edge_type": edge_type,
         "name": os.path.basename(path),
     }
 
 
+def build_matrix(weights, n, fmt):
+    """Each EDGE_WEIGHT_FORMAT lists a different triangle; read it then mirror."""
+    m = [[0] * n for _ in range(n)]
+    it = iter(weights)
+    for i in range(n):
+        try:
+            rng = {"FULL_MATRIX":    range(n),
+                   "UPPER_ROW":      range(i + 1, n),
+                   "UPPER_DIAG_ROW": range(i, n),
+                   "LOWER_ROW":      range(i),
+                   "LOWER_DIAG_ROW": range(i + 1)}[fmt]
+        except KeyError:
+            raise ValueError(f"Unsupported EDGE_WEIGHT_FORMAT: {fmt}")
+        for j in rng:
+            m[i][j] = m[j][i] = next(it)
+    return m
+
+
 def edge_dist(instance):
     """The Evaluator's rounding, so the latency shown matches what the solvers
-       report: truncation for EUC_2D, ceiling for ATT."""
+       report. Takes city indices, because EXPLICIT has no coordinates."""
     etype = instance.get("edge_type", "EUC_2D")
-
-    def euc(a, b):
-        return int(math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2))
-
-    def att(a, b):
-        return int(math.ceil(math.sqrt(((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) / 10.0)))
-
-    return att if etype == "ATT" else euc
-
-
-def arrival_times(instance, route):
-    """arrival[k] = when the client at route position k is served; the MLP cost
-       is their sum."""
-    d = edge_dist(instance)
     coords = instance["coords"]
+    matrix = instance.get("matrix")
+
+    if matrix is not None:
+        return lambda i, j: matrix[i][j]
+
+    def geo_rad(v):
+        deg = int(v)
+        return 3.141592 * (deg + 5.0 * (v - deg) / 3.0) / 180.0   # TSPLIB's PI
+
+    if etype == "GEO":
+        lat = [geo_rad(c[0]) for c in coords]
+        lon = [geo_rad(c[1]) for c in coords]
+
+        def geo(i, j):
+            if i == j:
+                return 0                      # the formula would give 1
+            q1 = math.cos(lon[i] - lon[j])
+            q2 = math.cos(lat[i] - lat[j])
+            q3 = math.cos(lat[i] + lat[j])
+            return int(6378.388 * math.acos(0.5 * ((1 + q1) * q2 - (1 - q1) * q3)) + 1.0)
+        return geo
+
+    def hypot(i, j):
+        a, b = coords[i], coords[j]
+        return math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2)
+
+    if etype == "ATT":
+        return lambda i, j: int(math.ceil(math.sqrt(
+            ((coords[i][0] - coords[j][0]) ** 2
+             + (coords[i][1] - coords[j][1]) ** 2) / 10.0)))
+    if etype == "CEIL_2D":
+        return lambda i, j: int(math.ceil(hypot(i, j)))
+    return lambda i, j: int(hypot(i, j))
+
+
+def arrival_times(instance, route, closed=False):
+    """arrival[k] = when the client at route position k is served; the MLP cost
+       is their sum. closed=True adds the return to the depot as a final term."""
+    d = edge_dist(instance)
     arrival = [0]
     walked = 0
     for k in range(1, len(route)):
-        walked += d(coords[route[k - 1]], coords[route[k]])
+        walked += d(route[k - 1], route[k])
         arrival.append(walked)
+    if closed and len(route) > 1:
+        arrival.append(walked + d(route[-1], route[0]))
     return arrival, sum(arrival)
 
 
@@ -160,7 +226,7 @@ def plot_route(instance, route, verbose=False):
         a = coords[route[i]]
         b = coords[route[i + 1]]
 
-        dist = dist_fn(a, b)
+        dist = dist_fn(route[i], route[i + 1])
 
         total_distance += dist
         cumulative_cost += total_distance
@@ -217,7 +283,7 @@ def plot_route(instance, route, verbose=False):
         walked = 0
         cost = 0
         for i in range(len(route) - 1):
-            dist = dist_fn(coords[route[i]], coords[route[i + 1]])
+            dist = dist_fn(route[i], route[i + 1])
             walked += dist
             cost += walked
             print(f"{i:<5} {route[i]:<6} {route[i+1]:<6} {dist:<12} {walked:<12} {cost:<12}")
@@ -341,6 +407,7 @@ class RouteEditor:
         self.history = []
         self.mode = "m"          # m = mover, s = trocar, r = inverter
         self.picked = None       # first city of a pending edit
+        self.closed = False      # count the return to the depot in the latency
         self.dist = edge_dist(instance)
 
         self.fig, self.ax = plt.subplots(figsize=(12, 9))
@@ -370,6 +437,12 @@ class RouteEditor:
 
         self.ax.legend(loc="upper right", fontsize=8)
         self.ax.grid(True, alpha=0.2)
+
+        # Its own axes, so its clicks never reach the route-editing handler.
+        self.fig.subplots_adjust(bottom=0.12)
+        self.button = Button(self.fig.add_axes([0.13, 0.02, 0.26, 0.05]), "")
+        self.button.on_clicked(self.toggle_closed)
+        self.label_button()
 
         # Drop matplotlib's own key bindings for this figure: 's' saves a png,
         # 'r' resets the view and 'p' enters pan mode, which would swallow the
@@ -413,13 +486,15 @@ class RouteEditor:
     # ---------------- drawing ----------------
 
     def redraw(self):
-        arrival, total = arrival_times(self.inst, self.route)
+        arrival, total = arrival_times(self.inst, self.route, self.closed)
         self.arrival = arrival
         pts = [self.coords[c] for c in self.route]
+        if self.closed:
+            pts = pts + [pts[0]]
         self.edges.set_segments([[pts[i], pts[i + 1]] for i in range(len(pts) - 1)])
         self.edges.set_array(range(len(pts) - 1))
 
-        base, delta = arrival_times(self.inst, self.original)[1], None
+        base = arrival_times(self.inst, self.original, self.closed)[1]
         delta = total - base
         head = f"{self.inst['name']}   latência = {total:,}".replace(",", " ")
         if delta:
@@ -433,6 +508,15 @@ class RouteEditor:
         self.ax.relim(); self.ax.autoscale_view()
         self.bg = None
         self.fig.canvas.draw_idle()
+
+    def label_button(self):
+        self.button.label.set_text(
+            "volta ao depósito: SIM" if self.closed else "volta ao depósito: NÃO")
+
+    def toggle_closed(self, _event):
+        self.closed = not self.closed
+        self.label_button()
+        self.redraw()
 
     # ---------------- events ----------------
 
@@ -517,17 +601,18 @@ class RouteEditor:
     def save(self):
         stem = os.path.splitext(self.inst["name"])[0]
         out = f"{stem}_edited.tour"
-        total = arrival_times(self.inst, self.route)[1]
+        total = arrival_times(self.inst, self.route, self.closed)[1]
+        kind = "closed tour" if self.closed else "open path"
         with open(out, "w") as f:
             f.write(f"NAME : {out}\n")
-            f.write(f"COMMENT : MLP solution (cost={total}, edited by hand)\n")
+            f.write(f"COMMENT : MLP solution (cost={total}, {kind}, edited by hand)\n")
             f.write("TYPE : TOUR\n")
             f.write(f"DIMENSION : {len(self.route)}\n")
             f.write("TOUR_SECTION\n")
             for c in self.route:
                 f.write(f"{c + 1}\n")
             f.write("-1\nEOF\n")
-        print(f"gravado em {out}  (latência {total})")
+        print(f"gravado em {out}  (latência {total}, {kind})")
 
 
 def edit_route(instance, route):

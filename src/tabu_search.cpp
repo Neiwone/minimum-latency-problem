@@ -9,7 +9,7 @@ struct TabuMove {
     int type;       // 0=swap, 1=2opt, 2=reinsertion, 3=oropt2, 4=oropt3
     int i, j, k;
     bool reversed;
-    int cost;
+    Cost cost;
 };
 
 static void applyTabuMove(Solution& sol, const TabuMove& move) {
@@ -97,7 +97,7 @@ void tabu_search(Solution& bestSol, Evaluator& eval, int I_max, int maxIter,
     using Clock = chrono::high_resolution_clock;
 
     int n = eval.Ncity;
-    int bestGlobalCost = INT_MAX;
+    Cost bestGlobalCost = LLONG_MAX;
 
     vector<vector<int>> tabuMatrix(n, vector<int>(n, -tenure - 1));
 
@@ -116,8 +116,8 @@ void tabu_search(Solution& bestSol, Evaluator& eval, int I_max, int maxIter,
         auto t0 = Clock::now();
 
         for (int iter = 0; iter < maxIter; iter++) {
-            TabuMove bestMove = {-1, -1, -1, -1, false, INT_MAX};
-            int currentCost = s.fEvaluationValue;
+            TabuMove bestMove = {-1, -1, -1, -1, false, LLONG_MAX};
+            Cost currentCost = s.fEvaluationValue;
             bool aspiration = (currentCost == bestGlobalCost);
 
             // swap
@@ -128,7 +128,7 @@ void tabu_search(Solution& bestSol, Evaluator& eval, int I_max, int maxIter,
                                   (tabuMatrix[s.fTour[j]][i] > iter - tenure);
                     if (isTabu && !aspiration) continue;
                     if (s.evaluateSwap(i, j)) {
-                        bestMove = {0, i, j, -1, false, INT_MAX};
+                        bestMove = {0, i, j, -1, false, LLONG_MAX};
                         break;
                     }
                 }
@@ -145,7 +145,7 @@ void tabu_search(Solution& bestSol, Evaluator& eval, int I_max, int maxIter,
                         bool isTabu = (tabuMatrix[s.fTour[i]][targetPos] > iter - tenure);
                         if (isTabu && !aspiration) continue;
                         if (s.evaluateReinsertion(i, j)) {
-                            bestMove = {2, i, j, -1, false, INT_MAX};
+                            bestMove = {2, i, j, -1, false, LLONG_MAX};
                             break;
                         }
                     }
@@ -161,7 +161,7 @@ void tabu_search(Solution& bestSol, Evaluator& eval, int I_max, int maxIter,
                                       (tabuMatrix[s.fTour[i]][j] > iter - tenure);
                         if (isTabu && !aspiration) continue;
                         if (s.evaluate2Opt(i, j)) {
-                            bestMove = {1, i, j, -1, false, INT_MAX};
+                            bestMove = {1, i, j, -1, false, LLONG_MAX};
                             break;
                         }
                     }
@@ -179,7 +179,7 @@ void tabu_search(Solution& bestSol, Evaluator& eval, int I_max, int maxIter,
                         bool isTabu = (tabuMatrix[s.fTour[i]][targetPos] > iter - tenure);
                         if (isTabu && !aspiration) continue;
                         if (s.evaluateOrOpt(i, i + 1, k)) {
-                            bestMove = {3, i, -1, k, false, INT_MAX};
+                            bestMove = {3, i, -1, k, false, LLONG_MAX};
                             break;
                         }
                     }
@@ -197,7 +197,7 @@ void tabu_search(Solution& bestSol, Evaluator& eval, int I_max, int maxIter,
                         bool isTabu = (tabuMatrix[s.fTour[i]][targetPos] > iter - tenure);
                         if (isTabu && !aspiration) continue;
                         if (s.evaluateOrOpt(i, i + 2, k)) {
-                            bestMove = {4, i, -1, k, false, INT_MAX};
+                            bestMove = {4, i, -1, k, false, LLONG_MAX};
                             break;
                         }
                     }

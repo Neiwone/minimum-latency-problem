@@ -16,23 +16,23 @@ using namespace std;
 /* Reverse [freeEnd+1, posC2] if posC2 > freeEnd, else [posC2, freeEnd-1] --
    either way (c1,c2) becomes an edge and posC2 is the new free end. */
 
-int delta_2opt(const Solution& sol, int i, int j) {
+Cost delta_2opt(const Solution& sol, int i, int j) {
     if (i > j) swap(i, j);
     int n = sol.fN;
 
-    int t = 0, c = 0;
+    Cost t = 0, c = 0;
     bool first = true;
     int last = -1;
 
     auto append = [&](int u, int v) {
         if (u > v) return;
-        int Tu = sol.getT(u, v);
-        int Cu = sol.getC(u, v);
+        Cost Tu = sol.getT(u, v);
+        Cost Cu = sol.getC(u, v);
         int Wu = sol.getW(u, v);
         int firstNode = sol.fTour[u];
         int lastNode  = sol.fTour[v];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
-        int e = sol.fDist[last][firstNode];
+        Cost e = sol.fDist[last][firstNode];
         c += Wu * (t + e) + Cu;
         t += e + Tu;
         last = lastNode;
@@ -40,13 +40,13 @@ int delta_2opt(const Solution& sol, int i, int j) {
 
     auto appendReversed = [&](int u, int v) {
         if (u > v) return;
-        int Tu = sol.getT(u, v);
-        int Cu = sol.getCr(u, v);
+        Cost Tu = sol.getT(u, v);
+        Cost Cu = sol.getCr(u, v);
         int Wu = sol.getW(u, v);
         int firstNode = sol.fTour[v];
         int lastNode  = sol.fTour[u];
         if (first) { t = Tu; c = Cu; last = lastNode; first = false; return; }
-        int e = sol.fDist[last][firstNode];
+        Cost e = sol.fDist[last][firstNode];
         c += Wu * (t + e) + Cu;
         t += e + Tu;
         last = lastNode;
@@ -61,7 +61,7 @@ int delta_2opt(const Solution& sol, int i, int j) {
 }
 
 struct ChainResult {
-    int bestDelta = 0;       // most negative cost improvement seen along the chain (<=0)
+    Cost bestDelta = 0;       // most negative cost improvement seen along the chain (<=0)
     int depthOfBest = 0;     // how many steps were taken to reach it
     int stepsTaken = 0;
 };
@@ -69,8 +69,8 @@ struct ChainResult {
 /* Mutates `s` in place (caller must pass a throwaway copy). */
 ChainResult run_chain(Solution& s, Evaluator& eval, int startPos, int maxDepth, int candK) {
     int n = s.fN;
-    int baseCost = s.fEvaluationValue;
-    int bestCost = baseCost;
+    Cost baseCost = s.fEvaluationValue;
+    Cost bestCost = baseCost;
 
     ChainResult res;
     int freeEnd = startPos;
@@ -80,7 +80,7 @@ ChainResult run_chain(Solution& s, Evaluator& eval, int startPos, int maxDepth, 
         for (int k = 0; k < n; k++) pos[s.fTour[k]] = k;
 
         int c1 = s.fTour[freeEnd];
-        int bestDeltaStep = INT_MAX;
+        Cost bestDeltaStep = LLONG_MAX;
         int bestI = -1, bestJ = -1, bestPosC2 = -1;
 
         int kmax = min(candK, eval.fNearNumMax);
@@ -95,7 +95,7 @@ ChainResult run_chain(Solution& s, Evaluator& eval, int startPos, int maxDepth, 
             else                 { i = posC2;       j = freeEnd - 1; }
             if (i >= j) continue;   // i==j is a single-element no-op (c2 already adjacent to c1)
 
-            int d = delta_2opt(s, i, j);
+            Cost d = delta_2opt(s, i, j);
             if (d < bestDeltaStep) {
                 bestDeltaStep = d;
                 bestI = i; bestJ = j; bestPosC2 = posC2;
@@ -125,8 +125,8 @@ ChainResult run_chain(Solution& s, Evaluator& eval, int startPos, int maxDepth, 
     return res;
 }
 
-int full_route_cost(const Solution& s) {
-    int t = 0, total = 0;
+Cost full_route_cost(const Solution& s) {
+    Cost t = 0, total = 0;
     for (int i = 1; i < s.fN; i++) {
         t += s.fDist[s.fTour[i - 1]][s.fTour[i]];
         total += t;
@@ -177,17 +177,17 @@ int main(int argc, char** argv) {
     mt19937 gen(seed >= 0 ? (unsigned long)seed : random_device{}());
 
     long totalStarts = 0, totalEscapes = 0;
-    int bestDeltaOverall = 0;
+    Cost bestDeltaOverall = 0;
 
     for (int t = 0; t < trials; t++) {
         Solution s;
         construction(s, eval, 0.15, gen);
         RVND_ExtendedOrOpt(s, gen);
 
-        int baseCost = s.fEvaluationValue;
+        Cost baseCost = s.fEvaluationValue;
         int n = s.fN;
 
-        int trialBestDelta = 0;
+        Cost trialBestDelta = 0;
         int escapesThisTrial = 0;
 
         int numStarts = min(starts, n - 1);
