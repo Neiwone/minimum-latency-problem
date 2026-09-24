@@ -286,7 +286,7 @@ examples:
             "it small enough that several restarts fit in --time-limit: mining "
             "(mdm_gils_rvnd) and adaptive memory (gils_am_rvnd) only act at "
             "restarts, and with too few they degenerate to plain GILS-RVND. See "
-            "docs/experiments/fixed-time-protocol.md"
+            "docs/benchmarks/fixed-time-protocol.md"
         ),
     )
     fixed.add_argument(
@@ -667,17 +667,17 @@ def run_salehipour_benchmark_mode(args):
     scripts/generate_salehipour_benchmark.py), aggregated per instance
     size. This is the literature-comparable benchmark used by the
     GILS-RVND base paper and by DBMEA/GQPSO/MDM-GILS-RVND to report
-    results at large n (see docs/experiments/h12-extended-oropt.md).
+    results at large n (see docs/hypotheses/h12-extended-oropt.md).
 
     With --solvers (exactly 2): pairs each solver on the SAME instance
     and reports win/tie/loss + exact sign test p-value per size, and
     aggregated across all requested sizes -- same rigor (paired
     comparison, sign test) used throughout this project's
-    docs/experiments/ hypothesis testing. Every run is saved to the
+    docs/hypotheses/ hypothesis testing. Every run is saved to the
     checkpoint as it finishes -- n=500/1000 runs take hours, and an
     interrupted run (session restart, killed process) should resume
     instead of losing that work (this happened once already, see
-    docs/experiments/h-salehipour-grasp-vnd.md).
+    docs/hypotheses/h-salehipour-grasp-vnd.md).
 
     With --solver (one): reports mean cost/time per size, no comparison.
 
@@ -809,7 +809,7 @@ def run_fixed_time_mode(args):
     the MDM-GILS-RVND paper (arXiv:1908.10705, Section 5.3.3).
 
     Two protocol rules, both learned the hard way in this project (see
-    docs/experiments/fixed-time-protocol.md):
+    docs/benchmarks/fixed-time-protocol.md):
 
       1. Runs are SEQUENTIAL. Timing comparisons do not survive CPU
          contention -- running several solvers at once inflated per-run

@@ -189,7 +189,7 @@ SOLVERS_RAW = {
     # ---- The proposed method ----
     # GILS-AM-RVND with the candidate-list RVND, don't-look bits and I_ILS
     # retuned. Beats mdm_gils_rvnd at 100s/run for n >= 200: -1.249%,
-    # 60/10/0 of 70 pairs. See docs/experiments/h19-dlb-fast-regime.md.
+    # 60/10/0 of 70 pairs. See docs/hypotheses/h19-dlb-fast-regime.md.
     "gils_am_rvnd_dlb": ("./bin/gils_am_rvnd",
                          ["--rvnd-mode", "candidate-dlb", "--cand-k", "12", "--iils", "300"]),
 
@@ -211,7 +211,7 @@ SOLVERS_RAW = {
 
     # ---- H16: candidate-list neighborhoods (K nearest neighbours) ----
     # Kept to reproduce the results and screening tables of
-    # docs/experiments/h16-candidate-neighborhoods.md. gils_am_rvnd_cand and
+    # docs/hypotheses/h16-candidate-neighborhoods.md. gils_am_rvnd_cand and
     # gils_am_rvnd_cand12 are the same configuration under the two names the
     # checkpoints use.
     "gils_am_rvnd_cand": ("./bin/gils_am_rvnd", ["--rvnd-mode", "candidate", "--cand-k", "12"]),
@@ -226,13 +226,13 @@ SOLVERS_RAW = {
     "gils_am_rvnd_extended_oropt": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt"]),
     "grasp_vnd_extended_oropt": ("./bin/grasp_vnd", ["--local-search", "vnd", "--or-opt-max-len", "6"]),
     # --imax 1: the binaries' own default (--imax 10) takes hours per
-    # instance at n=500/1000 (docs/experiments/h12-extended-oropt.md
+    # instance at n=500/1000 (docs/hypotheses/h12-extended-oropt.md
     # section 9); used for the large sizes of the salehipour-benchmark.
     "gils_rvnd_imax1": ("./bin/gils_rvnd", ["--imax", "1"]),
     "gils_am_rvnd_extended_oropt_imax1": ("./bin/gils_am_rvnd", ["--rvnd-mode", "extended-oropt", "--imax", "1"]),
 
     # ---- Adaptive-memory parent selection (src/grasp_am.cpp --parent-mode) ----
-    # See docs/experiments/grasp-am-large-scale.md.
+    # See docs/hypotheses/grasp-am-large-scale.md.
     "gils_am_rvnd_pool": ("./bin/gils_am_rvnd", ["--parent-mode", "pool"]),
     "gils_am_rvnd_pair": ("./bin/gils_am_rvnd", ["--parent-mode", "pair"]),
 }

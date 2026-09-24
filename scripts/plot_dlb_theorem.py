@@ -6,7 +6,7 @@ Reordering a window of the tour changes every arrival time after it -- and
 changes nothing about how much a move somewhere else is worth. The figure shows
 both facts at once, plus the boundary case where the claim stops holding.
 
-    python3 scripts/plot_dlb_theorem.py [--out docs/img/dlb-teorema.png]
+    python3 scripts/plot_dlb_theorem.py [--out docs/img/dlb-theorem.png]
 """
 import argparse
 import math
@@ -61,7 +61,7 @@ def delay_curve(ax, pts, tour, mov, label, color, style):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default="docs/img/dlb-teorema.png")
+    ap.add_argument("--out", default="docs/img/dlb-theorem.png")
     ap.add_argument("--seed", type=int, default=11)
     args = ap.parse_args()
 

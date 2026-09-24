@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Regenerate the result tables of docs/tabelas-resultados.md from the raw
+Regenerate the result tables of docs/results-tables.md from the raw
 checkpoints, so the numbers in the write-up are never typed by hand.
 
-    python3 scripts/make_result_tables.py > docs/tabelas-resultados.md
+    python3 scripts/make_result_tables.py > docs/results-tables.md
 """
 import json
 from collections import defaultdict

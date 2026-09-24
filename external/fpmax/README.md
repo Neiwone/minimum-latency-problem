@@ -6,7 +6,7 @@ Fontes de [FPmax-LIB](https://github.com/marcelorhmaia/FPmax-LIB) (MIT — ver
 sem I/O de arquivo nem `system()`.
 
 Usado por `src/mdm_gils_rvnd.cpp` para a mineração de itemsets maximais
-frequentes de arcos (ver `docs/experiments/h13-mdm-gils-rvnd.md`), no lugar
+frequentes de arcos (ver `docs/hypotheses/h13-mdm-gils-rvnd.md`), no lugar
 do subprocesso Python (`scripts/fpmax_mine.py` + `mlxtend`) que a primeira
 versão usava.
 

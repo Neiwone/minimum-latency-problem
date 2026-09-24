@@ -15,7 +15,7 @@ monte o binário e rode em outra máquina.
   `scenario.txt`) — 6 instâncias de treino: `a280`, `berlin52`, `eil51`,
   `eil101`, `kroA100`, `pr76` (n=51 a 280). **Deliberadamente distintas** das
   10 TSPLIB (`st70`...`att532`) e do benchmark Salehipour usados para
-  reportar resultados finais em `docs/experiments/` — parâmetros ajustados
+  reportar resultados finais em `docs/hypotheses/` — parâmetros ajustados
   nas mesmas instâncias que você usa pra comparar com a literatura ficariam
   overfitted.
 - `target-runner` — script chamado pelo irace por

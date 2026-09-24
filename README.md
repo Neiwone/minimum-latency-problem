@@ -9,7 +9,7 @@ The project is built around GILS-RVND (Silva, Subramanian, Vidal & Ochi, *EJOR* 
 MDM-GILS-RVND at 100 s/run on every instance with n >= 200 (-1.249%, 60 wins / 10 ties
 / 0 losses over 70 paired seeds). Giving MDM-GILS-RVND the same local search makes the
 two tie, so the gain is local search and calibration, not search strategy -- see
-[docs/experiments/h19-dlb-fast-regime.md](docs/experiments/h19-dlb-fast-regime.md).
+[docs/hypotheses/h19-dlb-fast-regime.md](docs/hypotheses/h19-dlb-fast-regime.md).
 
 ## Layout
 
@@ -17,7 +17,7 @@ two tie, so the gain is local search and calibration, not search strategy -- see
 |---|---|
 | `src/`, `include/` | solvers and core logic |
 | `instances/` | TSPLIB instances; `salehipour/` is the 140-instance benchmark of Salehipour et al. (2011); `solutions/` holds the best tours found |
-| `docs/` | how the method works and every experiment write-up |
+| `docs/` | how the method works and every experiment write-up; [docs/README.md](docs/README.md) is the index |
 | `scripts/` | the batch runner (`run_experiments.py`), analysis and instance tools; `registry.py`, `runner.py` and `stats.py` are modules they share |
 | `results/` | raw per-run data (checkpoints) behind every table in `docs/` |
 
@@ -74,22 +74,21 @@ The fixed-time protocol has two rules that results depend on, both learned the h
 way: runs are **sequential** (timing comparisons do not survive CPU contention), and
 the budget must fit several restarts, or the restart-boundary mechanisms silently
 degenerate. See
-[docs/experiments/fixed-time-protocol.md](docs/experiments/fixed-time-protocol.md).
+[docs/benchmarks/fixed-time-protocol.md](docs/benchmarks/fixed-time-protocol.md).
 
 ## Docs
 
-- [docs/metodo-explicado.md](docs/metodo-explicado.md) — the method explained from
-  scratch: the problem, GILS-RVND, and each idea added on top of it.
-- [docs/proposta-vs-gils-rvnd.md](docs/proposta-vs-gils-rvnd.md) — component-by-
-  component diff against the published GILS-RVND.
-- [docs/mlp-overview.md](docs/mlp-overview.md) — the problem and the reference paper.
-- [docs/tipos-de-distancia.md](docs/tipos-de-distancia.md) — the five supported
-  `EDGE_WEIGHT_TYPE`s and where they differ from the TSPLIB spec.
-- [docs/custo-64-bits.md](docs/custo-64-bits.md) — why the cost type is 64-bit.
-- [docs/volta-ao-deposito.md](docs/volta-ao-deposito.md) — the `--closed` flag:
-  latency with or without the return to the depot.
-- [docs/experiments/](docs/experiments/) — one write-up per hypothesis, including the
-  many that were refuted.
+The docs are in Portuguese. Start with [docs/README.md](docs/README.md), the index: it
+lists every doc and has a one-line verdict for each hypothesis.
+
+- [docs/results-tables.md](docs/results-tables.md) — the final results, generated from
+  the checkpoints by `scripts/make_result_tables.py`.
+- [docs/concepts/](docs/concepts/) — how the method works: the problem, GILS-RVND, what
+  the proposal changes, distance types, 64-bit costs, the `--closed` flag.
+- [docs/hypotheses/](docs/hypotheses/) — one write-up per hypothesis, including the many
+  that were refuted.
+- [docs/benchmarks/](docs/benchmarks/) — the fixed-time protocol and the benchmark
+  comparisons.
 
 ## Python scripts
 

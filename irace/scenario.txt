@@ -7,7 +7,7 @@
 # See README.md in this directory for the full setup.
 
 ## Training instances: a held-out set (NOT the 10 TSPLIB instances or the
-## Salehipour benchmark used to report final results in docs/experiments/),
+## Salehipour benchmark used to report final results in docs/hypotheses/),
 ## so the tuned parameters are not overfit to the instances we later publish
 ## numbers on. See instances-train.txt and README.md.
 trainInstancesDir  = "../instances"

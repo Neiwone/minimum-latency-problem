@@ -1,7 +1,7 @@
 """HISTORICO -- nao e mais chamado em runtime.
 
 A mineracao do mdm_gils_rvnd passou a rodar em memoria via a lib C++
-FPmax-LIB (external/fpmax/, ver docs/experiments/h13-mdm-gils-rvnd.md
+FPmax-LIB (external/fpmax/, ver docs/hypotheses/h13-mdm-gils-rvnd.md
 secao 2.2). Este script fica no repo como registro da versao anterior e
 para reproduzir a checagem de equivalencia entre as duas implementacoes.
 
@@ -9,7 +9,7 @@ para reproduzir a checagem de equivalencia entre as duas implementacoes.
 Real FPMax* maximal frequent itemset mining, called by src/mdm_gils_rvnd.cpp
 as a subprocess (mining happens only a handful of times per run -- whenever
 the elite set changes during phase 2 -- so subprocess overhead is
-negligible against total runtime). See docs/experiments/h13-mdm-gils-rvnd.md.
+negligible against total runtime). See docs/hypotheses/h13-mdm-gils-rvnd.md.
 
 Input: one line per elite tour, arcs as whitespace-separated "u_v" tokens.
 Output: one line per mined maximal frequent itemset, arcs as
