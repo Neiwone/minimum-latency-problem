@@ -1,5 +1,9 @@
 # H2 — Path relinking entre elites
 
+> Os scripts e dados brutos em `scripts/` citados neste documento foram removidos do
+> repositório e estão preservados na tag git `archive/h-scripts`
+> (`git show archive/h-scripts:scripts/<arquivo>`).
+
 Status: **ENCERRADA — sintoma real (mas distinto do enunciado original),
 mecanismo testado não melhora o GILS-RVND.** Lote noturno com poder
 estatístico real (seção 10: N=20/15/10 em `lin318`/`pr439`/`att532`) fecha o
@@ -105,14 +109,14 @@ Reexecutamos `pr439` (`--imax 3`, 2 chances reais de path relinking por
 execução) e `att532` (`--imax 2`, 1 chance real) — o mínimo para o
 mecanismo ter alguma oportunidade de agir, dado o orçamento de tempo desta
 sessão. Script da correção:
-[`scripts/h2_ab_test_fix.py`](../../scripts/h2_ab_test_fix.py).
+`scripts/h2_ab_test_fix.py`.
 
 ## 5. Metodologia do teste A/B
 
 Comparação pareada (mesma seed, `--pert-mode fixed` em ambos os lados para
 isolar o efeito do path relinking sem misturar com o mecanismo de H1):
 `./bin/gils_rvnd <instância> --seed N` vs. o mesmo comando + `--path-relinking`.
-Script principal: [`scripts/h2_ab_test.py`](../../scripts/h2_ab_test.py),
+Script principal: `scripts/h2_ab_test.py`,
 correção: `scripts/h2_ab_test_fix.py`. Dados brutos:
 `scripts/h2_ab_results.json` e `scripts/h2_ab_results_fix.json`.
 

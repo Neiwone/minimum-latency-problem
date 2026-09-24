@@ -6,7 +6,8 @@
 # Rationale: the first tuning (parameters.txt) let irace also pick rvnd-mode
 # from scratch; its winner (config 21, extended-oropt-wide) did NOT beat the
 # adopted default on the 10 TSPLIB reporting instances (paired, sign_p=0.720,
-# +15.6% slower -- see scripts/irace_config21_vs_default_test.py). This run
+# +15.6% slower -- see scripts/irace_config21_vs_default_test.py, archived in
+# git tag archive/h-scripts). This run
 # instead only tunes pool/lambda/parent-mode on top of the validated
 # extended-oropt neighborhood, per irace/README.md "Ajustes" section.
 #

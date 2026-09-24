@@ -1,5 +1,9 @@
 # GILS-RVND vs GILS-AM-RVND (extended-oropt) vs MDM-GILS-RVND — Salehipour n=1000
 
+> Os scripts e dados brutos em `scripts/` citados neste documento foram removidos do
+> repositório e estão preservados na tag git `archive/h-scripts`
+> (`git show archive/h-scripts:scripts/<arquivo>`).
+
 Status: **`gils_rvnd` vs `gils_am_rvnd_extended_oropt` completo e válido (7ª
 confirmação de [[h12-extended-oropt]], a mais forte até agora). `mdm_gils_rvnd`
 PENDENTE — os dados coletados sob `--imax 1` são inválidos (bug de protocolo,
@@ -119,6 +123,7 @@ tier anterior). **`AM+ext-oropt` nunca perde no agregado por instância** —
 
 ```bash
 make gils_rvnd gils_am_rvnd mdm_gils_rvnd
+git checkout archive/h-scripts -- scripts/salehipour_n1000_mdm_vs_am_extended.py scripts/salehipour_n1000_mdm_imax2.py
 python3 scripts/salehipour_n1000_mdm_vs_am_extended.py   # gils_rvnd + AM+ext-oropt, --imax 1 (válidos)
 python3 scripts/salehipour_n1000_mdm_imax2.py             # mdm_gils_rvnd, --imax 2 (corrige o bug da seção 2)
 ```

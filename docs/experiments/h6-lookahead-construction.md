@@ -1,5 +1,9 @@
 # H6 — Construção com lookahead cumulativo
 
+> Os scripts e dados brutos em `scripts/` citados neste documento foram removidos do
+> repositório e estão preservados na tag git `archive/h-scripts`
+> (`git show archive/h-scripts:scripts/<arquivo>`).
+
 Status: **ENCERRADA — o sinal forte da construção pura (seção 3) não
 sobrevive ao pipeline completo.** Com poder estatístico real (N=45, lote
 noturno, seção 7), o resultado final é um empate estatístico quase
@@ -30,7 +34,7 @@ segmento hipotético `r → c → (k-1 saltos gulosos adicionais)`, em vez de s�
 `dist(r,c)`; mesma mecânica de RCL/alpha por cima. Comparação **sem RVND
 nenhum** — só o custo bruto logo após a construção, pareado por seed, 30
 trials × 7 instâncias (`eil51` a `lin318`). Script:
-[`scripts/h6_lookahead_construction_test.py`](../../scripts/h6_lookahead_construction_test.py),
+`scripts/h6_lookahead_construction_test.py`,
 dados brutos: `scripts/h6_lookahead_results.json` (k=2) e
 `scripts/h6_lookahead_results_k3.json` (k=3).
 

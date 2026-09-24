@@ -1,5 +1,9 @@
 # H5 — Perturbação guiada por regret de aresta
 
+> Os scripts e dados brutos em `scripts/` citados neste documento foram removidos do
+> repositório e estão preservados na tag git `archive/h-scripts`
+> (`git show archive/h-scripts:scripts/<arquivo>`).
+
 Status: **ENCERRADA no diagnóstico — sem sustentação para a hipótese,
 sinal misto/oposto em algumas instâncias.** Nenhuma implementação em
 C++ foi feita (o diagnóstico bastou para decidir não avançar).
@@ -31,7 +35,7 @@ tentativas de double-bridge por estratégia de escolha dos 3 cortes:
 
 Cada tentativa é reconvergida via `./bin/local_search --route` e comparada
 ao custo do ótimo local original. Script:
-[`scripts/h5_regret_perturbation_test.py`](../../scripts/h5_regret_perturbation_test.py),
+`scripts/h5_regret_perturbation_test.py`,
 dados: `scripts/h5_regret_results.json`. Instâncias: `lin318`, `pr439`,
 `att532` (450 tentativas por instância, 150 por estratégia).
 

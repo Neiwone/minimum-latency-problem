@@ -1,5 +1,9 @@
 # H3 — Vizinhança específica de MLP no prefixo
 
+> Os scripts e dados brutos em `scripts/` citados neste documento foram removidos do
+> repositório e estão preservados na tag git `archive/h-scripts`
+> (`git show archive/h-scripts:scripts/<arquivo>`).
+
 ## Hipótese
 
 Se o custo de latência é dominado pelas primeiras posições da rota
@@ -35,7 +39,7 @@ Para cada instância e trial:
 3. Registra se a permutação encontrou melhoria (`delta = custo_base -
    custo_melhor`), e a magnitude relativa.
 
-Script: [`scripts/h3_prefix_test.py`](../../scripts/h3_prefix_test.py).
+Script: `scripts/h3_prefix_test.py`.
 Resultados brutos (k=4,6): `scripts/h3_prefix_results.json`.
 
 Instâncias: `eil51` (51), `st70` (70), `pr76` (76), `kroA100` (100),

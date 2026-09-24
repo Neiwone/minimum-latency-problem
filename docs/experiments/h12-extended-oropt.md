@@ -1,5 +1,9 @@
 # H12a — Or-opt estendido a segmentos maiores (4, 5, 6)
 
+> Os scripts e dados brutos em `scripts/` citados neste documento foram removidos do
+> repositório e estão preservados na tag git `archive/h-scripts`
+> (`git show archive/h-scripts:scripts/<arquivo>`).
+
 Status: **ENCERRADA COM SUCESSO — o achado mais forte de toda a sessão.**
 `extended-oropt` bate o baseline em `pr439` (p=0,007), `att532` (p=0,002),
 `rand1000`/n=1000 (10W/10, p=0,002, +1,17%) e `rand2000`/n=2000 combinado

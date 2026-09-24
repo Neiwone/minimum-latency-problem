@@ -1,5 +1,9 @@
 # H12b — 3-opt genuíno (reversão dupla independente)
 
+> Os scripts e dados brutos em `scripts/` citados neste documento foram removidos do
+> repositório e estão preservados na tag git `archive/h-scripts`
+> (`git show archive/h-scripts:scripts/<arquivo>`).
+
 Status: **ENCERRADA — nula.** Diagnóstico mostrava sinal real mas esparso;
 o lote pareado (parcial, interrompido por decisão do usuário depois de
 `lin318` completo + `pr439` completo + `att532` parcial, 42 pares no

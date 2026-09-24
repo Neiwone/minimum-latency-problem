@@ -1,5 +1,9 @@
 # H1 — Diversificação adaptativa
 
+> Os scripts e dados brutos em `scripts/` citados neste documento foram removidos do
+> repositório e estão preservados na tag git `archive/h-scripts`
+> (`git show archive/h-scripts:scripts/<arquivo>`).
+
 Status: **ENCERRADA — sintoma confirmado, mecanismo testado não melhora o
 GILS-RVND.** A escalada ingênua por tempo de estagnação (seção 5) foi
 refutada logo (perde sistematicamente na instância com folga real). O
@@ -103,8 +107,8 @@ Parâmetros: `I_max`/`I_ILS` = padrão do artigo (10/100) nas instâncias até
 `pr226`; reduzidos em `lin318` (`I_max=5`) por custo computacional dentro do
 orçamento desta sessão. `stagnation-step=5`, `max-strength=5` (defaults,
 não foram ajustados/tunados). Script:
-[`scripts/h1_ab_test.py`](../../scripts/h1_ab_test.py), análise:
-[`scripts/h1_ab_analysis.py`](../../scripts/h1_ab_analysis.py), dados brutos:
+`scripts/h1_ab_test.py`, análise:
+`scripts/h1_ab_analysis.py`, dados brutos:
 `scripts/h1_ab_results.json`.
 
 ## 5. Resultado
@@ -359,8 +363,8 @@ instâncias** já usadas no experimento fixo-vs-estagnação (não foi necessár
 re-rodar fixed/stagnation, já que o comportamento deles não mudou — só a
 interface de CLI). Rodamos apenas o modo `distance` nessas seeds e
 comparamos os três lado a lado. Script:
-[`scripts/h1_distance_test.py`](../../scripts/h1_distance_test.py), análise:
-[`scripts/h1_3way_analysis.py`](../../scripts/h1_3way_analysis.py), dados
+`scripts/h1_distance_test.py`, análise:
+`scripts/h1_3way_analysis.py`, dados
 brutos: `scripts/h1_3way_results.json`. Parâmetros de banda-alvo não foram
 ajustados (usamos os defaults 5%–15%).
 
@@ -447,7 +451,7 @@ Seguindo o passo 1 da seção 10.5, ampliamos `lin318` de 4 para 12 seeds
 pareadas e rodamos pares novos (fixed vs distance, não existiam antes) em
 `pr439` (5 seeds) e `att532` (3 seeds) — `I_max` reduzido (1) nessas duas
 por custo computacional. Script:
-[`scripts/h1_large_instances_test.py`](../../scripts/h1_large_instances_test.py),
+`scripts/h1_large_instances_test.py`,
 dados brutos: `scripts/h1_large_results.json`.
 
 Nota sobre qualidade do dado: uma medição de tempo (`lin318` seed=11,

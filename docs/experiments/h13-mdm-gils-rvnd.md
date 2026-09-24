@@ -1,5 +1,9 @@
 # H13 — MDM-GILS-RVND (mineração de segmentos consecutivos)
 
+> Os scripts e dados brutos em `scripts/` citados neste documento foram removidos do
+> repositório e estão preservados na tag git `archive/h-scripts`
+> (`git show archive/h-scripts:scripts/<arquivo>`).
+
 Status: **ENCERRADA — nula, com a mineração real (FPMax*, hoje via a lib C++
 `external/fpmax` — ver seção 2.2 —, antes via `mlxtend`)
 corretamente implementada e testada com poder estatístico completo em

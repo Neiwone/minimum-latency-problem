@@ -1,5 +1,9 @@
 # GILS-RVND vs GILS-AM-RVND (extended-oropt) vs MDM-GILS-RVND — benchmark oficial Salehipour, n=10 a 500
 
+> Os scripts e dados brutos em `scripts/` citados neste documento foram removidos do
+> repositório e estão preservados na tag git `archive/h-scripts`
+> (`git show archive/h-scripts:scripts/<arquivo>`).
+
 Status: **Comparação nova, protocolo idêntico ao paper de referência do
 MDM-GILS-RVND** (Santana, Plastino & Rosseti, arXiv:1908.10705). 5ª confirmação
 independente de [[h12-extended-oropt]]; `mdm_gils_rvnd` segue nulo, consistente
@@ -296,6 +300,7 @@ p<0,05 isoladas com N=10: `R3`, `R5`, `R6`, `R8`, `R13`, `R15`, `R19`.)*
 ```bash
 make gils_rvnd gils_am_rvnd mdm_gils_rvnd
 uv run scripts/generate_salehipour_benchmark.py   # gera instances/salehipour/, se ainda não existir
+git checkout archive/h-scripts -- scripts/salehipour_mdm_vs_am_extended.py
 python3 scripts/salehipour_mdm_vs_am_extended.py  # ~6 núcleos em paralelo, checkpoint incremental
 ```
 

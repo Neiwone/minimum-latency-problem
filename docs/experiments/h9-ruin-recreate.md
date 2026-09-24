@@ -1,5 +1,9 @@
 # H9 — Large Neighborhood Search / ruin-and-recreate
 
+> Os scripts e dados brutos em `scripts/` citados neste documento foram removidos do
+> repositório e estão preservados na tag git `archive/h-scripts`
+> (`git show archive/h-scripts:scripts/<arquivo>`).
+
 Status: **encerrada só no diagnóstico barato (nada implementado em C++). O
 mecanismo testado tem poder de escape ~zero — não é "empata com
 double-bridge", é "quase sempre reconstrói exatamente o mesmo ótimo local
