@@ -9,7 +9,7 @@ Comparação componente a componente entre o **GILS-RVND** de Silva, Subramanian
     --max-time 100
 ```
 
-(registrada como `gils_am_rvnd_dlb` em [`run_experiments.py`](../run_experiments.py);
+(registrada como `gils_am_rvnd_dlb` em [`scripts/registry.py`](../scripts/registry.py);
 código em [`src/gils_am_rvnd.cpp`](../src/gils_am_rvnd.cpp) e
 [`src/neighborhoods_cand.cpp`](../src/neighborhoods_cand.cpp)).
 

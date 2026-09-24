@@ -9,7 +9,7 @@ do paper do MDM-GILS-RVND (arXiv:1908.10705, Seção 5.3.3). Complementa
 ## 1. Protocolo
 
 ```bash
-python3 run_experiments.py --mode fixed-time --time-limit 100 --runs 10 \
+python3 scripts/run_experiments.py --mode fixed-time --time-limit 100 --runs 10 \
     --solvers gils_rvnd gils_am_rvnd_extended_oropt mdm_gils_rvnd
 ```
 
@@ -21,7 +21,7 @@ python3 run_experiments.py --mode fixed-time --time-limit 100 --runs 10 \
 - **Pareado por seed**: seeds 1..10, as mesmas para os três algoritmos em cada
   instância. Baseline = `gils_rvnd`.
 - 10 instâncias TSPLIB na variante *Hamiltonian Path* (n = 70..532).
-- Dados brutos: `scripts/fixed_time_100s_prespeedup.json` (300 execuções). O nome
+- Dados brutos: `results/fixed-time/fixed_time_100s_prespeedup.json` (300 execuções). O nome
   carrega o `prespeedup` porque estes números são de binários anteriores a
   [[h16-candidate-neighborhoods]] seção 2.1 (prefix sums), que acelerou os tres
   binarios em 2,4-2,9x. Eles nao sao comparaveis com lotes de 100 s posteriores.

@@ -40,17 +40,22 @@ int main(int argc, char** argv) {
         cerr << "Usage:\n";
         cerr << "  ./local_search <instance.tsp>\n";
         cerr << "  ./local_search <instance.tsp> --route 0,3,2,5,...\n";
+        cerr << "    [--rvnd-mode MODE] [--seed N]\n";
         return 1;
     }
 
     string instanceFile = argv[1];
     string routeArg = "";
     string rvndMode = "single";
+    long seed = -1;
 
     for (int i = 2; i < argc; i++) {
         string a = argv[i];
         if (a == "--route" && i + 1 < argc) {
             routeArg = argv[++i];
+        }
+        else if (a == "--seed" && i + 1 < argc) {
+            seed = stol(argv[++i]);
         }
         else if (a == "--rvnd-mode" && i + 1 < argc) {
             rvndMode = argv[++i];
@@ -86,8 +91,7 @@ int main(int argc, char** argv) {
 
     sol.calculateStructures();
 
-    random_device rd;
-    mt19937 gen(rd());
+    mt19937 gen(seed >= 0 ? (unsigned long)seed : random_device{}());
 
     using Clock = chrono::high_resolution_clock;
 

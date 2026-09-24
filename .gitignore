@@ -13,3 +13,6 @@ wheels/
 *.o
 bin/
 obj/
+# Run logs (stdout of batches; the data lives in results/)
+logs/
+*.log

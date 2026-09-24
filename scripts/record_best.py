@@ -9,20 +9,18 @@ permutation of 0..n-1 starting at the depot, and the latency is recomputed
 with the Evaluator's rounding convention (truncation for EUC_2D, ceiling
 for ATT).
 """
-import argparse, importlib.util, json, math, subprocess, sys
+import argparse, json, math, subprocess, sys
 from pathlib import Path
+
+from runner import SolutionTracker
 
 BEST = Path("instances/solutions/best_solutions.json")
 
 
 def _tracker():
-    """Reuse run_experiments' SolutionTracker so the .tour file and the
+    """Reuse runner's SolutionTracker so the .tour file and the
     best_solutions.json entry keep exactly the project's format."""
-    spec = importlib.util.spec_from_file_location("run_experiments",
-                                                  "run_experiments.py")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod.SolutionTracker(Path("instances/solutions"))
+    return SolutionTracker(Path("instances/solutions"))
 
 
 def read_inst(path):

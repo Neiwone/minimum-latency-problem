@@ -18,10 +18,10 @@ void grasp(
     int maxIter,
     optional<double> fixedAlpha,
     bool verbose,
-    StepTimings* timings
+    StepTimings* timings,
+    long seed
 ) {
-    random_device rd;
-    mt19937 gen(rd());
+    mt19937 gen(seed >= 0 ? (unsigned long)seed : random_device{}());
     using Clock = chrono::high_resolution_clock;
 
     vector<double> R;
@@ -86,7 +86,7 @@ void grasp(
 int main(int argc, char** argv) {
     if (argc < 2) {
         cerr << "Usage:\n";
-        cerr << "  ./grasp <instance.tsp> [--iter 50] [--alpha 0.15] [-v]\n";
+        cerr << "  ./grasp <instance.tsp> [--iter 50] [--alpha 0.15] [--seed N] [-v]\n";
         return 1;
     }
 
@@ -94,6 +94,7 @@ int main(int argc, char** argv) {
     int maxIter = 50;
     optional<double> alpha;
     bool verbose = false;
+    long seed = -1;
 
     for (int i = 2; i < argc; i++) {
         string a = argv[i];
@@ -101,6 +102,8 @@ int main(int argc, char** argv) {
             maxIter = stoi(argv[++i]);
         } else if (a == "--alpha" && i + 1 < argc) {
             alpha = stod(argv[++i]);
+        } else if (a == "--seed" && i + 1 < argc) {
+            seed = stol(argv[++i]);
         } else if (a == "--verbose" || a == "-v") {
             verbose = true;
         }
@@ -119,7 +122,7 @@ int main(int argc, char** argv) {
     using Clock = chrono::high_resolution_clock;
     auto t0 = Clock::now();
 
-    grasp(bestSol, eval, maxIter, alpha, verbose, &timings);
+    grasp(bestSol, eval, maxIter, alpha, verbose, &timings, seed);
 
     auto t1 = Clock::now();
     double runtimeMs = chrono::duration<double, milli>(t1 - t0).count();

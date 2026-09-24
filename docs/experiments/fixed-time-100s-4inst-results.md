@@ -2,10 +2,10 @@
 
 Lote completo: **120 execuções** (4 instâncias × 3 algoritmos × 10 seeds), 100 s de
 wall-clock por execução, sequenciais, pareadas por seed. Dados brutos em
-`scripts/fixed_time_100s.json`.
+`results/fixed-time/fixed_time_100s.json`.
 
 ```bash
-python3 run_experiments.py --mode fixed-time --time-limit 100 --runs 10 \
+python3 scripts/run_experiments.py --mode fixed-time --time-limit 100 --runs 10 \
     --solvers gils_rvnd mdm_gils_rvnd gils_am_rvnd_cand
 ```
 

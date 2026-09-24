@@ -96,21 +96,21 @@ comparações pareadas) e o orçamento em segundos via `--time-limit`:
 
 ```bash
 # TSPLIB (lista padrão do projeto), 60s por execução, 10 seeds
-python3 run_experiments.py --mode fixed-time --time-limit 60 --runs 10 \
+python3 scripts/run_experiments.py --mode fixed-time --time-limit 60 --runs 10 \
     --solvers gils_rvnd gils_am_rvnd_extended_oropt mdm_gils_rvnd
 
 # instâncias escolhidas a dedo
-python3 run_experiments.py --mode fixed-time --time-limit 60 --runs 10 \
+python3 scripts/run_experiments.py --mode fixed-time --time-limit 60 --runs 10 \
     --instances lin318 pr439 att532 \
     --solvers gils_rvnd gils_am_rvnd_extended_oropt mdm_gils_rvnd
 
 # tiers inteiros do benchmark Salehipour (20 instâncias cada)
-python3 run_experiments.py --mode fixed-time --time-limit 120 --runs 5 \
+python3 scripts/run_experiments.py --mode fixed-time --time-limit 120 --runs 5 \
     --salehipour-sizes 500 1000 \
     --solvers gils_rvnd gils_am_rvnd_extended_oropt mdm_gils_rvnd
 
 # incluindo o or-opt adaptativo (H15)
-python3 run_experiments.py --mode fixed-time --time-limit 60 --runs 10 \
+python3 scripts/run_experiments.py --mode fixed-time --time-limit 60 --runs 10 \
     --instances lin318 att532 \
     --solvers gils_rvnd gils_am_rvnd_extended_oropt gils_am_rvnd_adaptive_oropt mdm_gils_rvnd
 ```
@@ -119,6 +119,13 @@ Parâmetros relevantes: `--time-limit` (segundos, obrigatório), `--iils`
 (default 10 — ver seção 3.2), `--runs` (seeds, pareadas entre solvers),
 `--instances` / `--salehipour-sizes`, `--checkpoint`.
 
+Sem `--checkpoint`, cada lote vai para um arquivo novo com data e hora em
+`results/fixed-time/` (o caminho é impresso no início), e nenhum arquivo existente
+é sobrescrito. Com `--checkpoint`, o lote retoma daquele arquivo. O checkpoint
+guarda a configuração do lote (`--closed` e o comando exato de cada solver,
+incluindo `--max-time` e `--iils`), e uma retomada com configuração diferente é
+recusada. Acrescentar solvers, instâncias ou seeds a um lote existente é permitido.
+
 **Só aceita solvers cujo binário implementa `--max-time`** (`gils_rvnd`,
 `gils_am_rvnd`, `mdm_gils_rvnd` e suas variantes de flag). Isso é uma
 verificação explícita, não um detalhe: os parsers dos outros binários
@@ -126,7 +133,7 @@ ignoram flags desconhecidas **em silêncio**, então passar `--max-time` pra
 eles produziria uma comparação que parece certa e na verdade estaria rodando
 orçamento de iteração ilimitado.
 
-Checkpoint incremental em `scripts/fixed_time_<T>s.json` (dentro do repo,
+Checkpoint incremental em `results/fixed-time/fixed_time_<T>s.json` (dentro do repo,
 não em `/tmp` — ver memória `feedback-experiment-rigor`), retomável. O
 relatório final sai com `mean_rel%`, W/T/L pareado por seed e p-valor do
 teste de sinal exato por instância e agregado, mais o bloco de sanidade do

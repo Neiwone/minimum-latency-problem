@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
 """Paired report over a screen_parallel.py checkpoint (works on partial data)."""
-import json, math, sys
+import json, sys
 from collections import defaultdict
 
-def sign_test(w, l):
-    n = w + l
-    if n == 0: return 1.0
-    k = min(w, l)
-    return min(1.0, 2 * sum(math.comb(n, i) for i in range(k + 1)) / 2 ** n)
+from stats import sign_test_p as sign_test
 
 path, base = sys.argv[1], sys.argv[2]
 data = json.loads(open(path).read())

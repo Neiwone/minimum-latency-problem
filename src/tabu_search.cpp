@@ -91,9 +91,8 @@ static void applyTabuMove(Solution& sol, const TabuMove& move) {
 }
 
 void tabu_search(Solution& bestSol, Evaluator& eval, int I_max, int maxIter,
-                 int tenure, const vector<double>& R, bool verbose) {
-    random_device rd;
-    mt19937 gen(rd());
+                 int tenure, const vector<double>& R, bool verbose, long seed) {
+    mt19937 gen(seed >= 0 ? (unsigned long)seed : random_device{}());
     using Clock = chrono::high_resolution_clock;
 
     int n = eval.Ncity;
@@ -264,7 +263,7 @@ void tabu_search(Solution& bestSol, Evaluator& eval, int I_max, int maxIter,
 int main(int argc, char** argv) {
     if (argc < 2) {
         cerr << "Usage:\n";
-        cerr << "  ./tabu_search <instance.tsp> [--imax 10] [--iter 10] [--tenure sqrt(n)]\n";
+        cerr << "  ./tabu_search <instance.tsp> [--imax 10] [--iter 10] [--tenure sqrt(n)] [--seed N]\n";
         return 1;
     }
 
@@ -273,6 +272,7 @@ int main(int argc, char** argv) {
     int maxIter = -1;   // default: 10
     int tenure = -1;    // default: sqrt(n)
     bool verbose = false;
+    long seed = -1;
 
     for (int i = 2; i < argc; i++) {
         string a = argv[i];
@@ -282,6 +282,8 @@ int main(int argc, char** argv) {
             maxIter = stoi(argv[++i]);
         else if (a == "--tenure" && i + 1 < argc)
             tenure = stoi(argv[++i]);
+        else if (a == "--seed" && i + 1 < argc)
+            seed = stol(argv[++i]);
         else if (a == "--verbose" || a == "-v")
             verbose = true;
     }
@@ -306,7 +308,7 @@ int main(int argc, char** argv) {
     using Clock = chrono::high_resolution_clock;
     auto t0 = Clock::now();
 
-    tabu_search(bestSol, eval, I_max, maxIter, tenure, R, verbose);
+    tabu_search(bestSol, eval, I_max, maxIter, tenure, R, verbose, seed);
 
     auto t1 = Clock::now();
     double runtime_ms = chrono::duration<double, milli>(t1 - t0).count();

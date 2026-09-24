@@ -20,18 +20,11 @@ so 3 concurrent processes cost ~27% of the throughput -- uniformly. Use
 this to RANK variants, never to report a final number: the official
 100 s verdict runs come from run_experiments.py.
 """
-import argparse, json, math, os, subprocess, sys, time
+import argparse, json, os, subprocess, sys, time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-
-def sign_test(wins, losses):
-    n = wins + losses
-    if n == 0:
-        return 1.0
-    k = min(wins, losses)
-    p = sum(math.comb(n, i) for i in range(k + 1)) / (2 ** n)
-    return min(1.0, 2 * p)
+from stats import sign_test_p as sign_test
 
 
 def run_one(cmd):
@@ -65,6 +58,7 @@ def main():
         variants.append((label, parts[0], parts[1:]))
 
     out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     results = json.loads(out_path.read_text()) if out_path.exists() else {}
 
     inst_paths = []

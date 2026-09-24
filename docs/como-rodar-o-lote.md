@@ -15,7 +15,7 @@ documento para o orientador. **~20 h de máquina no total**, retomável.
 git clone <repo> && cd minimum-latency-problem
 git checkout <branch>
 
-nohup setsid bash scripts/run_advisor_batches.sh > scripts/advisor_run.log 2>&1 &
+mkdir -p logs && nohup setsid bash scripts/run_advisor_batches.sh > logs/advisor_run.log 2>&1 &
 ```
 
 O `setsid` é o que faz o lote sobreviver a uma queda de SSH. O script começa
@@ -26,8 +26,8 @@ oito horas.
 ## 3. Acompanhar
 
 ```bash
-tail -f scripts/advisor_run.log          # linha por execução concluída
-grep -c "^\[" scripts/advisor_run.log    # quantas já terminaram (de 700)
+tail -f logs/advisor_run.log          # linha por execução concluída
+grep -c "^\[" logs/advisor_run.log    # quantas já terminaram (de 700)
 ```
 
 Cada linha traz custo, tempo e número de reinícios, e marca com `[!]` as execuções em
@@ -36,7 +36,7 @@ que um mecanismo de fronteira de reinício não disparou.
 ## 4. Se parar no meio
 
 Reboot, Ctrl-C, queda de energia: **rode o mesmo comando de novo**. Os checkpoints
-ficam em `scripts/advisor_n1000_100s.json` e `scripts/advisor_n500_100s.json`, e o
+ficam em `results/fixed-time/advisor_n1000_100s.json` e `results/fixed-time/advisor_n500_100s.json`, e o
 script pula tudo que já foi feito.
 
 ## 5. Três regras que anulam o resultado se quebradas
@@ -47,21 +47,21 @@ script pula tudo que já foi feito.
 2. **Uma cópia só.** Não inicie o script duas vezes; as execuções têm que ser
    sequenciais.
 3. **Não misture máquinas.** Todos os braços de uma comparação têm que vir da mesma
-   máquina. Os lotes anteriores (`scripts/fixed_time_100s*.json`) são de outra máquina
+   máquina. Os lotes anteriores (`results/fixed-time/fixed_time_100s*.json`) são de outra máquina
    e não podem ser comparados com estes — estes são autocontidos justamente por isso.
 
-> **Cuidado com um detalhe do runner.** `--mode fixed-time` sem `--checkpoint`
-> **apaga** o checkpoint default daquele orçamento (`scripts/fixed_time_<T>s.json`)
-> antes de começar. O script deste lote sempre passa `--checkpoint`, então está
-> seguro — mas não rode um `run_experiments.py --mode fixed-time` solto na mesma
-> máquina enquanto o lote roda.
+> **Checkpoints antigos não são retomáveis.** O `run_experiments.py` agora grava a
+> configuração do lote no checkpoint e se recusa a retomar um arquivo sem ela. Os
+> dois checkpoints deste lote são anteriores a isso: o lote já terminou, mas rodar
+> este script de novo em cima deles dá erro. Para um lote novo, aponte
+> `--checkpoint` para arquivos novos.
 
 ## 6. O que mandar de volta
 
 ```
-scripts/advisor_n1000_100s.json
-scripts/advisor_n500_100s.json
-scripts/advisor_run.log
+results/fixed-time/advisor_n1000_100s.json
+results/fixed-time/advisor_n500_100s.json
+logs/advisor_run.log
 ```
 
 Os dois `.json` são os dados; o `.log` serve para auditar tempos e mecanismos.

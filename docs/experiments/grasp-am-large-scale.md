@@ -1,5 +1,9 @@
 # GRASP-AM em escala — achado, correção e veredito final
 
+> Os scripts e dados brutos em `scripts/` citados neste documento foram removidos do
+> repositório e estão preservados na tag git `archive/h-scripts`
+> (`git show archive/h-scripts:scripts/<arquivo>`).
+
 Status: **ENCERRADA — GILS-AM-RVND empata em qualidade com o baseline
 (mesmo padrão de ruído de H1/H2), mas chega lá gastando significativamente
 menos tempo em 2 das 3 instâncias.** O `GRASP-AM` original perdia 1-2% por

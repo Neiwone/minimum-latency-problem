@@ -354,7 +354,7 @@ busca recomeça não sobrevivem à busca local; o que paga é vizinhança e velo
 | o mesmo, portado para os outros dois | `src/mdm_gils_rvnd.cpp`, `src/gils_rvnd.cpp` |
 | runner de experimentos | `run_experiments.py --mode fixed-time` |
 | verificador independente de tours | `scripts/verify_tour.py` |
-| dados brutos dos lotes finais | `scripts/advisor_n500_100s.json`, `scripts/advisor_n1000_100s.json` |
+| dados brutos dos lotes finais | `results/fixed-time/advisor_n500_100s.json`, `results/fixed-time/advisor_n1000_100s.json` |
 | dados dos lotes TSPLIB | `scripts/fixed_time_100s*.json` |
 | registro completo do experimento | `docs/experiments/h19-dlb-fast-regime.md` |
 | o método explicado em detalhe | `docs/metodo-explicado.md` |

@@ -296,10 +296,9 @@ O projeto vai além do artigo original com:
 
 ### 3.7 Como o projeto valida contra o artigo
 
-`run_experiments.py` (`--mode compare-best`, `--mode exact`,
-`--mode compare-solvers`) permite comparar os solvers do projeto contra
-soluções conhecidas (`instances/solutions/best_solutions.json`), contra o
-backtracking exato, ou uns contra os outros — o mesmo tipo de validação
+`run_experiments.py` (`--mode compare-best`, `--mode compare-solvers`)
+permite comparar os solvers do projeto contra soluções conhecidas
+(`instances/solutions/best_solutions.json`) ou uns contra os outros — o mesmo tipo de validação
 (gap médio, tempo médio, melhor solução) que o artigo reporta nas Tabelas
 1–8, embora aqui usando o conjunto próprio de instâncias em `instances/`
 (subconjunto de TSPLIB: `eil51`, `berlin52`, `st70`, `pr76`, `kroA100`,

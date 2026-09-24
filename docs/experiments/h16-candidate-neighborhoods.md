@@ -101,7 +101,7 @@ E isso já contando as vizinhanças invertidas, que o `extended-oropt` nem tem.
 ## 3. Protocolo
 
 ```bash
-python3 run_experiments.py --mode fixed-time --time-limit 100 --runs 10 --iils 10 \
+python3 scripts/run_experiments.py --mode fixed-time --time-limit 100 --runs 10 --iils 10 \
     --instances lin318 pr439 att532 \
     --solvers mdm_gils_rvnd gils_am_rvnd_cand12 gils_am_rvnd_cand12_db10 \
               gils_am_rvnd_extended_oropt
@@ -113,9 +113,9 @@ Só as três instâncias com n > 200, que é onde [[fixed-time-100s-tsplib]] mos
 existe poder estatístico (as sete menores saturam e empatam 0/10/0).
 
 **Checkpoint refeito**: os dados de 100 s anteriores (hoje em
-`scripts/fixed_time_100s_prespeedup.json`) são de binários pré-otimização e não são
+`results/fixed-time/fixed_time_100s_prespeedup.json`) são de binários pré-otimização e não são
 comparáveis — a mudança da seção 2.1 acelera `mdm_gils_rvnd` e `gils_rvnd` também,
-então o baseline teve que ser remedido do zero. `scripts/fixed_time_100s.json` passou
+então o baseline teve que ser remedido do zero. `results/fixed-time/fixed_time_100s.json` passou
 a conter só as medições novas.
 
 ## 4. Resultado principal — 100 s, N=30 pareado

@@ -241,7 +241,7 @@ forma monotônica na intensidade do viés. O double bridge uniforme fica.
 ## 4. O algoritmo proposto
 
 `gils_am_rvnd --rvnd-mode candidate-dlb --cand-k 12 --iils 300`
-(registrado como `gils_am_rvnd_dlb` em `run_experiments.py`).
+(registrado como `gils_am_rvnd_dlb` em `scripts/registry.py`).
 
 Em relação ao GILS-RVND de Silva et al. (2012), a pilha de mudanças acumulada por
 este projeto e fechada aqui:
@@ -275,10 +275,10 @@ para `candidate-dlb` puro e com todas as flags novas ligadas.
 ## 6. Resultado oficial — 100 s/execução, sequencial, N=70 pareado
 
 ```bash
-python3 run_experiments.py --mode fixed-time --time-limit 100 --runs 10 --iils 10 \
+python3 scripts/run_experiments.py --mode fixed-time --time-limit 100 --runs 10 --iils 10 \
     --instances lin318 pr439 att532 \
     --solvers mdm_gils_rvnd gils_am_rvnd_cand12 gils_am_rvnd_dlb mdm_gils_rvnd_i300 \
-    --checkpoint scripts/fixed_time_100s.json
+    --checkpoint results/fixed-time/fixed_time_100s.json
 ```
 
 Protocolo de [[fixed-time-protocol]]: 100 s de wall-clock iguais para todos,
@@ -345,8 +345,8 @@ Três coisas para ler aqui:
 ### 6.4 Breadth — as demais instâncias com n >= 200 (100 s, 10 seeds cada)
 
 Mesmo protocolo, dois lotes extras: `a280`/`pr226` (TSPLIB) em
-`scripts/fixed_time_100s_breadth.json` e duas instâncias do benchmark Salehipour
-n=500 em `scripts/fixed_time_100s_n500.json`.
+`results/fixed-time/fixed_time_100s_breadth.json` e duas instâncias do benchmark Salehipour
+n=500 em `results/fixed-time/fixed_time_100s_n500.json`.
 
 | instância | n | vs `mdm_gils_rvnd` | W/T/L | vs `mdm --iils 300` | W/T/L |
 |---|---:|---:|---:|---:|---:|
@@ -412,10 +412,10 @@ mesmo protocolo. O que sobra entre eles passa a ser **só o mecanismo de memóri
 | `gils_am_rvnd_dlb` | memória adaptativa (frequência de arestas do elite set) |
 
 ```bash
-python3 run_experiments.py --mode fixed-time --time-limit 100 --runs 10 \
+python3 scripts/run_experiments.py --mode fixed-time --time-limit 100 --runs 10 \
     --instances lin318 pr439 att532 \
     --solvers gils_rvnd_dlb mdm_gils_rvnd_dlb gils_am_rvnd_dlb \
-    --checkpoint scripts/fixed_time_100s_threearm.json
+    --checkpoint results/fixed-time/fixed_time_100s_threearm.json
 ```
 
 Todos os 90 runs foram **refeitos do zero** neste lote (nenhum reaproveitado), porque

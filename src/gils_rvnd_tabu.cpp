@@ -54,9 +54,8 @@ struct StepTimings {
 void gils_rvnd_tabu(Solution& bestSol, Evaluator& eval,
                     int I_max, int I_ILS, int rvndTenure,
                     const vector<double>& R, bool verbose = false,
-                    StepTimings* timings = nullptr) {
-    random_device rd;
-    mt19937 gen(rd());
+                    StepTimings* timings = nullptr, long seed = -1) {
+    mt19937 gen(seed >= 0 ? (unsigned long)seed : random_device{}());
     using Clock = chrono::high_resolution_clock;
 
     Cost fStar = LLONG_MAX;
@@ -117,7 +116,7 @@ int main(int argc, char** argv) {
     if (argc < 2) {
         cerr << "Usage:\n";
         cerr << "  ./gils_rvnd_tabu <instance.tsp> [--imax 10] [--iils 50] "
-            "[--tenure 7] [-v]\n";
+            "[--tenure 7] [--seed N] [-v]\n";
         return 1;
     }
 
@@ -126,6 +125,7 @@ int main(int argc, char** argv) {
     int I_ILS = -1;        // default: min(n, 100)
     int rvndTenure = -1;   // default: sqrt(n)
     bool verbose = false;
+    long seed = -1;
 
     for (int i = 2; i < argc; i++) {
         string a = argv[i];
@@ -135,6 +135,8 @@ int main(int argc, char** argv) {
             I_ILS = stoi(argv[++i]);
         else if (a == "--tenure" && i + 1 < argc)
             rvndTenure = stoi(argv[++i]);
+        else if (a == "--seed" && i + 1 < argc)
+            seed = stol(argv[++i]);
         else if (a == "--verbose" || a == "-v")
             verbose = true;
     }
@@ -160,7 +162,7 @@ int main(int argc, char** argv) {
     using Clock = chrono::high_resolution_clock;
     auto t0 = Clock::now();
 
-    gils_rvnd_tabu(bestSol, eval, I_max, I_ILS, rvndTenure, R, verbose, &timings);
+    gils_rvnd_tabu(bestSol, eval, I_max, I_ILS, rvndTenure, R, verbose, &timings, seed);
 
     auto t1 = Clock::now();
     double runtime_ms = chrono::duration<double, milli>(t1 - t0).count();

@@ -18,8 +18,8 @@ two tie, so the gain is local search and calibration, not search strategy -- see
 | `src/`, `include/` | solvers and core logic |
 | `instances/` | TSPLIB instances; `salehipour/` is the 140-instance benchmark of Salehipour et al. (2011); `solutions/` holds the best tours found |
 | `docs/` | how the method works and every experiment write-up |
-| `scripts/` | instance generation, visualization, experiment harnesses and checkpoints |
-| `run_experiments.py` | batch runner and result tracker |
+| `scripts/` | the batch runner (`run_experiments.py`), analysis and instance tools; `registry.py`, `runner.py` and `stats.py` are modules they share |
+| `results/` | raw per-run data (checkpoints) behind every table in `docs/` |
 
 ## Build
 
@@ -54,17 +54,21 @@ comparison between algorithms possible. Every solver prints `INSTANCE`, `NODES`,
 
 ## Experiments
 
-`run_experiments.py` runs batches, pairs them by seed, and reports means, win/tie/loss
-and exact sign tests. It checkpoints as it goes, so a long batch is resumable with
-`--checkpoint`.
+`scripts/run_experiments.py` runs batches, pairs them by seed, and reports means,
+win/tie/loss and exact sign tests. Every mode saves each run as it finishes: without
+`--checkpoint` a batch gets a new timestamped file under `results/<mode>/`, and
+passing that file back with `--checkpoint` resumes it (`--checkpoint last` picks the
+newest one of the mode). The checkpoint records the batch configuration, so a resume
+with different flags is refused instead of mixing runs. Runs use seeds 1..`--runs`, so
+a batch is reproducible.
 
 	# equal-time comparison, the protocol used for every result in docs/
-	python3 run_experiments.py --mode fixed-time --time-limit 100 --runs 10 \
+	python3 scripts/run_experiments.py --mode fixed-time --time-limit 100 --runs 10 \
 	    --instances lin318 pr439 att532 \
 	    --solvers mdm_gils_rvnd gils_am_rvnd_dlb
 
 Other modes: `compare-solvers`, `compare-best` (against the tracked best solutions),
-`exact` (against `backtracking`), and `salehipour-benchmark`. `--help` lists the rest.
+and `salehipour-benchmark`. `--help` lists the rest.
 
 The fixed-time protocol has two rules that results depend on, both learned the hard
 way: runs are **sequential** (timing comparisons do not survive CPU contention), and

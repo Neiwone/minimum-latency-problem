@@ -185,7 +185,7 @@ trabalho foram perdidas.
 Corrigido: `run_salehipour_benchmark_mode` (modo `--solvers`, o caso que
 importa pra corridas longas) agora salva cada par instância+resultado
 incrementalmente em `--checkpoint <arquivo.json>` (default
-`scripts/salehipour_<a>_vs_<b>.json`) e **retoma automaticamente** do
+`results/salehipour_<a>_vs_<b>.json`) e **retoma automaticamente** do
 checkpoint se ele já existir, pulando pares já computados. Testado:
 rodar 2x com o mesmo checkpoint na segunda vez não recomputa nada e
 reproduz o mesmo resultado. O lote de n=500/1000 foi relançado com

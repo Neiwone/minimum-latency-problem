@@ -4,6 +4,8 @@ import json, sys
 from collections import defaultdict
 from pathlib import Path
 
+from runner import load_runs
+
 BKS = json.loads(Path("instances/solutions/best_solutions.json").read_text())
 
 def bks_of(inst):
@@ -13,7 +15,7 @@ def bks_of(inst):
     return v
 
 path = sys.argv[1]
-d = json.loads(Path(path).read_text())
+d = load_runs(path)
 by = defaultdict(list)
 rst = defaultdict(list)
 for k, v in d.items():

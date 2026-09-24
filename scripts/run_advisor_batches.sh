@@ -2,9 +2,9 @@
 #
 # Two fixed-time batches over the Salehipour benchmark, for the write-up.
 # Resumable: if the machine reboots or you Ctrl-C, just run this again and it
-# picks up where it stopped (the checkpoints live in scripts/).
+# picks up where it stopped (the checkpoints live in results/fixed-time/).
 #
-#   nohup setsid bash scripts/run_advisor_batches.sh > scripts/advisor_run.log 2>&1 &
+#   mkdir -p logs && nohup setsid bash scripts/run_advisor_batches.sh > logs/advisor_run.log 2>&1 &
 #
 # Five arms in one batch, so the headline and the controls come from the same
 # runs:
@@ -47,20 +47,20 @@ python3 scripts/verify_tour.py instances/att532.tsp ./bin/gils_am_rvnd \
 echo
 echo "=== batch 1/2: Salehipour n=1000, 20 instances x 5 solvers x 3 seeds ==="
 echo "    300 runs at 100 s each, roughly 8.5 hours"
-python3 run_experiments.py --mode fixed-time --time-limit 100 --runs 3 \
+python3 scripts/run_experiments.py --mode fixed-time --time-limit 100 --runs 3 \
     --salehipour-sizes 1000 \
     --solvers $SOLVERS \
-    --checkpoint scripts/advisor_n1000_100s.json
+    --checkpoint results/fixed-time/advisor_n1000_100s.json
 
 echo
 echo "=== batch 2/2: Salehipour n=500, 20 instances x 5 solvers x 4 seeds ==="
 echo "    400 runs at 100 s each, roughly 11.5 hours"
-python3 run_experiments.py --mode fixed-time --time-limit 100 --runs 4 \
+python3 scripts/run_experiments.py --mode fixed-time --time-limit 100 --runs 4 \
     --salehipour-sizes 500 \
     --solvers $SOLVERS \
-    --checkpoint scripts/advisor_n500_100s.json
+    --checkpoint results/fixed-time/advisor_n500_100s.json
 
 echo
 echo "=== ALL DONE ==="
-echo "Send back: scripts/advisor_n1000_100s.json, scripts/advisor_n500_100s.json,"
-echo "           scripts/advisor_run.log"
+echo "Send back: results/fixed-time/advisor_n1000_100s.json, results/fixed-time/advisor_n500_100s.json,"
+echo "           logs/advisor_run.log"
