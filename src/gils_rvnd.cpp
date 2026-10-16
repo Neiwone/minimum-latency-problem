@@ -142,13 +142,15 @@ Solution path_relink(const Solution& start, const vector<int>& guideTour) {
 /* H4: Single is the original first-improvement RVND; Multi batches
    non-conflicting moves per scan. Single is the default. */
 enum class RvndMode { Single, Multi, ExtendedOrOpt, ExtendedOrOptWide, ExtendedOrOpt3Opt,
-                      AdaptiveOrOpt, CandidateDLB };
+                      AdaptiveOrOpt, ExtendedOrOptRev, Candidate, CandidateDLB };
 
 /* `adaptState` carries the adaptive-or-opt learning across every RVND
    call of the run (see include/rvnd_adaptive.h); ignored by other modes. */
 void run_rvnd(RvndMode mode, Solution& sol, mt19937& gen, AdaptiveOrOptState& adaptState,
               DlbState& dlb) {
     if (mode == RvndMode::CandidateDLB) RVND_CandidateDLB(sol, g_cand, g_candMaxLen, g_candReversed, gen, dlb);
+    else if (mode == RvndMode::Candidate) RVND_Candidate(sol, g_cand, g_candMaxLen, g_candReversed, gen);
+    else if (mode == RvndMode::ExtendedOrOptRev) RVND_ExtendedOrOptRev(sol, gen);
     else if (mode == RvndMode::Multi) RVND_Multi(sol, gen);
     else if (mode == RvndMode::ExtendedOrOpt) RVND_ExtendedOrOpt(sol, gen);
     else if (mode == RvndMode::ExtendedOrOptWide) RVND_ExtendedOrOptWide(sol, gen);
@@ -164,6 +166,7 @@ enum class ConstructionMode { Greedy, Lookahead };
 /* Completed restarts, reported so a fixed-time protocol can verify
    that mechanisms living at restart boundaries were exercised at all. */
 long g_restarts = 0;
+long g_ilsIters = 0;   /* perturbations applied: a speed measure for the ablation */
 
 void gils_rvnd(Solution& bestSol, Evaluator& eval,
                int I_max, int I_ILS, const vector<double>& R, bool verbose,
@@ -247,6 +250,7 @@ void gils_rvnd(Solution& bestSol, Evaluator& eval,
             else dlb.reset(s.fN);
 
             iterILS++;
+            g_ilsIters++;
             step++;
         }
 
@@ -281,7 +285,10 @@ int main(int argc, char** argv) {
         cerr << "    [--pert-mode fixed|stagnation|distance] [--stagnation-step 5]\n";
         cerr << "    [--max-strength 5] [--target-min-pct 0.05] [--target-max-pct 0.15]\n";
         cerr << "    [--path-relinking] [--elite-size 5]\n";
-        cerr << "    [--rvnd-mode single|multi|extended-oropt|extended-oropt-wide|extended-oropt-3opt]\n";
+        cerr << "    [--rvnd-mode single|multi|extended-oropt|extended-oropt-wide|extended-oropt-3opt|\n";
+        cerr << "                 extended-oropt-rev|candidate|candidate-dlb|adaptive-oropt]\n";
+        cerr << "    [--cand-k 12] [--cand-maxlen 6] [--cand-no-rev] [--cand-drop swap,2opt,oropt1..6,rev2..6]\n";
+        cerr << "    [--max-time SECONDS]\n";
         cerr << "    [--construction-mode greedy|lookahead] [--lookahead-k 3]\n";
         cerr << "    [--seed N] [-v]\n";
         cerr << "    [--closed]  pay the return to the depot (default: open path)\n";
@@ -292,6 +299,7 @@ int main(int argc, char** argv) {
     int I_max = 10;
     int I_ILS = 100;
     int candK = 12;
+    string candDrop;    /* neighborhoods left out, for the ablation */
     bool verbose = false;
     PertMode pertMode = PertMode::Fixed;
     int stagnationStep = 5;
@@ -354,12 +362,15 @@ int main(int argc, char** argv) {
             else if (m == "extended-oropt-wide") rvndMode = RvndMode::ExtendedOrOptWide;
             else if (m == "extended-oropt-3opt") rvndMode = RvndMode::ExtendedOrOpt3Opt;
             else if (m == "adaptive-oropt") rvndMode = RvndMode::AdaptiveOrOpt;
+            else if (m == "extended-oropt-rev") rvndMode = RvndMode::ExtendedOrOptRev;
+            else if (m == "candidate") rvndMode = RvndMode::Candidate;
             else if (m == "candidate-dlb") rvndMode = RvndMode::CandidateDLB;
             else { cerr << "Unknown --rvnd-mode: " << m << "\n"; return 1; }
         }
         else if (a == "--cand-k" && i + 1 < argc) candK = stoi(argv[++i]);
         else if (a == "--cand-maxlen" && i + 1 < argc) g_candMaxLen = stoi(argv[++i]);
         else if (a == "--cand-no-rev") g_candReversed = false;
+        else if (a == "--cand-drop" && i + 1 < argc) candDrop = argv[++i];
         else if (a == "--construction-mode" && i + 1 < argc) {
             string m = argv[++i];
             if (m == "greedy") constructionMode = ConstructionMode::Greedy;
@@ -401,6 +412,10 @@ int main(int argc, char** argv) {
     eval.SetInstance((char*)filepath.c_str());
 
     g_cand = make_candidate_list(eval, candK);
+    if (!set_cand_disabled(candDrop, g_candMaxLen)) {
+        cerr << "Unknown neighborhood in --cand-drop: " << candDrop << "\n";
+        return 1;
+    }
 
     vector<double> R;
     for (double r = 0.0; r <= 0.25; r += 0.01)
@@ -445,6 +460,7 @@ int main(int argc, char** argv) {
     cout << "IMAX " << I_max << "\n";
     cout << "IILS " << I_ILS << "\n";
     cout << "RESTARTS " << g_restarts << "\n";
+    cout << "ILS_ITERS " << g_ilsIters << "\n";
     if (maxTimeSec > 0.0)
         cout << "MAX_TIME_S " << fixed << setprecision(3) << maxTimeSec << "\n";
     cout << "PERT_MODE " << pertModeName << "\n";
@@ -455,9 +471,13 @@ int main(int argc, char** argv) {
                               : rvndMode == RvndMode::ExtendedOrOptWide ? "extended-oropt-wide"
                               : rvndMode == RvndMode::ExtendedOrOpt3Opt ? "extended-oropt-3opt"
                               : rvndMode == RvndMode::AdaptiveOrOpt ? "adaptive-oropt"
+                              : rvndMode == RvndMode::ExtendedOrOptRev ? "extended-oropt-rev"
+                              : rvndMode == RvndMode::Candidate ? "candidate"
                               : rvndMode == RvndMode::CandidateDLB ? "candidate-dlb" : "single") << "\n";
-    if (rvndMode == RvndMode::CandidateDLB)
+    if (rvndMode == RvndMode::Candidate || rvndMode == RvndMode::CandidateDLB) {
         cout << "CAND_K " << g_cand.K << "  CAND_MAXLEN " << g_candMaxLen << "\n";
+        if (!candDrop.empty()) cout << "CAND_DROP " << candDrop << "\n";
+    }
     if (rvndMode == RvndMode::AdaptiveOrOpt) {
         cout << "ADAPT_KMAX_FINAL " << adaptState.kMax << "\n";
         cout << "ADAPT_KMAX_RANGE " << adaptState.kMaxMinSeen << "-" << adaptState.kMaxMaxSeen << "\n";

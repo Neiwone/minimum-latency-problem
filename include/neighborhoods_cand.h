@@ -4,6 +4,7 @@
 #include "solution.h"
 #include "evaluator.h"
 #include <random>
+#include <string>
 
 /* Candidate-list RVND: only evaluate a move that creates an edge to one of
    the K nearest cities of the endpoint gaining a neighbour. O(n*K) scans. */
@@ -42,5 +43,10 @@ void set_cand_opts(int frontAnchors, bool twoOptBothDirs);
 /* Strict mode skips a (city, neighborhood) pair already failed, not just
    retired cities. OFF: 1.6x faster, same quality. */
 void set_dlb_strict(bool strict);
+
+/* Ablation: leave neighborhoods out of RVND_Candidate / RVND_CandidateDLB.
+   Comma-separated names: swap, 2opt, oropt1..oropt<maxLen>, rev2..rev<maxLen>.
+   Returns false (and leaves the set unchanged) on an unknown name. */
+bool set_cand_disabled(const std::string& csv, int maxLen);
 
 #endif

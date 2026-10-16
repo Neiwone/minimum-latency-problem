@@ -1,8 +1,47 @@
 #include "neighborhoods_cand.h"
 #include <algorithm>
+#include <set>
+#include <sstream>
 #include <vector>
 
 using namespace std;
+
+/* ---- Ablation: neighborhoods left out of the RVND ----------------- */
+
+static set<string> g_disabled;
+
+/* ids: 0 swap, 1 2-opt, 2..1+nFwd or-opt forward (len id-1), then or-opt
+   reversed (len id-nFwd). */
+static string nbhd_name(int eta, int nFwd) {
+    if (eta == 0) return "swap";
+    if (eta == 1) return "2opt";
+    if (eta < 2 + nFwd) return "oropt" + to_string(eta - 1);
+    return "rev" + to_string(eta - (2 + nFwd) + 2);
+}
+
+static vector<int> enabled_ids(int total, int nFwd) {
+    vector<int> ids;
+    for (int i = 0; i < total; i++)
+        if (!g_disabled.count(nbhd_name(i, nFwd))) ids.push_back(i);
+    return ids;
+}
+
+bool set_cand_disabled(const string& csv, int maxLen) {
+    set<string> valid = { "swap", "2opt" };
+    for (int L = 1; L <= maxLen; L++) valid.insert("oropt" + to_string(L));
+    for (int L = 2; L <= maxLen; L++) valid.insert("rev" + to_string(L));
+
+    set<string> names;
+    stringstream ss(csv);
+    string tok;
+    while (getline(ss, tok, ','))
+        if (!tok.empty()) {
+            if (!valid.count(tok)) return false;
+            names.insert(tok);
+        }
+    g_disabled = names;
+    return true;
+}
 
 CandList make_candidate_list(const Evaluator& eval, int K) {
     CandList cl;
@@ -129,8 +168,8 @@ void RVND_Candidate(Solution& sol, const CandList& cl, int maxLen,
     vector<int> seg, rest;
     rest.reserve(sol.fN);
 
-    vector<int> NL(total);
-    for (int i = 0; i < total; i++) NL[i] = i;
+    const vector<int> all = enabled_ids(total, nFwd);
+    vector<int> NL = all;
 
     while (!NL.empty()) {
         uniform_int_distribution<int> dist(0, (int)NL.size() - 1);
@@ -152,8 +191,7 @@ void RVND_Candidate(Solution& sol, const CandList& cl, int maxLen,
         }
 
         if (sol.fEvaluationValue < oldCost) {
-            NL.resize(total);
-            for (int i = 0; i < total; i++) NL[i] = i;
+            NL = all;
         } else {
             NL.erase(NL.begin() + idx);
         }
@@ -359,12 +397,11 @@ void RVND_CandidateDLB(Solution& sol, const CandList& cl, int maxLen,
     const int nFwd = maxLen;
     const int nRev = useReversed ? max(0, maxLen - 1) : 0;
     const int total = 2 + nFwd + nRev;
-    const unsigned full = (total >= 32) ? ~0u : ((1u << total) - 1u);
+    vector<int> NL = enabled_ids(total, nFwd);
+    unsigned full = 0u;
+    for (int eta : NL) full |= 1u << eta;
 
     if ((int)dlb.active.size() != sol.fN) dlb.reset(sol.fN);
-
-    vector<int> NL(total);
-    for (int i = 0; i < total; i++) NL[i] = i;
 
     while (dlb.nActive > 0) {
         shuffle(NL.begin(), NL.end(), gen);

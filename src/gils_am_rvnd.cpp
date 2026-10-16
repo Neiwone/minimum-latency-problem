@@ -285,6 +285,7 @@ void crossover_abx(Solution& child, const Solution& A, const Solution& B,
 /* Reported so a fixed-time run can show the restart-boundary mechanisms
    were exercised at all. */
 long g_restarts = 0;
+long g_ilsIters = 0;   /* perturbations applied: a speed measure for the ablation */
 long g_crossovers = 0;
 
 void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
@@ -363,6 +364,7 @@ void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
             if (hit.first >= 0) dlb.arm_range(s, hit.first - 1, hit.second + 1);
             else dlb.reset(s.fN);
             iterILS++;
+            g_ilsIters++;
         }
 
         memory.add(sPrime);
@@ -391,6 +393,7 @@ int main(int argc, char** argv) {
         cerr << "    [--lambda 0.50] [--parent-mode pool|pair]\n";
         cerr << "    [--rvnd-mode single|extended-oropt|extended-oropt-wide|extended-oropt-rev|candidate|candidate-dlb|lk-escape|adaptive-oropt]\n";
     cerr << "    [--cand-k K] [--cand-maxlen L] [--cand-no-rev] [--cand-front F] [--cand-2opt-both]\n";
+    cerr << "    [--cand-drop swap,2opt,oropt1..6,rev2..6]  leave neighborhoods out (ablation)\n";
     cerr << "    [--db-front-bias B]  skew perturbation towards the tour front (1 = uniform)\n";
     cerr << "    [--db-maxseg K]  cap on each swapped double-bridge block (0 = unrestricted)\n";
         cerr << "    [--max-time SECONDS] [--seed N] [-v]\n";
@@ -416,6 +419,7 @@ int main(int argc, char** argv) {
     int candFront = 0;          /* extra depot-side or-opt anchors (0 = off) */
     bool cand2optBoth = false;  /* anchor 2-opt on both new edges */
     bool dlbStrict = false;     /* skip (city, neighborhood) pairs already failed */
+    string candDrop;            /* neighborhoods left out, for the ablation */
     double dbFrontBias = 1.0;   /* 1.0 = uniform placement */
     double acceptEps = 0.0;     /* 0 = always walk back to the incumbent */
     bool polishOnBest = false;  /* full unpruned RVND on every new global best */
@@ -466,6 +470,8 @@ int main(int argc, char** argv) {
             cand2optBoth = true;
         } else if (a == "--cand-no-rev") {
             g_candReversed = false;
+        } else if (a == "--cand-drop" && i + 1 < argc) {
+            candDrop = argv[++i];
         } else if (a == "--db-maxseg" && i + 1 < argc) {
             dbMaxSeg = stoi(argv[++i]);
         } else if (a == "--db-maxseg-div" && i + 1 < argc) {
@@ -518,6 +524,10 @@ int main(int argc, char** argv) {
     g_cand = make_candidate_list(eval, candK);
     set_cand_opts(candFront, cand2optBoth);
     set_dlb_strict(dlbStrict);
+    if (!set_cand_disabled(candDrop, g_candMaxLen)) {
+        cerr << "Unknown neighborhood in --cand-drop: " << candDrop << "\n";
+        return 1;
+    }
 
     if (dbMaxSegDiv > 0)
         dbMaxSeg = max(2, eval.Ncity / dbMaxSegDiv);
@@ -559,6 +569,7 @@ int main(int argc, char** argv) {
     cout << "IMAX " << I_max << "\n";
     cout << "IILS " << I_ILS << "\n";
     cout << "RESTARTS " << g_restarts << "\n";
+    cout << "ILS_ITERS " << g_ilsIters << "\n";
     if (abxRate > 0.0) cout << "CROSSOVERS " << g_crossovers << "\n";
     if (maxTimeSec > 0.0)
         cout << "MAX_TIME_S " << fixed << setprecision(3) << maxTimeSec << "\n";
@@ -569,6 +580,7 @@ int main(int argc, char** argv) {
     if (rvndMode == RvndMode::Candidate || rvndMode == RvndMode::CandidateDLB)
         cout << "CAND_K " << g_cand.K << "  CAND_MAXLEN " << g_candMaxLen
              << "  CAND_REV " << (g_candReversed ? 1 : 0) << "\n";
+    if (!candDrop.empty()) cout << "CAND_DROP " << candDrop << "\n";
     cout << "CLOSED " << (closed_tour() ? 1 : 0) << "\n";
     cout << "RVND_MODE " << (rvndMode == RvndMode::ExtendedOrOpt ? "extended-oropt"
                               : rvndMode == RvndMode::ExtendedOrOptWide ? "extended-oropt-wide"
