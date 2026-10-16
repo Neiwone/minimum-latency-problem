@@ -76,6 +76,11 @@ comparados contra o GILS-RVND, salvo indicação.
 - [reports/local-search-speedup-report](reports/local-search-speedup-report.md) — relatório autocontido
   da busca local podada e dos *don't-look bits*: o que mudou, como foi medido e o que os
   números permitem afirmar.
+- [reports/ablation-gils-rvnd-to-dlb](reports/ablation-gils-rvnd-to-dlb.md) — ablação do
+  GILS-RVND ao `gils_am_rvnd_dlb`, um componente por vez (100 s, n ≥ 500): −2,17%, 30/0/0.
+  Lista de candidatos, vizinhanças extras, `I_ILS = 300` e *don't-look bits* contribuem;
+  memória adaptativa não. Entre as vizinhanças, só 2-opt e reinserção são indispensáveis
+  individualmente.
 
 ## Artigos
 
