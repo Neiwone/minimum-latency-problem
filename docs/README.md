@@ -68,6 +68,7 @@ comparados contra o GILS-RVND, salvo indicação.
 | [mdm-vs-am-extended-tsplib-comparison](benchmarks/mdm-vs-am-extended-tsplib-comparison.md) | protocolo do artigo do MDM: `extended-oropt` ganha (27/61/12, p = 0,024), MDM nulo |
 | [salehipour-tsplib-mdm-vs-am-extended](benchmarks/salehipour-tsplib-mdm-vs-am-extended.md) | benchmark de Salehipour, n = 10 a 500: `extended-oropt` com custo 0,283% menor em n = 500, MDM nulo |
 | [salehipour-n1000-mdm-vs-am-extended](benchmarks/salehipour-n1000-mdm-vs-am-extended.md) | Salehipour n = 1000: `extended-oropt` com custo 0,782% menor (162/0/38); braço MDM não concluído |
+| [mdm-paper-table1-reproduction](benchmarks/mdm-paper-table1-reproduction.md) | MDM e GILS-RVND do projeto contra a Tabela 1 do paper do MDM (28 TSPLIB, n ≤ 318): qualidade compatível (diferença das médias −0,0007% e +0,0072%); a redução de tempo de 15% do MDM não se reproduz |
 
 ## Guias e relatórios
 
