@@ -292,6 +292,7 @@ int main(int argc, char** argv) {
         cerr << "    [--construction-mode greedy|lookahead] [--lookahead-k 3]\n";
         cerr << "    [--seed N] [-v]\n";
         cerr << "    [--closed]  pay the return to the depot (default: open path)\n";
+        cerr << "    [--nint]    round EUC_2D distances to nearest (TSPLIB) instead of truncating\n";
         return 1;
     }
 
@@ -383,6 +384,9 @@ int main(int argc, char** argv) {
         else if (a == "--closed") {
             set_closed_tour(true);
         }
+        else if (a == "--nint") {
+            set_euc_nint(true);
+        }
         else if (a == "--seed" && i + 1 < argc) {
             seed = stol(argv[++i]);
         }
@@ -466,6 +470,7 @@ int main(int argc, char** argv) {
     cout << "PERT_MODE " << pertModeName << "\n";
     cout << "PATH_RELINKING " << (pathRelinking ? "on" : "off") << "\n";
     cout << "CLOSED " << (closed_tour() ? 1 : 0) << "\n";
+    cout << "NINT " << (euc_nint() ? 1 : 0) << "\n";
     cout << "RVND_MODE " << (rvndMode == RvndMode::Multi ? "multi"
                               : rvndMode == RvndMode::ExtendedOrOpt ? "extended-oropt"
                               : rvndMode == RvndMode::ExtendedOrOptWide ? "extended-oropt-wide"

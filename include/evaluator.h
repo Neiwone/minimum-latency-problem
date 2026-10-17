@@ -8,6 +8,12 @@
 #include <bits/stdc++.h>
 using namespace std;
 
+/* EUC_2D rounding: truncation (the project's default since the start) or
+   TSPLIB's nint, needed to compare against costs published in the literature.
+   Set before SetInstance. */
+void set_euc_nint(bool on);
+bool euc_nint();
+
 class Evaluator {
 public:
     Evaluator();

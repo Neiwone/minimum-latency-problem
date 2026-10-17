@@ -1,5 +1,9 @@
 #ifndef __EVALUATOR__
 #include "evaluator.h"
+
+static bool gEucNint = false;
+void set_euc_nint(bool on) { gEucNint = on; }
+bool euc_nint() { return gEucNint; }
 #endif
 
 #include <cmath>
@@ -128,7 +132,8 @@ void Evaluator::SetInstance(char filename[]) {
                 for (int j = 0; j < Ncity; ++j) {
                     double dx = x[i] - x[j];
                     double dy = y[i] - y[j];
-                    fEdgeDis[i][j] = (int)sqrt(dx*dx + dy*dy);
+                    double d = sqrt(dx*dx + dy*dy);
+                    fEdgeDis[i][j] = gEucNint ? (int)(d + 0.5) : (int)d;
                 }
             }
         }

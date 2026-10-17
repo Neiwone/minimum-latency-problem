@@ -265,6 +265,7 @@ int main(int argc, char** argv) {
         cerr << "  ./mdm_gils_rvnd <instance.tsp> [--imax 10] [--iils 100] [--pool 10]\n";
         cerr << "    [--sup-min 0.70] [--max-patterns 5] [--max-time SECONDS] [--seed N]\n";
         cerr << "    [--closed]  pay the return to the depot (default: open path)\n";
+        cerr << "    [--nint]    round EUC_2D distances to nearest (TSPLIB) instead of truncating\n";
         cerr << "    [--rvnd-mode single|candidate-dlb] [--cand-k 12] [--cand-maxlen 6] [--cand-no-rev]\n";
         return 1;
     }
@@ -289,6 +290,7 @@ int main(int argc, char** argv) {
         else if (a == "--max-patterns" && i + 1 < argc) maxPatterns = stoi(argv[++i]);
         else if (a == "--max-time" && i + 1 < argc) maxTimeSec = stod(argv[++i]);
         else if (a == "--closed") set_closed_tour(true);
+        else if (a == "--nint") set_euc_nint(true);
         else if (a == "--seed" && i + 1 < argc) seed = stol(argv[++i]);
         else if (a == "--cand-k" && i + 1 < argc) candK = stoi(argv[++i]);
         else if (a == "--cand-maxlen" && i + 1 < argc) g_candMaxLen = stoi(argv[++i]);
@@ -334,6 +336,7 @@ int main(int argc, char** argv) {
     cout << "NODES " << bestSol.fN << "\n";
     cout << "COST " << bestSol.fEvaluationValue << "\n";
     cout << "CLOSED " << (closed_tour() ? 1 : 0) << "\n";
+    cout << "NINT " << (euc_nint() ? 1 : 0) << "\n";
     cout << "RVND_MODE " << (g_rvndMode == RvndMode::CandidateDLB ? "candidate-dlb" : "single") << "\n";
     if (g_rvndMode == RvndMode::CandidateDLB)
         cout << "CAND_K " << g_cand.K << "  CAND_MAXLEN " << g_candMaxLen << "\n";

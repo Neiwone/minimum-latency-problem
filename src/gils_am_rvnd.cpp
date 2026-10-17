@@ -398,6 +398,7 @@ int main(int argc, char** argv) {
     cerr << "    [--db-maxseg K]  cap on each swapped double-bridge block (0 = unrestricted)\n";
         cerr << "    [--max-time SECONDS] [--seed N] [-v]\n";
         cerr << "    [--closed]  pay the return to the depot (default: open path)\n";
+        cerr << "    [--nint]    round EUC_2D distances to nearest (TSPLIB) instead of truncating\n";
         cerr << "    adaptive-oropt: [--adapt-kstart 6] [--adapt-period 400] [--adapt-rho 0.30]\n";
         cerr << "                    [--adapt-grow 0.10] [--adapt-shrink 0.02]\n";
         return 1;
@@ -489,6 +490,8 @@ int main(int argc, char** argv) {
             else { cerr << "Unknown --rvnd-mode: " << m << "\n"; return 1; }
         } else if (a == "--closed") {
             set_closed_tour(true);
+        } else if (a == "--nint") {
+            set_euc_nint(true);
         } else if (a == "--seed" && i + 1 < argc) {
             seed = stol(argv[++i]);
         } else if (a == "--adapt-kstart" && i + 1 < argc) {
@@ -582,6 +585,7 @@ int main(int argc, char** argv) {
              << "  CAND_REV " << (g_candReversed ? 1 : 0) << "\n";
     if (!candDrop.empty()) cout << "CAND_DROP " << candDrop << "\n";
     cout << "CLOSED " << (closed_tour() ? 1 : 0) << "\n";
+    cout << "NINT " << (euc_nint() ? 1 : 0) << "\n";
     cout << "RVND_MODE " << (rvndMode == RvndMode::ExtendedOrOpt ? "extended-oropt"
                               : rvndMode == RvndMode::ExtendedOrOptWide ? "extended-oropt-wide"
                               : rvndMode == RvndMode::ExtendedOrOptRev ? "extended-oropt-rev"
