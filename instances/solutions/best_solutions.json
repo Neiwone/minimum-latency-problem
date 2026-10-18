@@ -1,6 +1,6 @@
 {
   "eil51": {
-    "cost": 9696.0,
+    "cost": 9319.0,
     "solver": "gils_rvnd",
     "timestamp": "2026-02-17T16:39:12.621948",
     "tour_file": "eil51.tour"
@@ -12,33 +12,33 @@
     "tour_file": "berlin52.tour"
   },
   "pr76": {
-    "cost": 3323636.0,
+    "cost": 3322660.0,
     "solver": "gils_rvnd",
     "timestamp": "2026-02-17T16:39:13.499476",
     "tour_file": "pr76.tour"
   },
   "rat99": {
     "cost": 54984.0,
-    "solver": "gils_rvnd",
-    "timestamp": "2026-02-17T12:07:28.671210",
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-17T20:42:07.699673",
     "tour_file": "rat99.tour"
   },
   "kroA100": {
-    "cost": 959846.0,
+    "cost": 958013.0,
     "solver": "gils_rvnd",
     "timestamp": "2026-02-17T16:39:16.982647",
     "tour_file": "kroA100.tour"
   },
   "eil101": {
-    "cost": 26762.0,
+    "cost": 25873.0,
     "solver": "gils_rvnd",
     "timestamp": "2026-02-18T12:49:29.847578",
     "tour_file": "eil101.tour"
   },
   "st70": {
     "cost": 19215.0,
-    "solver": "gils_rvnd",
-    "timestamp": "2026-02-17T12:07:26.313402",
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-17T20:42:27.707931",
     "tour_file": "st70.tour"
   },
   "kroD100": {
@@ -61,8 +61,8 @@
   },
   "rat195": {
     "cost": 210191.0,
-    "solver": "gils_rvnd",
-    "timestamp": "2026-02-19T09:55:05.498961",
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-17T20:43:27.716657",
     "tour_file": "rat195.tour"
   },
   "pr226": {
@@ -79,8 +79,8 @@
   },
   "pr439": {
     "cost": 17688561.0,
-    "solver": "gils_rvnd",
-    "timestamp": "2026-02-17T16:43:42.812128",
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-17T20:45:07.731599",
     "tour_file": "pr439.tour"
   },
   "att532": {
