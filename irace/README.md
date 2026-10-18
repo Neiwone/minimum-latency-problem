@@ -4,6 +4,33 @@ Configuração pronta para rodar [irace](https://mlopez-ibanez.github.io/irace/)
 (Iterated Racing) sobre `bin/gils_am_rvnd`. **Nada aqui foi executado** —
 monte o binário e rode em outra máquina.
 
+## Tuning do método atual (`scenario-dlb.txt`)
+
+O cenário original (abaixo) ajusta a configuração antiga do projeto, com
+`extended-oropt`, orçamento por iterações e instâncias pequenas, e não serve para o
+método proposto. O cenário `*-dlb` ajusta o `gils_am_rvnd_dlb` no protocolo de tempo
+fixo:
+
+| arquivo | o quê |
+|---|---|
+| `parameters-dlb.txt` | `--cand-k` (6–30), `--cand-maxlen` (3–8), or-opt invertido (`on`/`off`), `--iils` (50–1000, escala log). λ e `pool` ficam no default: a [ablação](../docs/reports/ablation-gils-rvnd-to-dlb.md) mostrou a memória adaptativa sem efeito |
+| `configurations-dlb.txt` | a configuração atual (K = 12, maxlen = 6, invertido ligado, `I_ILS` = 300), de onde a corrida parte |
+| `instances-train-dlb.txt` | 8 TSPLIB com n ≥ 500 (`u574` a `rl1304`), **disjuntas** das 6 da ablação, que ficam para a validação |
+| `target-runner-dlb` | roda `--rvnd-mode candidate-dlb --max-time 100` e devolve o custo; `IRACE_TIME_LIMIT` muda o orçamento |
+| `scenario-dlb.txt` | 600 experimentos, 3 em paralelo (~5,6 h) |
+
+```bash
+cd irace
+irace --scenario scenario-dlb.txt > irace-dlb.log
+```
+
+A configuração que o irace escolhe precisa ser validada contra a atual em lote
+pareado, nas 6 instâncias de teste, no protocolo sequencial (`run_experiments.py --mode
+fixed-time`). **Resultado da rodada de 2026-10-17:** o irace escolheu K = 14, maxlen = 7,
+`I_ILS` = 396 (`gils_am_rvnd_irace` no registro), que empata com a configuração atual
+na validação (+0,100%, 24/0/36, p = 0,155). A atual fica. Detalhes em
+[irace-dlb-tuning](../docs/benchmarks/irace-dlb-tuning.md).
+
 ## Arquivos
 
 - `parameters.txt` — espaço de busca: `--pool` (int, 5-60), `--lambda` (real,

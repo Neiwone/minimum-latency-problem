@@ -1,0 +1,22 @@
+# irace scenario for the proposed method under the fixed-time protocol.
+# Run from this directory:
+#   Rscript -e 'irace::irace(scenarioFile = "scenario-dlb.txt")'
+# See README.md, "Tuning do metodo atual".
+
+## Training: 8 TSPLIB instances with n >= 500, disjoint from the 6 the
+## ablation and the validation use (att532, rat783, pr1002, pcb1173, d1291,
+## nrw1379), so the validation is on unseen instances.
+trainInstancesDir  = "../instances"
+trainInstancesFile = "./instances-train-dlb.txt"
+
+targetRunner       = "./target-runner-dlb"
+parameterFile      = "./parameters-dlb.txt"
+configurationsFile = "./configurations-dlb.txt"
+
+## Each experiment is one 100 s run: 600 x 100 s / 3 in parallel ~ 5.6 h.
+## Three concurrent runs cost ~27% throughput (docs/benchmarks/
+## fixed-time-protocol.md), the same for every configuration in a race.
+maxExperiments = 600
+parallel       = 3
+
+logFile = "./irace-dlb.Rdata"

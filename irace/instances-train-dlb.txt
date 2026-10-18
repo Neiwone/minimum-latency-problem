@@ -1,0 +1,8 @@
+u574.tsp
+rat575.tsp
+p654.tsp
+d657.tsp
+u724.tsp
+u1060.tsp
+vm1084.tsp
+rl1304.tsp

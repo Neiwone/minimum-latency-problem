@@ -1,0 +1,11 @@
+# Parameter space for the proposed method (gils_am_rvnd --rvnd-mode candidate-dlb)
+# under the fixed-time protocol. See README.md, "Tuning do metodo atual".
+# The local-search parameters the ablation showed to matter
+# (docs/reports/ablation-gils-rvnd-to-dlb.md); lambda/pool (adaptive memory,
+# measured null) stay at their defaults so the budget goes where it counts.
+#
+# Format: <name> <switch> <type> <domain>
+candk     "--cand-k "      i      (6, 30)
+maxlen    "--cand-maxlen " i      (3, 8)
+rev       "--rev "         c      (on, off)
+iils      "--iils "        i,log  (50, 1000)

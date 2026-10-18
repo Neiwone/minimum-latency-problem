@@ -193,6 +193,12 @@ SOLVERS_RAW = {
     "gils_am_rvnd_dlb": ("./bin/gils_am_rvnd",
                          ["--rvnd-mode", "candidate-dlb", "--cand-k", "12", "--iils", "300"]),
 
+    # The configuration irace chose (irace/scenario-dlb.txt, config 82), for
+    # its validation against gils_am_rvnd_dlb on held-out instances.
+    "gils_am_rvnd_irace": ("./bin/gils_am_rvnd",
+                           ["--rvnd-mode", "candidate-dlb", "--cand-k", "14",
+                            "--cand-maxlen", "7", "--iils", "396"]),
+
     # ---- H19 fairness controls ----
     # The same local search as the proposed method, so what is left between
     # the three is only the memory strategy -- pattern mining (mdm), adaptive

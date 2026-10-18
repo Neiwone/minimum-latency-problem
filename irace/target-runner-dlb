@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+###############################################################################
+# target-runner for tuning the proposed method (scenario-dlb.txt): runs
+# gils_am_rvnd --rvnd-mode candidate-dlb for 100 s with the configuration
+# irace passes, and prints COST. "--rev off" becomes --cand-no-rev.
+###############################################################################
+
+error() {
+    echo "$(basename "$0"): error: $1" >&2
+    exit 1
+}
+
+[ $# -ge 4 ] || error "expected configuration_id instance_id seed instance [params], got $#: $*"
+
+CONFIG_ID=$1
+INSTANCE_ID=$2
+SEED=$3
+INSTANCE=$4
+shift 4
+
+ARGS=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --rev) [ "$2" = "off" ] && ARGS+=(--cand-no-rev); shift 2 ;;
+        *)     ARGS+=("$1"); shift ;;
+    esac
+done
+
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+BINARY="$SCRIPT_DIR/../bin/gils_am_rvnd"
+TIME_LIMIT=${IRACE_TIME_LIMIT:-100}
+
+[ -x "$BINARY" ] || error "binary not found: $BINARY (run 'make gils_am_rvnd')"
+[ -f "$INSTANCE" ] || error "instance file not found: $INSTANCE"
+
+OUT=$("$BINARY" "$INSTANCE" --rvnd-mode candidate-dlb --max-time "$TIME_LIMIT" \
+      --seed "$SEED" "${ARGS[@]}" 2>&1) || error "solver failed (config $CONFIG_ID): $OUT"
+
+COST=$(echo "$OUT" | awk '/^COST /{print $2; exit}')
+[ -n "$COST" ] || error "no COST in output (config $CONFIG_ID): $OUT"
+echo "$COST"
