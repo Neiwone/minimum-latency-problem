@@ -285,7 +285,24 @@ void crossover_abx(Solution& child, const Solution& A, const Solution& B,
 /* Reported so a fixed-time run can show the restart-boundary mechanisms
    were exercised at all. */
 long g_restarts = 0;
-long g_ilsIters = 0;   /* perturbations applied: a speed measure for the ablation */
+long g_ilsIters = 0;
+
+/* --trace: one TRACE_R line per restart and one TRACE_B line per new global
+   best, for studying what the adaptive memory does beyond final quality
+   (docs/hypotheses/h20-adaptive-memory-beyond-quality.md). Printing only:
+   the search, and its random stream, are the same with or without it. */
+bool g_trace = false;
+
+/* Nodes whose successor differs between two tours: an O(n) proxy for how
+   far apart they are in edge space. */
+static int succ_distance(const Solution& a, const Solution& b) {
+    vector<int> sa(a.fN, -1), sb(b.fN, -1);
+    for (int i = 0; i + 1 < a.fN; i++) sa[a.fTour[i]] = a.fTour[i + 1];
+    for (int i = 0; i + 1 < b.fN; i++) sb[b.fTour[i]] = b.fTour[i + 1];
+    int d = 0;
+    for (int u = 0; u < a.fN; u++) d += sa[u] != sb[u];
+    return d;
+}   /* perturbations applied: a speed measure for the ablation */
 long g_crossovers = 0;
 
 void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
@@ -307,10 +324,16 @@ void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
         if (!timed) return false;
         return chrono::duration<double>(SteadyClock::now() - tStart).count() >= maxTimeSec;
     };
+    auto elapsedMs = [&]() {
+        return chrono::duration<double, milli>(SteadyClock::now() - tStart).count();
+    };
+    Cost traceBest = LLONG_MAX;
 
     for (int i = 0; i < I_max; i++) {
         if (outOfTime()) break;
         g_restarts++;
+        const double tRestart = elapsedMs();
+        const int poolUsed = (int)memory.sols.size();
 
         EdgeFreq freq = (parentMode == ParentMode::Pair)
             ? two_parent_frequency(memory, gen)
@@ -341,14 +364,27 @@ void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
         dlb.reset(s.fN);
 
         Solution sPrime(s);
+        const Cost constructCost = s.fEvaluationValue;
+        Cost descentCost = -1;
+        double descentMs = -1;
+        long itersHere = 0;
 
         int iterILS = 0;
         while (iterILS < I_ILS) {
+            const double tDescent = g_trace && descentCost < 0 ? elapsedMs() : 0;
             run_rvnd(rvndMode, s, eval, gen, adaptState, dlb);
+            if (g_trace && descentCost < 0) {
+                descentCost = s.fEvaluationValue;
+                descentMs = elapsedMs() - tDescent;
+            }
 
             if (s.fEvaluationValue < sPrime.fEvaluationValue) {
                 sPrime = s;
                 iterILS = 0;
+            }
+            if (g_trace && sPrime.fEvaluationValue < traceBest) {
+                traceBest = sPrime.fEvaluationValue;
+                printf("TRACE_B %.1f %lld\n", elapsedMs(), (long long)traceBest);
             }
 
             if (outOfTime()) break;
@@ -365,7 +401,15 @@ void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
             else dlb.reset(s.fN);
             iterILS++;
             g_ilsIters++;
+            itersHere++;
         }
+
+        if (g_trace)
+            printf("TRACE_R %d %.1f %d %.2f %lld %lld %.1f %lld %ld %.1f %d\n",
+                   i, tRestart, poolUsed, alpha, (long long)constructCost,
+                   (long long)descentCost, descentMs, (long long)sPrime.fEvaluationValue,
+                   itersHere, elapsedMs() - tRestart,
+                   fStar < LLONG_MAX ? succ_distance(sPrime, bestSol) : -1);
 
         memory.add(sPrime);
 
@@ -397,8 +441,10 @@ int main(int argc, char** argv) {
     cerr << "    [--db-front-bias B]  skew perturbation towards the tour front (1 = uniform)\n";
     cerr << "    [--db-maxseg K]  cap on each swapped double-bridge block (0 = unrestricted)\n";
         cerr << "    [--max-time SECONDS] [--seed N] [-v]\n";
+        cerr << "    [--trace]  TRACE_R per restart, TRACE_B per new global best\n";
         cerr << "    [--closed]  pay the return to the depot (default: open path)\n";
-        cerr << "    [--nint]    round EUC_2D distances to nearest (TSPLIB) instead of truncating\n";
+        cerr << "    [--nint|--trunc]  EUC_2D: force TSPLIB nint / truncation (default: truncation\n";
+        cerr << "                on the path, nint with --closed, as in the literature)\n";
         cerr << "    adaptive-oropt: [--adapt-kstart 6] [--adapt-period 400] [--adapt-rho 0.30]\n";
         cerr << "                    [--adapt-grow 0.10] [--adapt-shrink 0.02]\n";
         return 1;
@@ -491,7 +537,9 @@ int main(int argc, char** argv) {
         } else if (a == "--closed") {
             set_closed_tour(true);
         } else if (a == "--nint") {
-            set_euc_nint(true);
+            set_euc_round(EucRound::Nint);
+        } else if (a == "--trunc") {
+            set_euc_round(EucRound::Trunc);
         } else if (a == "--seed" && i + 1 < argc) {
             seed = stol(argv[++i]);
         } else if (a == "--adapt-kstart" && i + 1 < argc) {
@@ -508,6 +556,8 @@ int main(int argc, char** argv) {
             maxTimeSec = stod(argv[++i]);
         } else if (a == "-v") {
             verbose = true;
+        } else if (a == "--trace") {
+            g_trace = true;
         }
     }
 

@@ -13,13 +13,22 @@ instâncias simétricas do TSPLIB. Antes só `EUC_2D` e `ATT`.
 
 Dois detalhes que não são óbvios:
 
-- **`EUC_2D` trunca, não arredonda.** O TSPLIB especifica `nint`. Este projeto
-  trunca desde o início; manter assim preserva a comparabilidade com todos os
-  resultados já registrados. `CEIL_2D` e `GEO` seguem a definição padrão, porque
-  não têm histórico aqui. A flag `--nint` (em `gils_rvnd`, `gils_am_rvnd` e
-  `mdm_gils_rvnd`) troca para o `nint` do TSPLIB, e é obrigatória para comparar com
-  custos publicados na literatura: truncando, os custos ficam abaixo de ótimos
-  provados ([mdm-paper-table1-reproduction](../benchmarks/mdm-paper-table1-reproduction.md)).
+- **O arredondamento de `EUC_2D` acompanha a variante do problema**, como na
+  literatura:
+
+  | variante | convenção | literatura |
+  |---|---|---|
+  | caminho (padrão) | **trunca**: `(int) √(dx² + dy²)` | Salehipour et al. (2011) ("*rounded down to the nearest integer*"); Silva et al. (2012), Tabela 2; o conjunto de 10 TSPLIB do MDM-GILS-RVND |
+  | circuito (`--closed`) | **`nint`** do TSPLIB: `(int)(√(dx² + dy²) + 0,5)` | Abeledo et al. (2010); Bulhões et al. (2018); Silva et al. (2012), Tabela 1; Santana et al. (2019), Tabela 1 |
+
+  A evidência é numérica: no caminho, o projeto reproduz exatamente os BKS
+  publicados truncando (`st70` 19 215, `lin318` 5 560 679, `pr439` 17 688 561); no
+  circuito, só com `nint` os ótimos provados batem (`pr124` 3 154 346, `kroA150`
+  1 825 769; [mdm-paper-table1-reproduction](../benchmarks/mdm-paper-table1-reproduction.md)).
+  `--nint` e `--trunc` (em `gils_rvnd`, `gils_am_rvnd` e `mdm_gils_rvnd`) forçam uma
+  das duas; os demais binários seguem a mesma regra pelo `Evaluator`, exceto o
+  `backtracking`, que só resolve o caminho e trunca. `CEIL_2D` e `GEO` seguem a
+  definição padrão do TSPLIB nas duas variantes.
 - **`GEO` precisa de diagonal explícita.** A fórmula do TSPLIB devolve `1` para
   `i == j` (`acos(1) = 0`, e depois soma-se `1.0`). Sem zerar a diagonal, toda
   distância própria vale 1.

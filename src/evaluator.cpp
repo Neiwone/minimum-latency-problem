@@ -1,9 +1,5 @@
 #ifndef __EVALUATOR__
 #include "evaluator.h"
-
-static bool gEucNint = false;
-void set_euc_nint(bool on) { gEucNint = on; }
-bool euc_nint() { return gEucNint; }
 #endif
 
 #include <cmath>
@@ -13,6 +9,11 @@ bool euc_nint() { return gEucNint; }
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
+
+static EucRound gEucRound = EucRound::Auto;
+static bool gEucNint = false;  /* what the last SetInstance resolved to */
+void set_euc_round(EucRound mode) { gEucRound = mode; }
+bool euc_nint() { return gEucNint; }
 
 Evaluator::Evaluator() {
     fEdgeDis = NULL;
@@ -126,6 +127,9 @@ void Evaluator::SetInstance(char filename[]) {
             int id;
             fscanf(fp, "%d %lf %lf", &id, &x[i], &y[i]);
         }
+
+        gEucNint = gEucRound == EucRound::Nint
+                || (gEucRound == EucRound::Auto && closed_tour());
 
         if (strcmp(type, "EUC_2D") == 0) {
             for (int i = 0; i < Ncity; ++i) {

@@ -292,7 +292,8 @@ int main(int argc, char** argv) {
         cerr << "    [--construction-mode greedy|lookahead] [--lookahead-k 3]\n";
         cerr << "    [--seed N] [-v]\n";
         cerr << "    [--closed]  pay the return to the depot (default: open path)\n";
-        cerr << "    [--nint]    round EUC_2D distances to nearest (TSPLIB) instead of truncating\n";
+        cerr << "    [--nint|--trunc]  EUC_2D: force TSPLIB nint / truncation (default: truncation\n";
+        cerr << "                on the path, nint with --closed, as in the literature)\n";
         return 1;
     }
 
@@ -385,7 +386,10 @@ int main(int argc, char** argv) {
             set_closed_tour(true);
         }
         else if (a == "--nint") {
-            set_euc_nint(true);
+            set_euc_round(EucRound::Nint);
+        }
+        else if (a == "--trunc") {
+            set_euc_round(EucRound::Trunc);
         }
         else if (a == "--seed" && i + 1 < argc) {
             seed = stol(argv[++i]);

@@ -6,13 +6,13 @@ best in instances/solutions/best_solutions.json.
 
 Verification is independent of the solver: the route is checked to be a
 permutation of 0..n-1 starting at the depot, and the latency is recomputed
-with the Evaluator's rounding convention (truncation for EUC_2D, ceiling
-for ATT).
+with the Evaluator's rounding convention (see verify_tour.py).
 """
 import argparse, json, math, subprocess, sys
 from pathlib import Path
 
 from runner import SolutionTracker
+from verify_tour import dist, read_instance
 
 BEST = Path("instances/solutions/best_solutions.json")
 
@@ -23,33 +23,13 @@ def _tracker():
     return SolutionTracker(Path("instances/solutions"))
 
 
-def read_inst(path):
-    coords, mode, etype = {}, None, "EUC_2D"
-    for line in open(path):
-        line = line.strip()
-        if line.startswith("EDGE_WEIGHT_TYPE"):
-            etype = line.split(":")[1].strip()
-        if line.startswith("NODE_COORD_SECTION"):
-            mode = "c"; continue
-        if line.startswith("EOF"):
-            break
-        if mode == "c" and line:
-            p = line.split()
-            coords[int(p[0])] = (float(p[1]), float(p[2]))
-    return coords, etype
-
-
-def dist(a, b, etype):
-    dx, dy = a[0] - b[0], a[1] - b[1]
-    if etype == "ATT":
-        return int(math.ceil(math.sqrt((dx * dx + dy * dy) / 10.0)))
-    return int(math.sqrt(dx * dx + dy * dy))
-
-
-def latency(route, coords, etype):
+def latency(route, path):
+    coords, etype, matrix = read_instance(path)
     acc = tot = 0
     for i in range(1, len(route)):
-        acc += dist(coords[route[i - 1] + 1], coords[route[i] + 1], etype)
+        a, b = route[i - 1], route[i]
+        acc += matrix[a][b] if matrix is not None else \
+            dist(coords[a + 1], coords[b + 1], etype)
         tot += acc
     return tot
 
@@ -66,7 +46,6 @@ def main():
     name = args.instance
     path = name if "/" in name else f"instances/{name}.tsp"
     stem = Path(path).stem
-    coords, etype = read_inst(path)
 
     best = json.loads(BEST.read_text())
     tracked = best.get(stem)
@@ -86,7 +65,7 @@ def main():
                 cost = int(line.split()[1])
         n = len(coords)
         assert sorted(route) == list(range(n)) and route[0] == 0, "invalid tour"
-        rec = latency(route, coords, etype)
+        rec = latency(route, path)
         assert rec == cost, f"cost mismatch: reported {cost} recomputed {rec}"
         print(f"seed {seed}: cost {cost} (verified)  tracked {tracked_cost}", flush=True)
         if champion is None or cost < champion[0]:

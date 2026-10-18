@@ -4,7 +4,8 @@ Run a solver and check its tour independently of the solver itself.
 
 Verifies the route is a permutation of 0..n-1 starting at the depot, and
 recomputes the latency straight from the instance coordinates with the
-Evaluator's rounding convention (truncation for EUC_2D, ceiling for ATT).
+Evaluator's rounding convention for the path (truncation for EUC_2D,
+ceiling for ATT); a solver run with --nint is checked with nint.
 
     python3 scripts/verify_tour.py instances/att532.tsp \
         ./bin/gils_am_rvnd instances/att532.tsp --rvnd-mode candidate-dlb --max-time 5
@@ -61,7 +62,7 @@ def geo_rad(v):
     return 3.141592 * (deg + 5.0 * (v - deg) / 3.0) / 180.0  # TSPLIB uses this PI
 
 
-def dist(a, b, etype):
+def dist(a, b, etype, nint=False):
     if etype == "GEO":
         la, lo = geo_rad(a[0]), geo_rad(a[1])
         lb, lob = geo_rad(b[0]), geo_rad(b[1])
@@ -72,7 +73,8 @@ def dist(a, b, etype):
         return int(math.ceil(math.sqrt((dx * dx + dy * dy) / 10.0)))
     if etype == "CEIL_2D":
         return int(math.ceil(math.sqrt(dx * dx + dy * dy)))
-    return int(math.sqrt(dx * dx + dy * dy))
+    d = math.sqrt(dx * dx + dy * dy)
+    return int(d + 0.5) if nint else int(d)
 
 
 def main():
@@ -89,6 +91,7 @@ def main():
         return 1
 
     coords, etype, matrix = read_instance(instance)
+    nint = "--nint" in cmd
     n = len(coords)
     if sorted(route) != list(range(n)) or route[0] != 0:
         print(f"FAIL not a tour of 0..{n-1} starting at the depot")
@@ -99,7 +102,7 @@ def main():
         if matrix is not None:
             acc += matrix[route[i - 1]][route[i]]
         else:
-            acc += dist(coords[route[i - 1] + 1], coords[route[i] + 1], etype)
+            acc += dist(coords[route[i - 1] + 1], coords[route[i] + 1], etype, nint)
         latency += acc
 
     ok = latency == cost

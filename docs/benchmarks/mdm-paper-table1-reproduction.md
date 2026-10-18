@@ -51,8 +51,10 @@ Isso é impossível com a mesma função objetivo, e a causa é o arredondamento
 - este projeto **trunca** desde o início ([distance-types](../concepts/distance-types.md)).
 
 Truncar dá distâncias menores ou iguais, logo latências menores. Para esta comparação,
-os três solvers ganharam a flag **`--nint`**, desligada por padrão; o comportamento
-padrão continua bit a bit idêntico. A variante circuito do paper é exatamente o
+os três solvers ganharam a flag **`--nint`**. Depois deste estudo, o arredondamento
+passou a acompanhar a variante, como na literatura: `--closed` usa `nint` por padrão, e
+o caminho continua truncando, bit a bit idêntico ao de antes
+([distance-types](../concepts/distance-types.md)). A variante circuito do paper é exatamente o
 `--closed` do projeto ([return-to-depot](../concepts/return-to-depot.md)).
 
 Com `--closed --nint`, o GILS-RVND do projeto atinge o **ótimo provado** em todas as 18
