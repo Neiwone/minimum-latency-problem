@@ -2,6 +2,9 @@
 
 **Por onde começar:**
 
+- [reports/resumo-resultados.md](reports/resumo-resultados.md) — o resumo de tudo:
+  ablação, comparação com o paper do MDM, irace e memória adaptativa, com os gráficos
+  de ganho por instância.
 - [results-tables.md](results-tables.md) — os resultados finais, gerados dos
   checkpoints por `scripts/make_result_tables.py`.
 - [concepts/method-explained.md](concepts/method-explained.md) — o problema, o
