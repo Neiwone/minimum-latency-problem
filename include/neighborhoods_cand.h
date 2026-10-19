@@ -49,4 +49,10 @@ void set_dlb_strict(bool strict);
    Returns false (and leaves the set unchanged) on an unknown name. */
 bool set_cand_disabled(const std::string& csv, int maxLen);
 
+/* Per-neighborhood accounting for RVND_CandidateDLB: moves applied and cost
+   removed, split by phase (0 = the descent from a fresh construction,
+   1 = descents after a perturbation). Counting only; the search is the same. */
+void nb_stats_set_phase(int phase);
+void nb_stats_print();   /* NB_STATS <phase> <neighborhood> <moves> <gain> */
+
 #endif

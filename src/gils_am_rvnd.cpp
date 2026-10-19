@@ -292,6 +292,7 @@ long g_ilsIters = 0;
    (docs/hypotheses/h20-adaptive-memory-beyond-quality.md). Printing only:
    the search, and its random stream, are the same with or without it. */
 bool g_trace = false;
+bool g_nbStats = false;   /* --nb-stats: cost removed per neighborhood */
 
 /* Nodes whose successor differs between two tours: an O(n) proxy for how
    far apart they are in edge space. */
@@ -368,9 +369,12 @@ void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
         Cost descentCost = -1;
         double descentMs = -1;
         long itersHere = 0;
+        bool firstDescent = true;
 
         int iterILS = 0;
         while (iterILS < I_ILS) {
+            nb_stats_set_phase(firstDescent ? 0 : 1);
+            firstDescent = false;
             const double tDescent = g_trace && descentCost < 0 ? elapsedMs() : 0;
             run_rvnd(rvndMode, s, eval, gen, adaptState, dlb);
             if (g_trace && descentCost < 0) {
@@ -442,6 +446,7 @@ int main(int argc, char** argv) {
     cerr << "    [--db-maxseg K]  cap on each swapped double-bridge block (0 = unrestricted)\n";
         cerr << "    [--max-time SECONDS] [--seed N] [-v]\n";
         cerr << "    [--trace]  TRACE_R per restart, TRACE_B per new global best\n";
+        cerr << "    [--nb-stats]  NB_STATS: moves and cost removed per neighborhood (candidate-dlb)\n";
         cerr << "    [--closed]  pay the return to the depot (default: open path)\n";
         cerr << "    [--nint|--trunc]  EUC_2D: force TSPLIB nint / truncation (default: truncation\n";
         cerr << "                on the path, nint with --closed, as in the literature)\n";
@@ -558,6 +563,8 @@ int main(int argc, char** argv) {
             verbose = true;
         } else if (a == "--trace") {
             g_trace = true;
+        } else if (a == "--nb-stats") {
+            g_nbStats = true;
         }
     }
 
@@ -649,6 +656,11 @@ int main(int argc, char** argv) {
         if (verbose) cerr << adaptState.summary();
     }
     cout << "TIME_MS " << fixed << setprecision(3) << runtime_ms << "\n";
+    if (g_nbStats) {
+        cout.flush();
+        nb_stats_print();
+        fflush(stdout);
+    }
     cout << "ROUTE ";
     for (int i = 0; i < bestSol.fN; i++)
         cout << bestSol.fTour[i] << ",\n"[i == bestSol.fN - 1];

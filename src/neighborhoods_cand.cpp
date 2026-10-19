@@ -1,5 +1,6 @@
 #include "neighborhoods_cand.h"
 #include <algorithm>
+#include <cstdio>
 #include <set>
 #include <sstream>
 #include <vector>
@@ -24,6 +25,18 @@ static vector<int> enabled_ids(int total, int nFwd) {
     for (int i = 0; i < total; i++)
         if (!g_disabled.count(nbhd_name(i, nFwd))) ids.push_back(i);
     return ids;
+}
+
+static long long g_nbMoves[2][32], g_nbGain[2][32];
+static int g_nbPhase = 0, g_nbTotal = 0, g_nbFwd = 0;
+
+void nb_stats_set_phase(int phase) { g_nbPhase = phase; }
+
+void nb_stats_print() {
+    for (int ph = 0; ph < 2; ph++)
+        for (int eta = 0; eta < g_nbTotal; eta++)
+            printf("NB_STATS %d %s %lld %lld\n", ph, nbhd_name(eta, g_nbFwd).c_str(),
+                   g_nbMoves[ph][eta], g_nbGain[ph][eta]);
 }
 
 bool set_cand_disabled(const string& csv, int maxLen) {
@@ -402,6 +415,8 @@ void RVND_CandidateDLB(Solution& sol, const CandList& cl, int maxLen,
     for (int eta : NL) full |= 1u << eta;
 
     if ((int)dlb.active.size() != sol.fN) dlb.reset(sol.fN);
+    g_nbTotal = total;
+    g_nbFwd = nFwd;
 
     while (dlb.nActive > 0) {
         shuffle(NL.begin(), NL.end(), gen);
@@ -409,19 +424,25 @@ void RVND_CandidateDLB(Solution& sol, const CandList& cl, int maxLen,
 
         for (int eta : NL) {
             unsigned bit = 1u << eta;
-            int got = 0;
+            int got = 0, k;
+            long long moves = 0;
+            const Cost before = sol.fEvaluationValue;
             if (eta == 0) {
-                while (pass_swap_dlb(sol, cl, dlb, bit, full) > 0) got = 1;
+                while ((k = pass_swap_dlb(sol, cl, dlb, bit, full)) > 0) { got = 1; moves += k; }
             } else if (eta == 1) {
-                while (pass_2opt_dlb(sol, cl, dlb, bit, full) > 0) got = 1;
+                while ((k = pass_2opt_dlb(sol, cl, dlb, bit, full)) > 0) { got = 1; moves += k; }
             } else if (eta < 2 + nFwd) {
                 int len = eta - 1;
-                while (pass_oropt_dlb(sol, cl, len, false, dlb, bit, full) > 0) got = 1;
+                while ((k = pass_oropt_dlb(sol, cl, len, false, dlb, bit, full)) > 0) { got = 1; moves += k; }
             } else {
                 int len = eta - (2 + nFwd) + 2;
-                while (pass_oropt_dlb(sol, cl, len, true, dlb, bit, full) > 0) got = 1;
+                while ((k = pass_oropt_dlb(sol, cl, len, true, dlb, bit, full)) > 0) { got = 1; moves += k; }
             }
-            if (got) progressed = true;
+            if (got) {
+                progressed = true;
+                g_nbMoves[g_nbPhase][eta] += moves;
+                g_nbGain[g_nbPhase][eta] += before - sol.fEvaluationValue;
+            }
             if (dlb.nActive == 0) break;
         }
 
