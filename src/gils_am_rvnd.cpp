@@ -5,6 +5,7 @@
 #include "rvnd_lk.h"
 #include "rvnd_adaptive.h"
 #include "neighborhoods_cand.h"
+#include "profile.h"
 
 using namespace std;
 
@@ -293,6 +294,8 @@ long g_ilsIters = 0;
    the search, and its random stream, are the same with or without it. */
 bool g_trace = false;
 bool g_nbStats = false;   /* --nb-stats: cost removed per neighborhood */
+bool g_profile = false;   /* --profile: time per phase */
+PhaseTimes g_phase;
 
 /* Nodes whose successor differs between two tours: an O(n) proxy for how
    far apart they are in edge space. */
@@ -357,7 +360,7 @@ void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
             crossover_abx(s, memory.sols[a], memory.sols[b], gen, abxRate);
             g_crossovers++;
         } else {
-            construction_am(s, eval, alpha, freq, lambda, gen);
+            PhaseTimes::add(g_phase.construction, [&] { construction_am(s, eval, alpha, freq, lambda, gen); });
         }
 
         /* A fresh construction is nowhere near a local optimum: arm
@@ -376,7 +379,7 @@ void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
             nb_stats_set_phase(firstDescent ? 0 : 1);
             firstDescent = false;
             const double tDescent = g_trace && descentCost < 0 ? elapsedMs() : 0;
-            run_rvnd(rvndMode, s, eval, gen, adaptState, dlb);
+            PhaseTimes::add(g_phase.localSearch, [&] { run_rvnd(rvndMode, s, eval, gen, adaptState, dlb); });
             if (g_trace && descentCost < 0) {
                 descentCost = s.fEvaluationValue;
                 descentMs = elapsedMs() - tDescent;
@@ -400,7 +403,8 @@ void gils_am_rvnd(Solution& bestSol, Evaluator& eval, int I_max, int I_ILS,
                       (double)sPrime.fEvaluationValue * (1.0 + acceptEps)))
                 s = sPrime;
 
-            auto hit = perturb(s, gen, dbMaxSeg, dbFrontBias);
+            pair<int,int> hit;
+            PhaseTimes::add(g_phase.perturbation, [&] { hit = perturb(s, gen, dbMaxSeg, dbFrontBias); });
             if (hit.first >= 0) dlb.arm_range(s, hit.first - 1, hit.second + 1);
             else dlb.reset(s.fN);
             iterILS++;
@@ -563,6 +567,8 @@ int main(int argc, char** argv) {
             verbose = true;
         } else if (a == "--trace") {
             g_trace = true;
+        } else if (a == "--profile") {
+            g_profile = true;
         } else if (a == "--nb-stats") {
             g_nbStats = true;
         }
@@ -656,6 +662,7 @@ int main(int argc, char** argv) {
         if (verbose) cerr << adaptState.summary();
     }
     cout << "TIME_MS " << fixed << setprecision(3) << runtime_ms << "\n";
+    if (g_profile) { cout.flush(); g_phase.print(runtime_ms / 1000); fflush(stdout); }
     if (g_nbStats) {
         cout.flush();
         nb_stats_print();

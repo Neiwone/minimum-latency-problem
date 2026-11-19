@@ -94,6 +94,13 @@ comparados contra o GILS-RVND, salvo indicação.
 
 ## Artigos
 
+- [papers/mlp-literature-review.md](papers/mlp-literature-review.md) — revisão da
+  literatura do MLP indexada para consulta: os três artigos abaixo lidos por inteiro,
+  as referências citadas nos docs do projeto e as referências completas.
+- [papers/grasp-book-notes.md](papers/grasp-book-notes.md) — notas de leitura do livro
+  *Optimization by GRASP* (Resende & Ribeiro, 2016) e do capítulo do *Handbook of
+  Metaheuristics* (2019): memória adaptativa (Fleurent & Glover, 1999), conjunto elite,
+  achados que conversam com o H20, ideias e figuras para o TCC.
 - [papers/silva-2012-gils-rvnd.pdf](papers/silva-2012-gils-rvnd.pdf) — Silva,
   Subramanian, Vidal & Ochi (2012), *A simple and effective metaheuristic for the
   Minimum Latency Problem*, EJOR 221, 513–520. O GILS-RVND.

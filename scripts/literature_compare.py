@@ -23,6 +23,8 @@ every tour verified from the coordinates.
 
     python3 scripts/literature_compare.py --suite circuit --out results/literature/circuit.json --jobs 4
     python3 scripts/literature_compare.py --suite path    --out results/literature/path.json
+    python3 scripts/literature_compare.py --suite path --method gils_rvnd_paper --out results/literature/path_gils_rvnd.json --cores 2
+    python3 scripts/literature_compare.py --suite path --cap 100000 --budget-from results/literature/path_gils_rvnd.json --out results/literature/path_gils_budget.json --cores 2
     python3 scripts/literature_compare.py --suite abeledo --out results/literature/abeledo.json
     python3 scripts/literature_compare.py --suite circuit-long --out results/literature/circuit_long.json --jobs 4
     python3 scripts/literature_compare.py --suite circuit --out results/literature/circuit.json --report-only
@@ -40,6 +42,15 @@ from stats import sign_test_p
 
 PROPOSAL = ["./bin/gils_am_rvnd", "--rvnd-mode", "candidate-dlb", "--cand-k", "12",
             "--iils", "300"]
+# our implementation of GILS-RVND, for comparing on the same machine and budget
+# our GILS-RVND and MDM-GILS-RVND; the *_paper methods run under the paper's
+# stopping rule (I_max = 10, I_ILS = min(100, n)) with no time limit, to measure
+# their time here
+METHODS = {"proposal": PROPOSAL, "gils_rvnd": ["./bin/gils_rvnd"],
+           "gils_rvnd_paper": ["./bin/gils_rvnd", "--imax", "10"],
+           "mdm_gils_rvnd_paper": ["./bin/mdm_gils_rvnd", "--imax", "10"],
+           # restarts until the time limit; I_ILS = min(100, n) = 100 on the circuit set
+           "mdm_gils_rvnd": ["./bin/mdm_gils_rvnd", "--iils", "100"]}
 
 # Table 2 of Silva et al. (2012): instance -> (Salehipour best, GILS best,
 # GILS avg, GILS time s). The BKS is the GILS best except att532.
@@ -109,7 +120,7 @@ def budget(suite, inst, cap):
 # ---------------------------------------------------------------- running
 
 def run_one(cmd, path, closed):
-    out = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+    out = subprocess.run(cmd, capture_output=True, text=True, timeout=48 * 3600)
     if out.returncode != 0:
         raise RuntimeError(out.stderr[:300])
     rec, route = {}, None
@@ -135,14 +146,18 @@ def run(args, insts):
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     data = (json.loads(out.read_text()) if out.exists()
-            else {"suite": args.suite, "cap": args.cap, "cmd": PROPOSAL, "runs": {}})
-    if (data["suite"], data["cap"], data["cmd"]) != (args.suite, args.cap, PROPOSAL):
-        raise SystemExit("checkpoint has a different suite, cap or command; refusing to mix")
+            else {"suite": args.suite, "cap": args.cap, "cmd": METHODS[args.method],
+                  "budget_from": args.budget_from, "runs": {}})
+    if ((data["suite"], data["cap"], data["cmd"], data.get("budget_from"))
+            != (args.suite, args.cap, METHODS[args.method], args.budget_from)):
+        raise SystemExit("checkpoint has a different suite, cap, command or budget; refusing to mix")
     runs = data["runs"]
-    # largest first, so the long runs do not end up alone at the tail
+    # in parallel, largest first, so the long runs do not end up alone at the
+    # tail; one at a time, smallest first, so a broken setup shows up early
+    sign = -1 if args.jobs > 1 else 1
     todo = sorted(((i, s) for i in insts for s in range(1, args.runs + 1)
                    if f"{i}|{s}" not in runs),
-                  key=lambda t: (-budget(args.suite, t[0], args.cap), t[0], t[1]))
+                  key=lambda t: (sign * budget(args.suite, t[0], args.cap), t[0], t[1]))
     total = sum(budget(args.suite, i, args.cap) for i, _ in todo)
     print(f"{len(todo)} runs to go, {total / 3600:.1f} h of budget on {args.jobs} jobs", flush=True)
 
@@ -156,8 +171,12 @@ def run(args, insts):
         with lock:
             core = free.pop(0) if free else None
         path = f"instances/{inst}.tsp"
-        cmd = [*PROPOSAL[:1], path, *PROPOSAL[1:], "--max-time",
-               str(budget(args.suite, inst, args.cap)), "--seed", str(seed)]
+        method = METHODS[args.method]
+        if args.method.endswith("_paper"):
+            limit = ["--iils", str(min(100, n_of(inst)))]
+        else:
+            limit = ["--max-time", str(budget(args.suite, inst, args.cap))]
+        cmd = [*method[:1], path, *method[1:], *limit, "--seed", str(seed)]
         if closed:
             cmd += ["--closed", "--nint"]
         if SUITES[args.suite].get("trace"):
@@ -177,7 +196,9 @@ def run(args, insts):
                 print(f"  FAILED {inst}|{seed}: {err}", flush=True)
                 return
             runs[f"{inst}|{seed}"] = rec
-            out.write_text(json.dumps(data))
+            tmp = out.with_suffix(".tmp")   # atomic, so a kill never corrupts the checkpoint
+            tmp.write_text(json.dumps(data))
+            tmp.replace(out)
             print(f"[{done[0]}/{len(todo)}] {inst}|{seed} cost={rec['cost']:.0f} "
                   f"t={rec['time_ms'] / 1000:.1f}s restarts={rec['restarts']:.0f}", flush=True)
 
@@ -377,12 +398,16 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--suite", choices=SUITES, required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--method", choices=METHODS, default="proposal")
+    ap.add_argument("--budget-from", help="checkpoint whose mean time per instance replaces "
+                                          "the published time (e.g. a gils_rvnd_paper run)")
     ap.add_argument("--cap", type=float, help="seconds (default: 100, or the suite's)")
     ap.add_argument("--runs", type=int, help="default: 10, or the suite's")
     ap.add_argument("--jobs", type=int, default=1)
     ap.add_argument("--cores", type=int, nargs="+", help="pin each job to one of these CPUs")
     ap.add_argument("--instances", nargs="+", help="default: the suite's")
     ap.add_argument("--report-only", action="store_true")
+    ap.add_argument("--no-report", action="store_true", help="run only (e.g. one instance at a time)")
     ap.add_argument("--save-best", action="store_true",
                     help="circuit suites: record the best tour per instance in "
                          "instances/solutions/closed/")
@@ -391,9 +416,15 @@ def main():
     args.cap = args.cap or SUITES[args.suite].get("cap", 100.0)
     args.runs = args.runs or SUITES[args.suite].get("runs", 10)
     insts = args.instances or SUITES[args.suite]["instances"]
+    if args.budget_from:
+        ref = json.loads(Path(args.budget_from).read_text())["runs"]
+        t_ref = {i: mean(r["time_ms"] for k, r in ref.items() if k.split("|")[0] == i) / 1000
+                 for i in insts}
+        SUITES[args.suite]["lit_time"] = t_ref.__getitem__
     if not args.report_only:
         run(args, insts)
-    report(args, insts)
+    if not args.no_report:
+        report(args, insts)
     if args.save_best:
         if not SUITES[args.suite]["closed"]:
             raise SystemExit("--save-best is for the circuit suites")

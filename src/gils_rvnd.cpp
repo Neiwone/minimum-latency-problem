@@ -5,6 +5,7 @@
 #include "rvnd.h"
 #include "rvnd_adaptive.h"
 #include "neighborhoods_cand.h"
+#include "profile.h"
 
 using namespace std;
 
@@ -167,6 +168,9 @@ enum class ConstructionMode { Greedy, Lookahead };
    that mechanisms living at restart boundaries were exercised at all. */
 long g_restarts = 0;
 long g_ilsIters = 0;   /* perturbations applied: a speed measure for the ablation */
+PhaseTimes g_phase;   /* --profile */
+bool g_profile = false;
+bool g_trace = false; /* --trace: TRACE_B <ms> <cost> per new best, as in gils_am_rvnd */
 
 void gils_rvnd(Solution& bestSol, Evaluator& eval,
                int I_max, int I_ILS, const vector<double>& R, bool verbose,
@@ -183,6 +187,7 @@ void gils_rvnd(Solution& bestSol, Evaluator& eval,
        the budget can overshoot by at most one RVND convergence. */
     using SteadyClock = chrono::steady_clock;
     const auto tStart = SteadyClock::now();
+    Cost traceBest = LLONG_MAX;
     const bool timed = maxTimeSec > 0.0;
     auto outOfTime = [&]() {
         if (!timed) return false;
@@ -198,9 +203,9 @@ void gils_rvnd(Solution& bestSol, Evaluator& eval,
 
         Solution s;
         if (constructionMode == ConstructionMode::Lookahead)
-            construction_lookahead(s, eval, alpha, lookaheadK, gen);
+            PhaseTimes::add(g_phase.construction, [&] { construction_lookahead(s, eval, alpha, lookaheadK, gen); });
         else
-            construction(s, eval, alpha, gen);
+            PhaseTimes::add(g_phase.construction, [&] { construction(s, eval, alpha, gen); });
 
         /* A fresh construction is nowhere near a local optimum: arm
            everything. Only perturbations get the cheap partial re-arm. */
@@ -220,7 +225,7 @@ void gils_rvnd(Solution& bestSol, Evaluator& eval,
         vector<int> referenceTour(sPrime.fTour, sPrime.fTour + n);
 
         while (iterILS < I_ILS) {
-            run_rvnd(rvndMode, s, gen, adaptState, dlb);
+            PhaseTimes::add(g_phase.localSearch, [&] { run_rvnd(rvndMode, s, gen, adaptState, dlb); });
 
             if (pertMode == PertMode::Distance) {
                 int d = edge_distance(s.fTour, referenceTour.data(), n);
@@ -232,6 +237,11 @@ void gils_rvnd(Solution& bestSol, Evaluator& eval,
                 sPrime = s;
                 iterILS = 0;
                 if (verbose) print_trace(i, step, sPrime);
+                if (g_trace && sPrime.fEvaluationValue < traceBest) {
+                    traceBest = sPrime.fEvaluationValue;
+                    printf("TRACE_B %.1f %lld\n", chrono::duration<double, milli>(SteadyClock::now() - tStart).count(),
+                           (long long)traceBest);
+                }
             }
 
             if (outOfTime()) break;
@@ -245,7 +255,8 @@ void gils_rvnd(Solution& bestSol, Evaluator& eval,
             else if (pertMode == PertMode::Distance)
                 thisStrength = strength;
 
-            auto hit = perturb(s, gen, thisStrength);
+            pair<int,int> hit;
+            PhaseTimes::add(g_phase.perturbation, [&] { hit = perturb(s, gen, thisStrength); });
             if (hit.first >= 0) dlb.arm_range(s, hit.first - 1, hit.second + 1);
             else dlb.reset(s.fN);
 
@@ -402,6 +413,12 @@ int main(int argc, char** argv) {
         else if (a == "--adapt-rho" && i + 1 < argc) { adaptRho = stod(argv[++i]); }
         else if (a == "--adapt-grow" && i + 1 < argc) { adaptGrow = stod(argv[++i]); }
         else if (a == "--adapt-shrink" && i + 1 < argc) { adaptShrink = stod(argv[++i]); }
+        else if (a == "--profile") {
+            g_profile = true;
+        }
+        else if (a == "--trace") {
+            g_trace = true;
+        }
         else if (a == "-v") {
             verbose = true;
         }
@@ -494,6 +511,7 @@ int main(int argc, char** argv) {
     }
     cout << "CONSTRUCTION_MODE " << (constructionMode == ConstructionMode::Lookahead ? "lookahead" : "greedy") << "\n";
     cout << "TIME_MS " << fixed << setprecision(3) << runtime_ms << "\n";
+    if (g_profile) { cout.flush(); g_phase.print(runtime_ms / 1000); fflush(stdout); }
     cout << "ROUTE ";
     for (int i = 0; i < bestSol.fN; i++) {
         cout << bestSol.fTour[i] << ",\n"[i == bestSol.fN - 1];

@@ -21,6 +21,38 @@ def sign_test_p(wins: int, losses: int) -> float:
     return min(1.0, 2 * p_le_k)
 
 
+def wilcoxon_p(diffs: Sequence[float]) -> float:
+    """Two-sided exact Wilcoxon signed-rank p-value; zero differences are
+    left out (Wilcoxon's method), tied magnitudes get their average rank."""
+    d = sorted((x for x in diffs if x != 0), key=abs)
+    n = len(d)
+    if n == 0:
+        return 1.0
+    ranks2 = [0] * n   # twice the average rank, so it stays an integer
+    i = 0
+    while i < n:
+        j = i
+        while j + 1 < n and abs(d[j + 1]) == abs(d[i]):
+            j += 1
+        for k in range(i, j + 1):
+            ranks2[k] = i + j + 2
+        i = j + 1
+    w = sum(r for r, x in zip(ranks2, d) if x > 0)
+    counts = {0: 1}   # exact null distribution of W+ (doubled): each rank in or out
+    for r in ranks2:
+        nxt = dict(counts)
+        for s, c in counts.items():
+            nxt[s + r] = nxt.get(s + r, 0) + c
+        counts = nxt
+    lo = sum(c for s, c in counts.items() if s <= w)
+    hi = sum(c for s, c in counts.items() if s >= w)
+    return min(1.0, 2 * min(lo, hi) / 2 ** n)
+
+
+assert abs(wilcoxon_p([1, 2, 3, 4, 5]) - 2 / 32) < 1e-12
+assert abs(wilcoxon_p([-1, 2, -3, 4, 5]) - wilcoxon_p([1, -2, 3, -4, -5])) < 1e-12
+
+
 class Paired(NamedTuple):
     n: int
     mean_rel: float
