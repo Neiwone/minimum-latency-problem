@@ -5,6 +5,9 @@
 - [reports/resumo-resultados.md](reports/resumo-resultados.md) — o resumo de tudo:
   ablação, comparação com o paper do MDM, irace e memória adaptativa, com os gráficos
   de ganho por instância.
+- [benchmarks/literature-comparison.md](benchmarks/literature-comparison.md) — a proposta
+  contra os valores publicados do GILS-RVND e do MDM, em todas as instâncias públicas
+  dos dois papers.
 - [results-tables.md](results-tables.md) — os resultados finais, gerados dos
   checkpoints por `scripts/make_result_tables.py`.
 - [concepts/method-explained.md](concepts/method-explained.md) — o problema, o
@@ -58,7 +61,7 @@ comparados contra o GILS-RVND, salvo indicação.
 | H17 | double-bridge com blocos limitados (`--db-maxseg-div`) | refutada, em triagem | melhora a média mas piora a taxa de vitórias; neutro no H19 | não; ver H16 e H19 |
 | H18 | cortes do double-bridge enviesados para o início (`--db-front-bias`) | refutada, em triagem | sem ganho | não; ver H19 |
 | [H19](hypotheses/h19-dlb-fast-regime.md) | *don't-look bits* + `I_ILS` = 300 | confirmada | contra o MDM: custo 1,249% menor (60/10/0 em 70 pares) | sim, configuração atual |
-| [H20](hypotheses/h20-adaptive-memory-beyond-quality.md) | a memória adaptativa contribui além da qualidade? | confirmada em velocidade, refutada em qualidade | a iterações fixas, mesma qualidade com 19–24% menos tempo (p ≤ 0,012); a tempo fixo, empate, porque os reinícios ficam menos diversos | mantida; não é fonte de qualidade |
+| [H20](hypotheses/h20-adaptive-memory-beyond-quality.md) | a memória adaptativa contribui além da qualidade? | confirmada em velocidade, refutada em qualidade | a iterações fixas, mesma qualidade com 19–24% menos tempo (p ≤ 0,012); no protocolo do paper do MDM, −20% de tempo contra −1,1% do MDM; a tempo fixo, empate, porque os reinícios ficam menos diversos | mantida; não é fonte de qualidade |
 | [GRASP-AM em escala](hypotheses/grasp-am-large-scale.md) | construção com memória adaptativa | refutada em qualidade | empate, mas ~20–26% mais rápido | vira o `gils_am_rvnd` |
 | [GRASP+VND](hypotheses/h-salehipour-grasp-vnd.md) | implementação de Salehipour et al. (2011) | não concluída | or-opt estendido: custo 0,3351% menor que o GRASP+VND original | não |
 
@@ -73,6 +76,7 @@ comparados contra o GILS-RVND, salvo indicação.
 | [salehipour-tsplib-mdm-vs-am-extended](benchmarks/salehipour-tsplib-mdm-vs-am-extended.md) | benchmark de Salehipour, n = 10 a 500: `extended-oropt` com custo 0,283% menor em n = 500, MDM nulo |
 | [salehipour-n1000-mdm-vs-am-extended](benchmarks/salehipour-n1000-mdm-vs-am-extended.md) | Salehipour n = 1000: `extended-oropt` com custo 0,782% menor (162/0/38); braço MDM não concluído |
 | [mdm-paper-table1-reproduction](benchmarks/mdm-paper-table1-reproduction.md) | MDM e GILS-RVND do projeto contra a Tabela 1 do paper do MDM (28 TSPLIB, n ≤ 318): qualidade compatível (diferença das médias −0,0007% e +0,0072%); a redução de tempo de 15% do MDM não se reproduz |
+| [literature-comparison](benchmarks/literature-comparison.md) | a proposta contra os valores publicados (Silva et al. 2012, Tabelas 1 e 2: 22 TSPLIB de circuito de Abeledo e 10 de caminho; Santana et al. 2019, Tabela 1: 55 TSPLIB de circuito), com no máximo o tempo publicado: supera o MDM em 12/4/2 instâncias com 200 ≤ n < 500 e em 16/0/5 com n ≥ 500 a 1 000 s (14% do tempo dele); acha os ótimos de Abeledo, com 94% de acerto por execução; 12 novas melhores soluções, em `instances/solutions/closed/` |
 | [irace-dlb-tuning](benchmarks/irace-dlb-tuning.md) | irace sobre os parâmetros da busca local do método proposto (100 s, treino em 8 TSPLIB n ≥ 500): converge para perto da configuração atual, e a melhor dele empata com ela em instâncias novas (+0,100%, 24/0/36, p = 0,155) |
 
 ## Guias e relatórios

@@ -22,6 +22,7 @@ tour is verified from the coordinates.
 import argparse, json, os, random, statistics, subprocess, time
 from pathlib import Path
 
+from mdm_paper_compare import PAPER
 from registry import BEST_SOLUTIONS_FILE, ROOT
 from stats import compare_pairs, sign_test_p
 from verify_tour import dist, read_instance
@@ -41,6 +42,16 @@ SUITES = {
                                                              "--lambda", l]
               for ls in ("single", "dlb") for l in ("0", "0.5")},
         pairs=[("single_l0", "single_l0.5"), ("dlb_l0", "dlb_l0.5")]),
+    # The MDM paper's protocol (circuit, nint, I_max = 10, I_ILS = min(100, n),
+    # original RVND) on its Table 1 instances with n <= 318: the setting where
+    # the paper reports MDM's 15% time reduction, which mdm_paper_compare.py
+    # does not reproduce here.
+    "paper": dict(
+        instances=list(PAPER)[:28],   # gr120 .. lin318
+        arms={f"single_l{l}": ["--closed", "--nint", "--imax", "10", "--iils", "100",
+                               "--lambda", l]
+              for l in ("0", "0.5")},
+        pairs=[("single_l0", "single_l0.5")]),
 }
 
 mean = lambda xs: statistics.mean(xs) if xs else float("nan")
@@ -51,15 +62,16 @@ mean = lambda xs: statistics.mean(xs) if xs else float("nan")
 _inst = {}
 
 
-def latency(path, route):
+def latency(path, route, closed=False):
+    """Path latency (truncated EUC_2D), or circuit latency (TSPLIB nint)."""
     if path not in _inst:
         _inst[path] = read_instance(path)
     coords, etype, m = _inst[path]
     if sorted(route) != list(range(len(coords))) or route[0] != 0:
         return None
     acc = tot = 0
-    for a, b in zip(route, route[1:]):
-        acc += m[a][b] if m is not None else dist(coords[a + 1], coords[b + 1], etype)
+    for a, b in zip(route, route[1:] + [0] if closed else route[1:]):
+        acc += m[a][b] if m is not None else dist(coords[a + 1], coords[b + 1], etype, closed)
         tot += acc
     return tot
 
@@ -86,7 +98,7 @@ def run_one(cmd, path):
             rec["restarts_trace"].append([int(p[1]), float(p[2]), int(p[3]), float(p[4]),
                                           int(p[5]), int(p[6]), float(p[7]), int(p[8]),
                                           int(p[9]), float(p[10]), int(p[11])])
-    lat = latency(path, route or [])
+    lat = latency(path, route or [], "--closed" in cmd)
     if lat is None or lat != int(rec["cost"]):
         raise RuntimeError(f"tour check failed: reported {rec.get('cost')}, recomputed {lat}")
     return rec
@@ -151,8 +163,10 @@ def report(args, suite):
     insts = [i for i in suite["instances"] if any(k.startswith(i + "|") for k in runs)]
     seeds = range(1, args.runs + 1)
     best = json.loads((ROOT / BEST_SOLUTIONS_FILE).read_text())
+    # best_solutions.json holds path costs; the circuit suite uses its own runs
+    use_bks = args.suite != "paper"
     ref = {i: min([r["cost"] for k, r in runs.items() if k.startswith(i + "|")]
-                  + ([best[i]["cost"]] if i in best else [])) for i in insts}
+                  + ([best[i]["cost"]] if use_bks and i in best else [])) for i in insts}
     get = lambda i, a, s: runs.get(f"{i}|{a}|{s}")
 
     def paired(base, arm, f):

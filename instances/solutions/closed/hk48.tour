@@ -1,0 +1,55 @@
+NAME : hk48.tour
+COMMENT : MLP solution (cost=247926.00, solver=gils_am_rvnd_dlb)
+TYPE : TOUR
+DIMENSION : 48
+TOUR_SECTION
+1
+2
+15
+48
+26
+29
+32
+25
+28
+13
+22
+12
+18
+14
+38
+7
+47
+8
+6
+34
+36
+40
+10
+9
+23
+3
+5
+41
+24
+35
+17
+31
+20
+11
+16
+42
+4
+46
+45
+39
+44
+27
+37
+19
+43
+21
+33
+30
+-1
+EOF

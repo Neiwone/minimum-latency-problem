@@ -326,7 +326,7 @@ int main(int argc, char** argv) {
     Solution bestSol;
     mt19937 gen(seed >= 0 ? (unsigned long)seed : random_device{}());
 
-    using Clock = chrono::high_resolution_clock;
+    using Clock = chrono::steady_clock;   /* TIME_MS must not jump with a suspend */
     auto t0 = Clock::now();
 
     mdm_gils_rvnd(bestSol, eval, I_max, I_ILS, R, poolSize, supMin, maxPatterns, gen, maxTimeSec);

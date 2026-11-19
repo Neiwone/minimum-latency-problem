@@ -9,7 +9,9 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
+import literature_compare as lit
 from runner import load_runs
+from stats import sign_test_p
 from stats import compare_pairs, pair_runs
 
 PROPOSAL = "gils_am_rvnd_dlb"
@@ -209,6 +211,83 @@ def main():
             mines = "n/a" if "mdm" not in s else f"{mcall/n:.1f}"
             zeros = "n/a" if "mdm" not in s else f"{zero}/{n}"
             print(f"| {name} | {LABEL[s]} | {r/n:.1f} | {mines} | {zeros} |")
+
+    # ---- 7. against the papers' printed values
+    literature_table()
+
+
+def literature_table():
+    """Section 7: the proposal against the values printed in the papers."""
+    def runs_of(path, seeds):
+        if not Path(path).exists():
+            return None
+        r = json.loads(Path(path).read_text())["runs"]
+        by = defaultdict(list)
+        for k, v in r.items():
+            inst, seed = k.split("|")
+            if int(seed) <= seeds:
+                by[inst].append(v)
+        return {i: v for i, v in by.items() if len(v) == seeds}
+
+    def cmp(avg, ref):
+        w, t, l = lit.wtl([(avg[i], ref[i]) for i in avg])
+        m = sum(lit.rel(avg[i], ref[i]) for i in avg) / len(avg)
+        return f"{pct(m)} | {w}/{t}/{l} | {pfmt(sign_test_p(w, l))}"
+
+    def row(name, recs, seeds, gils, mdm, lit_time, best_ref, at=None):
+        insts = sorted(recs, key=lit.n_of)
+        cost = (lambda r, i: lit.best_at(r, min(at, lit_time(i)) * 1000)) if at \
+            else (lambda r, i: r["cost"])
+        avg = {i: sum(cost(r, i) for r in recs[i]) / seeds for i in insts}
+        best = {i: min(cost(r, i) for r in recs[i]) for i in insts}
+        used = sum(min(at, lit_time(i)) if at else
+                   sum(r["time_ms"] for r in recs[i]) / seeds / 1000 for i in insts)
+        eq = sum(best[i] == best_ref(i) for i in insts)
+        lo = sum(best[i] < best_ref(i) for i in insts)
+        g = cmp(avg, {i: gils(i) for i in insts})
+        m = cmp(avg, {i: mdm(i) for i in insts}) if mdm else "— | — | —"
+        b = f"{eq}/{lo}/{len(insts) - eq - lo}"
+        print(f"| {name} | {len(insts)} | {seeds} | {100 * used / sum(lit_time(i) for i in insts):.1f}% "
+              f"| {g} | {m} | {b} |")
+
+    P = lit.PAPER
+    circ = runs_of("results/literature/circuit.json", 10)
+    long_ = runs_of("results/literature/circuit_long.json", 5)
+    path = runs_of("results/literature/path.json", 10)
+    abel = runs_of("results/literature/abeledo.json", 10)
+    if not circ:
+        return
+    print("\n## 7. Proposta vs valores publicados nos papers\n")
+    print("Aqui, \"publicado\" é o número impresso no paper, não o método rodado nesta")
+    print("máquina (nas seções 1–5, \"MDM publicado\" é a configuração publicada do MDM")
+    print("rodada aqui). Cada execução da proposta recebe min(teto, tempo publicado).")
+    print("Os papers só publicam médias, então a comparação é **por instância**: a média")
+    print("da proposta contra a média publicada (V/E/D sobre instâncias, empate se a")
+    print("diferença for menor que 0,05). `melhor =/</>` compara a melhor solução da")
+    print("proposta com a melhor publicada. Detalhes em")
+    print("[literature-comparison](benchmarks/literature-comparison.md).\n")
+    print("| conjunto | inst. | seeds | tempo / publicado | vs GILS-RVND dif% | V/E/D | p "
+          "| vs MDM dif% | V/E/D | p | melhor =/</> |")
+    print("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+    gils = lambda i: P[i][2]
+    mdm = lambda i: P[i][5]
+    t_mdm = lambda i: P[i][6]
+    pbest = lambda i: min(P[i][1], P[i][4])
+    if abel:
+        A = lit.ABELEDO
+        row("circuito, Abeledo, n 42–107", abel, 10, lambda i: A[i][2], None,
+            lambda i: A[i][3], lambda i: min(A[i][0], A[i][1]))
+    for name, lo, hi in (("circuito, n < 200", 0, 200), ("circuito, 200 ≤ n < 500", 200, 500),
+                         ("circuito, n ≥ 500, 100 s", 500, 10 ** 6)):
+        sub = {i: v for i, v in circ.items() if lo <= lit.n_of(i) < hi}
+        row(name, sub, 10, gils, mdm, t_mdm, pbest)
+    if long_:
+        for t in (300, 1000):
+            row(f"circuito, n ≥ 500, {t} s", long_, 5, gils, mdm, t_mdm, pbest, at=t)
+    if path:
+        S = lit.SILVA_T2
+        row("caminho, Silva (2012)", path, 10, lambda i: S[i][2], None, lambda i: S[i][3],
+            lambda i: min(lit.PATH_BKS.get(i, S[i][1]), S[i][1]))
 
 
 if __name__ == "__main__":

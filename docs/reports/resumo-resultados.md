@@ -1,23 +1,67 @@
-# Resumo dos resultados: ablação, MDM, irace e memória adaptativa
+# Resumo dos resultados: literatura, ablação, MDM, irace e memória adaptativa
 
-Este documento organiza as quatro frentes de trabalho que fecham a avaliação do
-método proposto (`gils_am_rvnd_dlb`), mais um estudo complementar sobre a memória
-adaptativa. Cada seção traz a pergunta, o protocolo, os números principais e a
+Este documento organiza as frentes de trabalho que fecham a avaliação do método
+proposto (`gils_am_rvnd_dlb`): a comparação com os valores publicados, quatro estudos
+sobre o método e um estudo complementar sobre a memória adaptativa. Cada seção traz a pergunta, o protocolo, os números principais e a
 conclusão; os detalhes estão no documento de cada estudo.
 
 | # | frente | pergunta | resposta curta | documento |
 |---|---|---|---|---|
+| 0 | literatura | como a proposta se compara aos valores publicados de GILS-RVND e MDM? | de 120 nós em diante, iguala ou supera, com uma fração do tempo; abaixo disso, acha os ótimos mas é menos confiável; 12 novas melhores soluções | [literature-comparison](../benchmarks/literature-comparison.md) |
 | 1 | instâncias | o conjunto de teste cobre instâncias grandes? | sim: 77 TSPLIB, de 42 a 1 379 nós | [`registry.py`](../../scripts/registry.py) |
 | 2 | ablação | quanto cada componente acrescenta ao GILS-RVND? | −2,17% no total; quatro componentes de busca local carregam o ganho | [ablation-gils-rvnd-to-dlb](ablation-gils-rvnd-to-dlb.md) |
 | 3 | MDM do paper vs MDM do projeto | a reimplementação do MDM é compatível com a publicada? | sim em qualidade; não na redução de tempo | [mdm-paper-table1-reproduction](../benchmarks/mdm-paper-table1-reproduction.md) |
 | 4 | irace | a configuração do método é boa, ou só uma escolha manual? | o tuning automático não acha nada melhor | [irace-dlb-tuning](../benchmarks/irace-dlb-tuning.md) |
-| + | memória adaptativa | ela contribui por outros critérios? | sim em velocidade (−19% a −24%), não em qualidade | [H20](../hypotheses/h20-adaptive-memory-beyond-quality.md) |
+| + | memória adaptativa | ela contribui por outros critérios? | sim em velocidade (−19% a −24%; −20% no protocolo do paper do MDM, onde o MDM dá −1,1%), não em qualidade | [H20](../hypotheses/h20-adaptive-memory-beyond-quality.md) |
 
 O método proposto:
 
 ```bash
 ./bin/gils_am_rvnd <instancia.tsp> --rvnd-mode candidate-dlb --cand-k 12 --iils 300 --max-time 100
 ```
+
+---
+
+## 0. Proposta × literatura
+
+**Protocolo.** O método proposto contra os valores **publicados** do GILS-RVND e do MDM,
+nas instâncias públicas dos dois papers: as 22 TSPLIB de Abeledo et al. da Tabela 1 de
+Silva et al. (circuito, n de 42 a 107, com ótimos provados), as 55 TSPLIB da Tabela 1
+de Santana et al. (circuito, n de 120 a 1 379) e as 10 TSPLIB da Tabela 2 de Silva et
+al. (caminho). Cada
+execução recebe `min(teto, tempo publicado)`, então a proposta nunca tem mais tempo que o
+método comparado. Teto de 100 s com 10 seeds em tudo; teto de 1 000 s com 5 seeds nas 21
+instâncias com n ≥ 500, onde 100 s é só 1,5% do tempo do MDM. Comparação por instância
+(média da proposta contra média publicada), com teste dos sinais.
+
+**Resultado.**
+
+| conjunto | média da proposta vs média do MDM publicado | V/E/D | p | tempo da proposta / do MDM |
+|---|---:|---:|---:|---:|
+| circuito, Abeledo, n de 42 a 107 (22) ¹ | +0,035% | 0/17/5 | 0,06 | igual ao do GILS-RVND |
+| circuito, n < 200 (16) | −0,003% | 5/9/2 | 0,45 | 100% |
+| circuito, 200 ≤ n < 500 (18) | **−0,037%** | **12/4/2** | **0,013** | 54% |
+| circuito, n ≥ 500 (21), 100 s | +0,518% | 4/0/17 | 0,007 | 1,5% |
+| circuito, n ≥ 500 (21), 300 s | +0,123% | 9/0/12 | 0,66 | 4,5% |
+| circuito, n ≥ 500 (21), 1 000 s | **−0,110%** | **16/0/5** | **0,027** | **13,9%** |
+
+¹ Contra o GILS-RVND (o MDM não tem tabela para esse conjunto). A proposta acha os 22
+ótimos, mas em 207 de 220 execuções, contra 220/220 do GILS-RVND.
+
+Contra o GILS-RVND publicado, a 1 000 s: −0,193%, 17/0/4, p = 0,007. A melhor solução,
+porém, ainda perde para a melhor publicada em 10 das 21 instâncias grandes. No caminho, a
+proposta iguala o BKS em 9 de 10 instâncias e melhora a média do GILS-RVND nas 4 em que
+ele não era exato, com 17% do tempo publicado. E acha **12 novas melhores soluções**
+para o circuito, de `gil262` a `d1291`, com os tours em `instances/solutions/closed/`.
+
+**Conclusão.** A partir de 120 nós, a proposta iguala ou supera a literatura, usando uma
+fração do tempo dos métodos publicados: até 54% do tempo do MDM abaixo de 500 nós, e 14%
+acima. Nas instâncias pequenas de Abeledo (n ≤ 107), ela acha todos os ótimos, mas erra
+em 6% das execuções, que o GILS-RVND acerta sempre: a poda por lista de candidatos,
+calibrada para n ≥ 500, custa um pouco de confiabilidade onde a busca completa já é
+barata. A única configuração em que perde, n ≥ 500 com 100 s, dá a ela
+1,5% do tempo do MDM. As máquinas diferem, e não há fator de conversão confiável, mas a
+margem de 7× no tempo é maior que qualquer diferença plausível de hardware.
 
 ---
 
@@ -215,17 +259,37 @@ justificativa formal, e o método não depende de ajuste fino.
 fixo. Ela contribui por outros critérios?
 
 **Protocolo.** λ = 0 (sem memória) contra λ = 0,5 no mesmo binário, isolando só a
-memória, com um rastro por reinício. Iterações fixas (4 instâncias, n de 200 a 439) e
-tempo fixo de 100 s com `I_ILS` = 30 e 300 (as 6 de teste).
+memória, com um rastro por reinício. Três cenários: iterações fixas (4 instâncias, n de
+200 a 439); o protocolo do paper do MDM (circuito, `I_max` = 10, `I_ILS` = 100, as 28
+instâncias da Tabela 1 com n ≤ 318, 10 seeds); e tempo fixo de 100 s com `I_ILS` = 30 e
+300 (as 6 de teste).
 
 **Resultado.**
 
 | critério | resultado |
 |---|---|
 | tempo, a iterações fixas | **−19% a −24%** para a mesma qualidade (p ≤ 0,012) |
+| tempo, protocolo do paper do MDM | **−20%** para a mesma qualidade (245/0/35, p < 10⁻⁴) |
 | qualidade, 100 s, método proposto | empate (+0,004%) |
 | custo ao longo do tempo, `I_ILS` = 30 | −0,29% aos 10 s (p = 0,0015); não se sustenta |
 | diversidade dos reinícios | menor: distância até a melhor solução cai de 36% para 22% dos nós |
+
+**A memória entrega o que o MDM prometia.** O paper do MDM justifica a mineração de
+padrões por manter a qualidade e reduzir o tempo do GILS-RVND (−15,2% nessas 28
+instâncias). Na seção 3, essa redução não se reproduziu (−1,1%). No mesmo protocolo e
+nas mesmas instâncias, a memória adaptativa reduz o tempo em 20%, também sem perda de
+qualidade:
+
+| mecanismo de memória | qualidade | tempo |
+|---|---:|---:|
+| MDM, segundo o paper | −0,004% | −15,2% |
+| MDM, no projeto | +0,004% | −1,1% |
+| **memória adaptativa, no projeto** | +0,007% (empate) | **−20,0%** |
+
+Ela age desde o 2º reinício, enquanto o MDM só minera na segunda metade, e economiza o
+que ainda é caro no projeto: iterações de ILS (reinícios de 247 para 190). E é mais
+simples, porque troca a mineração de itemsets frequentes por um bônus de frequência
+de arestas na construção.
 
 **Conclusão.** A memória é um mecanismo de **eficiência**. A construção praticamente
 copia a melhor solução já vista, então cada reinício é mais curto. O preço é
@@ -237,7 +301,11 @@ proposto, ela quase não age: em 19 de 30 execuções há um só reinício.
 
 ## 6. O que fica para a dissertação
 
-1. **Resultado principal:** o método proposto bate o GILS-RVND por 2,17% a 100 s em
+1. **Resultado principal:** contra os valores publicados, a proposta iguala ou supera o
+   GILS-RVND e o MDM de 120 nós em diante, com até 54% do tempo do MDM abaixo de 500
+   nós e 14% acima (16/0/5 contra o MDM a 1 000 s), e acha 12 novas melhores soluções.
+   Abaixo de 120 nós, acha todos os ótimos, mas com 94% de acerto por execução.
+   Contra o GILS-RVND reimplementado, na mesma máquina, ela é 2,17% melhor a 100 s em
    instâncias com n ≥ 500 (30/0/0), com ganho crescente com n.
 2. **De onde vem:** busca local (lista de candidatos, vizinhanças extras,
    *don't-look bits*) e calibração (`I_ILS` = 300); cada um é significativo quando
@@ -246,17 +314,20 @@ proposto, ela quase não age: em 19 de 30 execuções há um só reinício.
    o desvio em tempo está documentado e explicado.
 4. **A configuração é justificada:** o irace não encontra nada melhor.
 5. **A memória adaptativa** deve ser apresentada como mecanismo de eficiência, não de
-   qualidade.
+   qualidade: no protocolo do paper do MDM, ela entrega a redução de tempo que o MDM
+   prometia (−20% contra −1,1%), com a mesma qualidade.
 
 ## Reproduzir
 
 | o quê | comando |
 |---|---|
+| proposta × literatura | `python3 scripts/literature_compare.py --suite circuit --out results/literature/circuit.json --jobs 4` (e `--suite abeledo`, `--suite path`, `--suite circuit-long`) |
 | ablação oficial | `python3 scripts/ablation.py --suite official100 --out results/ablation/ablation_100s.json` |
 | comparação com o paper do MDM | `python3 scripts/mdm_paper_compare.py --out results/mdm-paper/table1.json --max-n 318` |
 | irace | `cd irace && irace --scenario scenario-dlb.txt` |
 | validação do irace | `python3 scripts/run_experiments.py --mode fixed-time --time-limit 100 --runs 10 --instances att532 rat783 pr1002 pcb1173 d1291 nrw1379 --solvers gils_am_rvnd_dlb gils_am_rvnd_irace` |
 | memória adaptativa | `python3 scripts/am_study.py --suite fixed100 --out results/am-study/fixed100.json` |
+| memória no protocolo do paper do MDM | `python3 scripts/am_study.py --suite paper --runs 10 --out results/am-study/paper.json` |
 | participação de cada vizinhança | `python3 scripts/nb_contrib.py --out results/nb-contrib/nb_100s.json` |
 | gráficos deste documento | `python3 scripts/plot_summary.py` e `python3 scripts/nb_contrib.py --report-only ...` (precisam de `matplotlib`) |
 

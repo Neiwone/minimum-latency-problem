@@ -6,6 +6,7 @@ binário e mesma construção, λ = 0 contra λ = 0,5):
 | critério | resultado |
 |---|---|
 | **tempo, a iterações fixas** | **−19% a −24%** para a mesma qualidade (18/0/2, p = 0,0004; 16/0/4, p = 0,012) |
+| **tempo, no protocolo do paper do MDM** (28 TSPLIB, circuito) | **−20,0%** para a mesma qualidade (245/0/35, p < 10⁻⁴); o MDM, no mesmo protocolo, só −1,1% |
 | qualidade, a iterações fixas | empate (+0,003% e +0,025%) |
 | qualidade, 100 s, `I_ILS` = 300 (o método proposto) | empate (+0,004%, 14/9/7, p = 0,19) |
 | qualidade, 100 s, `I_ILS` = 30 (muitos reinícios) | −0,121% (20/0/10, p = 0,099), não significativo |
@@ -180,6 +181,54 @@ Desvio-padrão e pior caso por instância, a 100 s:
 `d1291` (`I_ILS` = 300). Com 5 seeds por instância, essas diferenças estão dentro do
 que se espera por acaso.
 
+### 5. No protocolo do paper do MDM: a memória entrega o que o MDM prometia
+
+O paper do MDM (Santana, Plastino & Rosseti) apresenta a mineração de padrões como um
+mecanismo que **mantém a qualidade e reduz o tempo** do GILS-RVND: −15,2% nas 28
+instâncias da Tabela 1 com n ≤ 318. A [reprodução](../benchmarks/mdm-paper-table1-reproduction.md)
+confirmou a qualidade, mas não a redução de tempo: no projeto, o MDM fica só 1,1% mais
+rápido. A pergunta aqui é se a memória adaptativa entrega, no mesmo cenário, o ganho que
+o paper atribuiu ao MDM.
+
+**Protocolo.** O do paper, sem nenhuma mudança: circuito, distâncias `nint` do TSPLIB,
+`I_max` = 10, `I_ILS` = min(100, n) = 100, busca local original, as mesmas 28 instâncias
+(`gr120` a `lin318`), seeds 1–10. λ = 0 contra λ = 0,5, no mesmo binário. 280 pares,
+todos os tours verificados. As execuções rodaram fixas num núcleo, com os dois braços de
+cada par lado a lado em ordem sorteada. Na maior parte do lote, outros 4 núcleos rodavam
+a [comparação com a literatura](../benchmarks/literature-comparison.md); isso deixa os
+tempos absolutos maiores, mas atinge os dois braços de cada par por igual.
+
+**Resultado.**
+
+| | qualidade (dif. das médias, por instância) | tempo |
+|---|---:|---:|
+| MDM vs GILS-RVND, no paper | −0,004% | **−15,2%** |
+| MDM vs GILS-RVND, no projeto ([table1.json](../../results/mdm-paper/table1.json)) | +0,004% (7/12/9, p = 0,80) | **−1,1%** |
+| **memória adaptativa (λ = 0,5 vs λ = 0)** | +0,007% por par (55/171/54, p = 1,0) | **−20,0%** por par (245/0/35, p < 10⁻⁴) |
+
+Contra o GILS-RVND do projeto, a qualidade média dos quatro braços (GILS-RVND, MDM e AM
+com λ = 0 e com λ = 0,5) fica dentro de 0,011%, e nenhuma diferença é significativa. A
+memória faz a construção sair de 160% para 45% acima da referência, cada reinício cai
+de 247 para 190 iterações de ILS (de 3,3 s para 2,5 s), e as 10 execuções de cada
+instância terminam 20% mais cedo. Por instância, o ganho médio é de 21%.
+
+**Por que a memória consegue e o MDM não.** Os dois mecanismos têm o mesmo objetivo:
+construir reinícios a partir do que as melhores soluções têm em comum. Duas diferenças
+explicam o resultado:
+
+- **Quando agem.** O MDM só minera depois da metade dos reinícios (5 de 10) e usa os
+  padrões nos 5 restantes; a memória age a partir do 2º reinício, com o pool que já
+  existe.
+- **O que economizam.** No paper, a economia do MDM vinha em boa parte de evitar
+  movimentos caros, porque o GILS-RVND original reconstrói estruturas `n × n` a cada
+  movimento ([reprodução, seção 5](../benchmarks/mdm-paper-table1-reproduction.md)). No
+  projeto essa reconstrução é `O(n)`, e o que sobra para economizar são iterações de
+  ILS. A memória economiza justamente isso: reinícios mais curtos.
+
+O custo de implementação também é menor: a memória é um bônus de frequência de arestas
+na construção, sem mineração de itemsets frequentes (FP-max), sem limiar de suporte e
+sem gatilho de estagnação.
+
 ## Por que a memória não converte velocidade em qualidade
 
 O mecanismo aparece inteiro nos rastros. A construção com memória soma a cada aresta um
@@ -209,7 +258,9 @@ melhor solução não ajuda o ILS a encontrar outra melhor.
 
 1. **A memória adaptativa contribui em eficiência:** a orçamento de iterações fixo, ela
    entrega a mesma qualidade com 19–24% menos tempo, com significância e com as duas
-   buscas locais.
+   buscas locais. No protocolo e nas instâncias do paper do MDM, o ganho é de 20%
+   (245/0/35): é o ganho que o paper atribuía ao MDM (−15%), e que o MDM não entrega na
+   implementação do projeto (−1,1%).
 2. **Ela não contribui em qualidade a tempo fixo**, que é o critério do método
    proposto. A eficiência vira reinícios, mas reinícios menos diversos.
 3. **No método proposto (`I_ILS` = 300, n ≥ 500, 100 s), ela quase não tem oportunidade
@@ -243,7 +294,7 @@ o critério de parada é por iterações.
 |---|---|
 | flag `--trace` | [`src/gils_am_rvnd.cpp`](../../src/gils_am_rvnd.cpp) |
 | driver e relatório | [`scripts/am_study.py`](../../scripts/am_study.py) (`--suite iter` / `fixed100`) |
-| dados (com os rastros) | [`results/am-study/iter.json`](../../results/am-study/iter.json), [`results/am-study/fixed100.json`](../../results/am-study/fixed100.json) |
+| dados (com os rastros) | [`results/am-study/iter.json`](../../results/am-study/iter.json), [`results/am-study/fixed100.json`](../../results/am-study/fixed100.json), [`results/am-study/paper.json`](../../results/am-study/paper.json) |
 
 Reproduzir o relatório:
 
@@ -251,4 +302,5 @@ Reproduzir o relatório:
 python3 scripts/am_study.py --suite iter --out results/am-study/iter.json --report-only \
     --instances kroA200 a280 lin318 pr439
 python3 scripts/am_study.py --suite fixed100 --out results/am-study/fixed100.json --report-only
+python3 scripts/am_study.py --suite paper --runs 10 --out results/am-study/paper.json --report-only
 ```

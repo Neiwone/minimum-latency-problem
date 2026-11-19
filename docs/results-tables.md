@@ -150,3 +150,24 @@ existir. `minerações` é n/a para os braços que não mineram.
 | Salehipour n = 1000 | MDM publicado | 9.0 | 4.2 | 0/60 |
 | Salehipour n = 1000 | MDM + busca local nova | 2.1 | 0.8 | 14/60 |
 | Salehipour n = 1000 | MDM + busca local, mineração com folga | 5.5 | 2.4 | 0/60 |
+
+## 7. Proposta vs valores publicados nos papers
+
+Aqui, "publicado" é o número impresso no paper, não o método rodado nesta
+máquina (nas seções 1–5, "MDM publicado" é a configuração publicada do MDM
+rodada aqui). Cada execução da proposta recebe min(teto, tempo publicado).
+Os papers só publicam médias, então a comparação é **por instância**: a média
+da proposta contra a média publicada (V/E/D sobre instâncias, empate se a
+diferença for menor que 0,05). `melhor =/</>` compara a melhor solução da
+proposta com a melhor publicada. Detalhes em
+[literature-comparison](benchmarks/literature-comparison.md).
+
+| conjunto | inst. | seeds | tempo / publicado | vs GILS-RVND dif% | V/E/D | p | vs MDM dif% | V/E/D | p | melhor =/</> |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| circuito, Abeledo, n 42–107 | 22 | 10 | 100.0% | +0.035 | 0/17/5 | 0.0625 | — | — | — | 22/0/0 |
+| circuito, n < 200 | 16 | 10 | 100.0% | −0.005 | 5/9/2 | 0.4531 | −0.003 | 5/9/2 | 0.4531 | 16/0/0 |
+| circuito, 200 ≤ n < 500 | 18 | 10 | 53.9% | −0.059 | 14/3/1 | 0.0010 | −0.037 | 12/4/2 | 0.0129 | 13/2/3 |
+| circuito, n ≥ 500, 100 s | 21 | 10 | 1.5% | +0.434 | 5/0/16 | 0.0266 | +0.518 | 4/0/17 | 0.0072 | 2/4/15 |
+| circuito, n ≥ 500, 300 s | 21 | 5 | 4.5% | +0.040 | 11/0/10 | 1.0000 | +0.123 | 9/0/12 | 0.6636 | 2/5/14 |
+| circuito, n ≥ 500, 1000 s | 21 | 5 | 13.9% | −0.193 | 17/0/4 | 0.0072 | −0.110 | 16/0/5 | 0.0266 | 2/9/10 |
+| caminho, Silva (2012) | 10 | 10 | 17.1% | −0.041 | 4/6/0 | 0.1250 | — | — | — | 9/0/1 |

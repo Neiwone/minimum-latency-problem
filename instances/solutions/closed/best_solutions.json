@@ -1,0 +1,464 @@
+{
+  "dantzig42": {
+    "cost": 12528.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.925459",
+    "tour_file": "dantzig42.tour"
+  },
+  "swiss42": {
+    "cost": 22327.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.925834",
+    "tour_file": "swiss42.tour"
+  },
+  "att48": {
+    "cost": 209320.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.926206",
+    "tour_file": "att48.tour"
+  },
+  "gr48": {
+    "cost": 102378.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.928015",
+    "tour_file": "gr48.tour"
+  },
+  "hk48": {
+    "cost": 247926.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.928948",
+    "tour_file": "hk48.tour"
+  },
+  "eil51": {
+    "cost": 10178.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.929248",
+    "tour_file": "eil51.tour"
+  },
+  "berlin52": {
+    "cost": 143721.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.929609",
+    "tour_file": "berlin52.tour"
+  },
+  "brazil58": {
+    "cost": 512361.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.929961",
+    "tour_file": "brazil58.tour"
+  },
+  "st70": {
+    "cost": 20557.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.930375",
+    "tour_file": "st70.tour"
+  },
+  "eil76": {
+    "cost": 17976.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.930676",
+    "tour_file": "eil76.tour"
+  },
+  "pr76": {
+    "cost": 3455242.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.931068",
+    "tour_file": "pr76.tour"
+  },
+  "gr96": {
+    "cost": 2097170.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.931474",
+    "tour_file": "gr96.tour"
+  },
+  "rat99": {
+    "cost": 57986.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.931884",
+    "tour_file": "rat99.tour"
+  },
+  "kroA100": {
+    "cost": 983128.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.932221",
+    "tour_file": "kroA100.tour"
+  },
+  "kroB100": {
+    "cost": 986008.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.932509",
+    "tour_file": "kroB100.tour"
+  },
+  "kroC100": {
+    "cost": 961324.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.932806",
+    "tour_file": "kroC100.tour"
+  },
+  "kroD100": {
+    "cost": 976965.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.933085",
+    "tour_file": "kroD100.tour"
+  },
+  "kroE100": {
+    "cost": 971266.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.933461",
+    "tour_file": "kroE100.tour"
+  },
+  "rd100": {
+    "cost": 340047.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.933793",
+    "tour_file": "rd100.tour"
+  },
+  "eil101": {
+    "cost": 27513.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.934055",
+    "tour_file": "eil101.tour"
+  },
+  "lin105": {
+    "cost": 603910.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.934404",
+    "tour_file": "lin105.tour"
+  },
+  "pr107": {
+    "cost": 2026626.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:28.934668",
+    "tour_file": "pr107.tour"
+  },
+  "gr120": {
+    "cost": 363454.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.038067",
+    "tour_file": "gr120.tour"
+  },
+  "pr124": {
+    "cost": 3154346.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.038415",
+    "tour_file": "pr124.tour"
+  },
+  "bier127": {
+    "cost": 4545005.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.041239",
+    "tour_file": "bier127.tour"
+  },
+  "ch130": {
+    "cost": 349874.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.041692",
+    "tour_file": "ch130.tour"
+  },
+  "pr136": {
+    "cost": 6199268.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.042178",
+    "tour_file": "pr136.tour"
+  },
+  "gr137": {
+    "cost": 4061498.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.043981",
+    "tour_file": "gr137.tour"
+  },
+  "pr144": {
+    "cost": 3846137.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.044863",
+    "tour_file": "pr144.tour"
+  },
+  "ch150": {
+    "cost": 444424.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.045568",
+    "tour_file": "ch150.tour"
+  },
+  "kroA150": {
+    "cost": 1825769.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.046454",
+    "tour_file": "kroA150.tour"
+  },
+  "kroB150": {
+    "cost": 1786546.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.046864",
+    "tour_file": "kroB150.tour"
+  },
+  "pr152": {
+    "cost": 5064566.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.047950",
+    "tour_file": "pr152.tour"
+  },
+  "u159": {
+    "cost": 2972030.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.048670",
+    "tour_file": "u159.tour"
+  },
+  "si175": {
+    "cost": 1808532.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.049405",
+    "tour_file": "si175.tour"
+  },
+  "brg180": {
+    "cost": 174750.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.050100",
+    "tour_file": "brg180.tour"
+  },
+  "rat195": {
+    "cost": 218632.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.050749",
+    "tour_file": "rat195.tour"
+  },
+  "d198": {
+    "cost": 1186049.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.051375",
+    "tour_file": "d198.tour"
+  },
+  "kroA200": {
+    "cost": 2672437.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.052474",
+    "tour_file": "kroA200.tour"
+  },
+  "kroB200": {
+    "cost": 2669515.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.053025",
+    "tour_file": "kroB200.tour"
+  },
+  "gr202": {
+    "cost": 2909247.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.053608",
+    "tour_file": "gr202.tour"
+  },
+  "ts225": {
+    "cost": 13240046.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.054116",
+    "tour_file": "ts225.tour"
+  },
+  "tsp225": {
+    "cost": 402783.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.054641",
+    "tour_file": "tsp225.tour"
+  },
+  "pr226": {
+    "cost": 7196869.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.055161",
+    "tour_file": "pr226.tour"
+  },
+  "gr229": {
+    "cost": 10725914.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.055860",
+    "tour_file": "gr229.tour"
+  },
+  "gil262": {
+    "cost": 284948.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.056398",
+    "tour_file": "gil262.tour"
+  },
+  "pr264": {
+    "cost": 5471615.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.057030",
+    "tour_file": "pr264.tour"
+  },
+  "a280": {
+    "cost": 346989.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.057465",
+    "tour_file": "a280.tour"
+  },
+  "pr299": {
+    "cost": 6556628.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.057875",
+    "tour_file": "pr299.tour"
+  },
+  "lin318": {
+    "cost": 5619810.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.058278",
+    "tour_file": "lin318.tour"
+  },
+  "rd400": {
+    "cost": 2769135.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.058727",
+    "tour_file": "rd400.tour"
+  },
+  "fl417": {
+    "cost": 1874242.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.059121",
+    "tour_file": "fl417.tour"
+  },
+  "gr431": {
+    "cost": 21175719.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.059533",
+    "tour_file": "gr431.tour"
+  },
+  "pr439": {
+    "cost": 17829541.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.059910",
+    "tour_file": "pr439.tour"
+  },
+  "pcb442": {
+    "cost": 10311906.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.060531",
+    "tour_file": "pcb442.tour"
+  },
+  "d493": {
+    "cost": 6671887.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.060886",
+    "tour_file": "d493.tour"
+  },
+  "att532": {
+    "cost": 5607098.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.141518",
+    "tour_file": "att532.tour"
+  },
+  "ali535": {
+    "cost": 31891861.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.062210",
+    "tour_file": "ali535.tour"
+  },
+  "si535": {
+    "cost": 12247182.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.062716",
+    "tour_file": "si535.tour"
+  },
+  "pa561": {
+    "cost": 656380.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.142870",
+    "tour_file": "pa561.tour"
+  },
+  "u574": {
+    "cost": 9292704.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.144745",
+    "tour_file": "u574.tour"
+  },
+  "rat575": {
+    "cost": 1845287.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.145590",
+    "tour_file": "rat575.tour"
+  },
+  "p654": {
+    "cost": 7827273.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.065052",
+    "tour_file": "p654.tour"
+  },
+  "d657": {
+    "cost": 14126576.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.146410",
+    "tour_file": "d657.tour"
+  },
+  "gr666": {
+    "cost": 63518806.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.066450",
+    "tour_file": "gr666.tour"
+  },
+  "u724": {
+    "cost": 13491893.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.147310",
+    "tour_file": "u724.tour"
+  },
+  "rat783": {
+    "cost": 3278691.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.147743",
+    "tour_file": "rat783.tour"
+  },
+  "dsj1000": {
+    "cost": 7653711845.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.148408",
+    "tour_file": "dsj1000.tour"
+  },
+  "pr1002": {
+    "cost": 115708493.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.149152",
+    "tour_file": "pr1002.tour"
+  },
+  "si1032": {
+    "cost": 46896355.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.070242",
+    "tour_file": "si1032.tour"
+  },
+  "u1060": {
+    "cost": 102386362.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.149668",
+    "tour_file": "u1060.tour"
+  },
+  "vm1084": {
+    "cost": 94645899.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.150129",
+    "tour_file": "vm1084.tour"
+  },
+  "pcb1173": {
+    "cost": 30820331.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.150810",
+    "tour_file": "pcb1173.tour"
+  },
+  "d1291": {
+    "cost": 29378545.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.151299",
+    "tour_file": "d1291.tour"
+  },
+  "rl1304": {
+    "cost": 144631161.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.152111",
+    "tour_file": "rl1304.tour"
+  },
+  "rl1323": {
+    "cost": 156092112.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.152611",
+    "tour_file": "rl1323.tour"
+  },
+  "nrw1379": {
+    "cost": 35500297.0,
+    "solver": "gils_am_rvnd_dlb",
+    "timestamp": "2026-10-28T19:19:29.153083",
+    "tour_file": "nrw1379.tour"
+  }
+}

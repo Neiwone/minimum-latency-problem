@@ -67,7 +67,8 @@ PAPER = {
     "gr666":   (None, 63571693, 63731966.5, 2296.23, 63500984, 63612943.5, 1609.15),
     "u724":    (None, 13506660, 13558605.3, 4651.76, 13504408, 13537514.7, 3132.70),
     "rat783":  (None, 3282794, 3296069.6, 7044.52, 3275858, 3293606.1, 4475.85),
-    "dsj1000": (None, 7646018508, 7685887300.0, 18068.70, 7642715113, 7664531851.0, 12233.54),
+    # instances/dsj1000.tsp is CEIL_2D, so it is the paper's dsj1000ceil row
+    "dsj1000": (None, 7646519008, 7683329486.0, 18543.76, 7646395679, 7676973751.0, 11929.94),
     "pr1002":  (None, 115550770, 116178260.2, 11963.29, 115420846, 115874237.0, 8029.58),
     "si1032":  (None, 46896355, 46897662.4, 2402.72, 46896355, 46896783.6, 1926.99),
     "u1060":   (None, 102508056, 102759766.0, 15680.50, 102539819, 102759493.6, 9910.02),
@@ -78,7 +79,7 @@ PAPER = {
     "rl1323":  (None, 155697857, 156360364.3, 22758.06, 155719283, 156273365.5, 15115.63),
     "nrw1379": (None, 35360407, 35519379.7, 49624.72, 35291795, 35456093.0, 32038.65),
 }
-# dsj1000ceil (Table 1) is dsj1000 with CEIL_2D; not in instances/, left out.
+# The EUC_2D dsj1000 row of Table 1 has no instance file here, so it is left out.
 
 SOLVERS = {"gils": "./bin/gils_rvnd", "mdm": "./bin/mdm_gils_rvnd"}
 
@@ -136,8 +137,10 @@ def run_one(cmd, inst_path):
             rec[p[0].lower()] = float(p[1])
         elif p and p[0] == "ROUTE":
             route = [int(x) for x in line.split(None, 1)[1].split(",")]
-    if rec.get("closed") != 1 or rec.get("nint") != 1:
-        raise RuntimeError("solver did not run in closed+nint mode")
+    # NINT reports the rounding the instance resolved to, so it is 0 on
+    # EXPLICIT/GEO/ATT/CEIL_2D; a wrong rounding fails the recomputation below.
+    if rec.get("closed") != 1:
+        raise RuntimeError("solver did not run in closed mode")
     lat = closed_nint_latency(inst_path, route or [])
     if lat is None or lat != int(rec["cost"]):
         raise RuntimeError(f"tour check failed: reported {rec['cost']}, recomputed {lat}")
